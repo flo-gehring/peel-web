@@ -2,6 +2,11 @@ import { z } from 'zod'
 
 import type {
   ApiErrorPayload,
+  DocumentDetail,
+  DocumentPreviewRequest,
+  DocumentPreviewResponse,
+  DocumentSaveRequest,
+  DocumentSummary,
   JsonValue,
   RunRequest,
   RunResponse,
@@ -23,6 +28,12 @@ const scriptDetailSchema = z.object({
   script: z.string(),
 })
 
+const documentSummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  updatedAt: z.string(),
+})
+
 const validationDiagnosticSchema = z.object({
   line: z.number(),
   column: z.number(),
@@ -39,6 +50,33 @@ const validationResponseSchema = z.object({
 const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
   z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(jsonValueSchema), z.record(z.string(), jsonValueSchema)]),
 )
+
+const documentDetailSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  content: z.record(z.string(), jsonValueSchema),
+  exampleBindings: z.record(z.string(), jsonValueSchema),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+
+const documentPreviewReferenceSchema = z.object({
+  refId: z.string(),
+  scriptId: z.string(),
+  status: z.enum(['ok', 'error']),
+})
+
+const documentPreviewDiagnosticSchema = z.object({
+  refId: z.string(),
+  code: z.string(),
+  message: z.string(),
+})
+
+const documentPreviewResponseSchema = z.object({
+  renderedContent: z.record(z.string(), jsonValueSchema),
+  references: z.array(documentPreviewReferenceSchema),
+  diagnostics: z.array(documentPreviewDiagnosticSchema),
+})
 
 const runResponseSchema = z.object({
   trace: z.record(z.string(), jsonValueSchema),
@@ -98,8 +136,16 @@ export function listScripts(): Promise<ScriptSummary[]> {
   return request('/api/scripts', { method: 'GET' }, z.array(scriptSummarySchema))
 }
 
+export function listDocuments(): Promise<DocumentSummary[]> {
+  return request('/api/documents', { method: 'GET' }, z.array(documentSummarySchema))
+}
+
 export function getScript(id: string): Promise<ScriptDetail> {
   return request(`/api/scripts/${id}`, { method: 'GET' }, scriptDetailSchema)
+}
+
+export function getDocument(id: string): Promise<DocumentDetail> {
+  return request(`/api/documents/${id}`, { method: 'GET' }, documentDetailSchema)
 }
 
 export function saveScript(payload: ScriptSaveRequest): Promise<ScriptDetail> {
@@ -107,6 +153,30 @@ export function saveScript(payload: ScriptSaveRequest): Promise<ScriptDetail> {
     '/api/scripts',
     { method: 'POST', body: JSON.stringify(payload) },
     scriptDetailSchema,
+  )
+}
+
+export function saveDocument(payload: DocumentSaveRequest): Promise<DocumentDetail> {
+  return request(
+    '/api/documents',
+    { method: 'POST', body: JSON.stringify(payload) },
+    documentDetailSchema,
+  )
+}
+
+export async function deleteDocument(id: string): Promise<void> {
+  await request(
+    `/api/documents/${id}`,
+    { method: 'DELETE' },
+    z.object({}).passthrough(),
+  )
+}
+
+export function previewDocument(payload: DocumentPreviewRequest): Promise<DocumentPreviewResponse> {
+  return request(
+    '/api/documents/preview',
+    { method: 'POST', body: JSON.stringify(payload) },
+    documentPreviewResponseSchema,
   )
 }
 

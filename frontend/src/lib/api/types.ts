@@ -11,16 +11,61 @@ export interface ScriptSummary {
   name: string
 }
 
+export interface DocumentSummary {
+  id: string
+  name: string
+  updatedAt: string
+}
+
 export interface ScriptDetail {
   id: string
   name: string
   script: string
 }
 
+export interface DocumentDetail {
+  id: string
+  name: string
+  content: JsonObject
+  exampleBindings: JsonObject
+  createdAt: string
+  updatedAt: string
+}
+
 export interface ScriptSaveRequest {
   id?: string
   name: string
   script: string
+}
+
+export interface DocumentSaveRequest {
+  id?: string
+  name: string
+  content: JsonObject
+  exampleBindings: JsonObject
+}
+
+export interface DocumentPreviewRequest {
+  content: JsonObject
+  exampleBindings: JsonObject
+}
+
+export interface DocumentPreviewReferenceStatus {
+  refId: string
+  scriptId: string
+  status: 'ok' | 'error'
+}
+
+export interface DocumentPreviewDiagnostic {
+  refId: string
+  code: string
+  message: string
+}
+
+export interface DocumentPreviewResponse {
+  renderedContent: JsonObject
+  references: DocumentPreviewReferenceStatus[]
+  diagnostics: DocumentPreviewDiagnostic[]
 }
 
 export interface RunRequest {
