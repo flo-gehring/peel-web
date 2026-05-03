@@ -1,4 +1,4 @@
-import clsx from 'clsx'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 import type { RunResponse } from '../../../lib/api/types'
@@ -9,12 +9,24 @@ type ResultViewProps = {
   runData: RunResponse | null
   runErrorMessage: string | null
   saveErrorMessage: string | null
+  isResultOpen: boolean
+  onToggleResultOpen: () => void
+  isDetailOpen: boolean
+  onToggleDetailOpen: () => void
 }
 
-type ResultTab = 'trace' | 'result' | 'json'
+type DetailMode = 'trace' | 'raw'
 
-export function ResultView({ runData, runErrorMessage, saveErrorMessage }: ResultViewProps) {
-  const [activeTab, setActiveTab] = useState<ResultTab>('trace')
+export function ResultView({
+  runData,
+  runErrorMessage,
+  saveErrorMessage,
+  isResultOpen,
+  onToggleResultOpen,
+  isDetailOpen,
+  onToggleDetailOpen,
+}: ResultViewProps) {
+  const [detailMode, setDetailMode] = useState<DetailMode>('trace')
   const [selectedNodePath, setSelectedNodePath] = useState<string>('trace')
 
   const selectedNodeValue = useMemo(() => {
@@ -25,59 +37,86 @@ export function ResultView({ runData, runErrorMessage, saveErrorMessage }: Resul
   }, [runData, selectedNodePath])
 
   return (
-    <div className="flex min-h-0 flex-col border border-slate-800 bg-slate-900/70">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden border border-slate-800 bg-slate-900/70">
       <div className="flex items-center justify-between border-b border-slate-800 px-3 py-2">
-        <div className="flex gap-2">
-          <TabButton label="Trace" active={activeTab === 'trace'} onClick={() => setActiveTab('trace')} />
-          <TabButton
-            label="Result"
-            active={activeTab === 'result'}
-            onClick={() => setActiveTab('result')}
-          />
-          <TabButton label="Raw JSON" active={activeTab === 'json'} onClick={() => setActiveTab('json')} />
+        <span>Result Value</span>
+        <button
+          type="button"
+          className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-700 text-slate-300 hover:border-cyan-500"
+          onClick={onToggleResultOpen}
+        >
+          {isResultOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+
+      </div>
+
+      {isResultOpen ? (
+        <div className="min-h-0 flex-1 overflow-auto px-3 py-3">
+          <div className="flex flex-col items-end">
+            {runErrorMessage ? <p className="text-xs text-rose-300">{runErrorMessage}</p> : null}
+            {saveErrorMessage ? <p className="text-xs text-rose-300">{saveErrorMessage}</p> : null}
+          </div>
+          <ResultPane runData={runData} />
+          <div className="mt-3 rounded-lg border border-slate-800 bg-slate-950/40">
+            <div className="flex items-center justify-between gap-2 px-3 py-2">
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Detail</p>
+                <div className="rounded-md border border-slate-700 bg-slate-900 p-0.5">
+                  <button
+                    type="button"
+                    className={
+                      detailMode === 'trace'
+                        ? 'rounded px-2 py-1 text-xs font-semibold text-cyan-100 bg-cyan-500/20'
+                        : 'rounded px-2 py-1 text-xs text-slate-400 hover:text-slate-200'
+                    }
+                    onClick={() => setDetailMode('trace')}
+                  >
+                    Trace
+                  </button>
+                  <button
+                    type="button"
+                    className={
+                      detailMode === 'raw'
+                        ? 'rounded px-2 py-1 text-xs font-semibold text-cyan-100 bg-cyan-500/20'
+                        : 'rounded px-2 py-1 text-xs text-slate-400 hover:text-slate-200'
+                    }
+                    onClick={() => setDetailMode('raw')}
+                  >
+                    Raw
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-700 text-slate-300 hover:border-cyan-500"
+                onClick={onToggleDetailOpen}
+                aria-label={isDetailOpen ? 'Collapse detail pane' : 'Expand detail pane'}
+              >
+                {isDetailOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+            </div>
+
+            {isDetailOpen ? (
+              <div className="h-64 border-t border-slate-800">
+                {detailMode === 'trace' ? (
+                  <TracePane
+                    runData={runData}
+                    selectedPath={selectedNodePath}
+                    onSelect={setSelectedNodePath}
+                    selectedNode={selectedNodeValue}
+                  />
+                ) : (
+                  <JsonPane runData={runData} />
+                )}
+              </div>
+            ) : (
+              <CollapsedMessage message="Detail hidden" />
+            )}
+          </div>
         </div>
-        {runErrorMessage ? <p className="text-xs text-rose-300">{runErrorMessage}</p> : null}
-        {saveErrorMessage ? <p className="text-xs text-rose-300">{saveErrorMessage}</p> : null}
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-hidden">
-        {activeTab === 'trace' ? (
-          <TracePane
-            runData={runData}
-            selectedPath={selectedNodePath}
-            onSelect={setSelectedNodePath}
-            selectedNode={selectedNodeValue}
-          />
-        ) : null}
-        {activeTab === 'result' ? <ResultPane runData={runData} /> : null}
-        {activeTab === 'json' ? <JsonPane runData={runData} /> : null}
-      </div>
+      ) : null}
     </div>
-  )
-}
-
-function TabButton({
-  label,
-  active,
-  onClick,
-}: {
-  label: string
-  active: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      className={clsx(
-        'rounded-md px-2 py-1 text-xs font-medium transition',
-        active
-          ? 'bg-cyan-500/20 text-cyan-100'
-          : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200',
-      )}
-      onClick={onClick}
-    >
-      {label}
-    </button>
   )
 }
 
@@ -124,9 +163,9 @@ function ResultPane({ runData }: { runData: RunResponse | null }) {
   }
 
   return (
-    <pre className="h-full overflow-auto p-3 text-xs text-slate-200">
-      {JSON.stringify(runData.result, null, 2)}
-    </pre>
+    <div className="rounded-lg border border-emerald-800/40 bg-emerald-950/20 p-3">
+      <pre className="overflow-auto text-xs text-emerald-100">{JSON.stringify(runData.result, null, 2)}</pre>
+    </div>
   )
 }
 
@@ -144,4 +183,8 @@ function JsonPane({ runData }: { runData: RunResponse | null }) {
 
 function EmptyPane({ message }: { message: string }) {
   return <div className="flex h-full items-center justify-center px-4 text-sm text-slate-400">{message}</div>
+}
+
+function CollapsedMessage({ message }: { message: string }) {
+  return <div className="px-3 py-2 text-xs text-slate-500">{message}</div>
 }
