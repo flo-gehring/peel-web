@@ -1,12 +1,10 @@
 import { X } from 'lucide-react'
 
-import type { DocumentPreviewResponse } from '../../../lib/api/types'
-
 type DocumentPreviewPaneProps = {
   isOpen: boolean
   onClose: () => void
   previewPending: boolean
-  previewData: DocumentPreviewResponse | null
+  pdfUrl: string | null
   previewError: string | null
   parseError: string | null
 }
@@ -15,7 +13,7 @@ export function DocumentPreviewPane({
   isOpen,
   onClose,
   previewPending,
-  previewData,
+  pdfUrl,
   previewError,
   parseError,
 }: DocumentPreviewPaneProps) {
@@ -52,25 +50,14 @@ export function DocumentPreviewPane({
 
           {previewPending ? <p className="mb-3 text-slate-400">Rendering preview...</p> : null}
 
-          {previewData ? (
-            <>
-              <p className="mb-2 text-[11px] uppercase tracking-[0.15em] text-slate-400">Rendered content</p>
-              <pre className="mb-3 overflow-auto rounded-lg border border-slate-800 bg-slate-950/60 p-2 text-slate-200">
-                {JSON.stringify(previewData.renderedContent, null, 2)}
-              </pre>
-
-              <p className="mb-2 text-[11px] uppercase tracking-[0.15em] text-slate-400">References</p>
-              <pre className="mb-3 overflow-auto rounded-lg border border-slate-800 bg-slate-950/60 p-2 text-slate-200">
-                {JSON.stringify(previewData.references, null, 2)}
-              </pre>
-
-              <p className="mb-2 text-[11px] uppercase tracking-[0.15em] text-slate-400">Diagnostics</p>
-              <pre className="overflow-auto rounded-lg border border-slate-800 bg-slate-950/60 p-2 text-slate-200">
-                {JSON.stringify(previewData.diagnostics, null, 2)}
-              </pre>
-            </>
+          {pdfUrl ? (
+            <iframe
+              src={pdfUrl}
+              title="PDF Preview"
+              className="h-full min-h-[70vh] w-full rounded border border-slate-700 bg-white"
+            />
           ) : (
-            <p className="text-slate-400">Run preview to inspect rendered document output.</p>
+            <p className="text-slate-400">Run preview to inspect the rendered PDF.</p>
           )}
         </div>
       </div>

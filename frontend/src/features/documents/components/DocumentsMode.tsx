@@ -1,8 +1,8 @@
 import clsx from 'clsx'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { DocumentBindingsPane } from './DocumentBindingsPane'
-import { DocumentJsonEditorPane } from './DocumentJsonEditorPane'
+import { DocumentEditorPane } from './DocumentEditorPane'
 import { DocumentPreviewPane } from './DocumentPreviewPane'
 import { DocumentsHeader } from './DocumentsHeader'
 import { DocumentsSidebar } from './DocumentsSidebar'
@@ -11,8 +11,10 @@ import { useDocumentsApi } from '../hooks/useDocumentsApi'
 import {
   defaultDocumentBindings,
   defaultDocumentContent,
-  parseDocumentContent,
+  documentContentToPlainText,
+  normalizeDocumentContent,
 } from '../lib/content'
+import { renderDocumentPdf } from '../lib/pdf'
 import { parseBindings } from '../../workbench/lib/bindings'
 import { formatError } from '../../workbench/lib/errors'
 
@@ -22,8 +24,8 @@ export function DocumentsMode() {
   const {
     name,
     setName,
-    contentText,
-    setContentText,
+    content,
+    setContent,
     bindingsText,
     setBindingsText,
     selectedDocumentId,
@@ -31,7 +33,6 @@ export function DocumentsMode() {
     resetToDefault,
   } = useDocumentDraftState()
 
-  const contentState = useMemo(() => parseDocumentContent(contentText), [contentText])
   const bindingsState = useMemo(() => parseBindings(bindingsText), [bindingsText])
 
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
@@ -42,18 +43,20 @@ export function DocumentsMode() {
     return raw === 'true'
   })
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [previewPending, setPreviewPending] = useState(false)
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null)
+  const [previewRenderError, setPreviewRenderError] = useState<string | null>(null)
 
   const {
     documentsQuery,
     loadDocumentMutation,
     saveDocumentMutation,
     deleteDocumentMutation,
-    previewDocumentMutation,
   } = useDocumentsApi({
     onDocumentLoaded: (document) => {
       setSelectedDocumentId(document.id)
       setName(document.name)
-      setContentText(JSON.stringify(document.content, null, 2))
+      setContent(normalizeDocumentContent(document.content))
       setBindingsText(JSON.stringify(document.exampleBindings, null, 2))
     },
     onDocumentSaved: (document) => {
@@ -72,15 +75,20 @@ export function DocumentsMode() {
   const saveDisabled =
     saveDocumentMutation.isPending ||
     name.trim().length === 0 ||
-    contentState.value === null ||
     bindingsState.value === null
 
   const previewDisabled =
-    previewDocumentMutation.isPending ||
-    contentState.value === null ||
-    bindingsState.value === null
+    previewPending
 
   const deleteDisabled = deleteDocumentMutation.isPending || selectedDocumentId === null
+
+  useEffect(() => {
+    return () => {
+      if (previewPdfUrl) {
+        URL.revokeObjectURL(previewPdfUrl)
+      }
+    }
+  }, [previewPdfUrl])
 
   function toggleSidebar() {
     const nextState = !isSidebarOpen
@@ -89,26 +97,38 @@ export function DocumentsMode() {
   }
 
   function handleSave() {
-    if (!contentState.value || !bindingsState.value) {
+    if (!bindingsState.value) {
       return
     }
     saveDocumentMutation.mutate({
       id: selectedDocumentId ?? undefined,
       name: name.trim(),
-      content: contentState.value,
+      content,
       exampleBindings: bindingsState.value,
     })
   }
 
-  function handlePreview() {
-    if (!contentState.value || !bindingsState.value) {
-      return
-    }
+  async function handlePreview() {
+    setPreviewPending(true)
+    setPreviewRenderError(null)
     setIsPreviewOpen(true)
-    previewDocumentMutation.mutate({
-      content: contentState.value,
-      exampleBindings: bindingsState.value,
-    })
+    if (previewPdfUrl) {
+      URL.revokeObjectURL(previewPdfUrl)
+    }
+
+    try {
+      const plainText = documentContentToPlainText(content)
+      const pdfUrl = await renderDocumentPdf({
+        title: name,
+        body: plainText,
+      })
+      setPreviewPdfUrl(pdfUrl)
+    } catch (error) {
+      setPreviewPdfUrl(null)
+      setPreviewRenderError(formatError(error) ?? 'Could not render PDF preview.')
+    } finally {
+      setPreviewPending(false)
+    }
   }
 
   function handleCreateDocument() {
@@ -118,7 +138,7 @@ export function DocumentsMode() {
 
     setSelectedDocumentId(null)
     setName(nextName)
-    setContentText(JSON.stringify(nextContent, null, 2))
+    setContent(nextContent)
     setBindingsText(JSON.stringify(nextBindings, null, 2))
 
     saveDocumentMutation.mutate({
@@ -135,7 +155,6 @@ export function DocumentsMode() {
     deleteDocumentMutation.mutate(selectedDocumentId)
   }
 
-  const previewError = formatError(previewDocumentMutation.error)
   const saveError = formatError(saveDocumentMutation.error)
   const deleteError = formatError(deleteDocumentMutation.error)
 
@@ -167,7 +186,7 @@ export function DocumentsMode() {
           savePending={saveDocumentMutation.isPending}
           onPreview={handlePreview}
           previewDisabled={previewDisabled}
-          previewPending={previewDocumentMutation.isPending}
+          previewPending={previewPending}
         />
 
         {saveError ? (
@@ -181,12 +200,9 @@ export function DocumentsMode() {
           </p>
         ) : null}
 
-        <div className="grid min-h-0 gap-4 lg:grid-cols-[1fr_1fr]">
-          <DocumentJsonEditorPane
-            contentText={contentText}
-            onContentTextChange={setContentText}
-          />
-          <DocumentBindingsPane
+        <div className="grid min-h-0 gap-4 lg:grid-cols-[6fr_3fr]">
+            <DocumentEditorPane content={content} onContentChange={setContent} />
+            <DocumentBindingsPane
             bindingsText={bindingsText}
             onBindingsTextChange={setBindingsText}
           />
@@ -194,11 +210,13 @@ export function DocumentsMode() {
 
         <DocumentPreviewPane
           isOpen={isPreviewOpen}
-          onClose={() => setIsPreviewOpen(false)}
-          previewPending={previewDocumentMutation.isPending}
-          previewData={previewDocumentMutation.data ?? null}
-          previewError={previewError}
-          parseError={contentState.error ?? bindingsState.error}
+          onClose={() => {
+            setIsPreviewOpen(false)
+          }}
+          previewPending={previewPending}
+          pdfUrl={previewPdfUrl}
+          previewError={previewRenderError}
+          parseError={null}
         />
       </section>
     </div>
