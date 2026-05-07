@@ -4,10 +4,12 @@ import {
   deleteDocument,
   getDocument,
   listDocuments,
+  previewDocument,
   saveDocument,
 } from '../../../lib/api/client'
 import type {
   DocumentDetail,
+  DocumentPreviewRequest,
   DocumentSaveRequest,
   DocumentSummary,
 } from '../../../lib/api/types'
@@ -118,10 +120,15 @@ export function useDocumentsApi(options: UseDocumentsApiOptions) {
     },
   })
 
+  const previewDocumentMutation = useMutation({
+    mutationFn: (payload: DocumentPreviewRequest) => previewDocument(payload),
+  })
+
   return {
     documentsQuery,
     loadDocumentMutation,
     saveDocumentMutation,
     deleteDocumentMutation,
+    previewDocumentMutation,
   }
 }

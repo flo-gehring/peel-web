@@ -1,11 +1,10 @@
 import jsPDF from 'jspdf'
 
 type RenderDocumentPdfParams = {
-  title: string
   body: string
 }
 
-export async function renderDocumentPdf({ title, body }: RenderDocumentPdfParams): Promise<string> {
+export async function renderDocumentPdf({ body }: RenderDocumentPdfParams): Promise<string> {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'pt',
@@ -18,24 +17,23 @@ export async function renderDocumentPdf({ title, body }: RenderDocumentPdfParams
   const maxTextWidth = pageWidth - margin * 2
   const lineHeight = 16
 
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(18)
-  doc.text(title.trim().length > 0 ? title : 'Untitled document', margin, margin)
-
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(12)
 
   const renderedBody = body.trim().length > 0 ? body : ' '
-  const lines = doc.splitTextToSize(renderedBody, maxTextWidth) as string[]
+  const sourceLines = renderedBody.split('\n')
 
-  let cursorY = margin + 28
-  for (const line of lines) {
-    if (cursorY > pageHeight - margin) {
-      doc.addPage()
-      cursorY = margin
+  let cursorY = margin
+  for (const sourceLine of sourceLines) {
+    const wrappedLines = doc.splitTextToSize(sourceLine.length > 0 ? sourceLine : ' ', maxTextWidth) as string[]
+    for (const wrappedLine of wrappedLines) {
+      if (cursorY > pageHeight - margin) {
+        doc.addPage()
+        cursorY = margin
+      }
+      doc.text(wrappedLine, margin, cursorY)
+      cursorY += lineHeight
     }
-    doc.text(line, margin, cursorY)
-    cursorY += lineHeight
   }
 
   const blob = doc.output('blob')

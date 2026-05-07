@@ -7,7 +7,7 @@ import {
   normalizeDocumentContent,
 } from '../lib/content'
 
-const STORAGE_KEY = 'peel-documents-draft-v1'
+const STORAGE_KEY = 'peel-documents-draft-v2'
 
 type DocumentDraft = {
   name: string

@@ -23,3 +23,53 @@ body {
 * { 
   box-sizing: border-box;
 }
+
+.peel-editor-content {
+  min-height: 100%;
+  outline: none;
+  padding: 1.25rem;
+  color: #0f172a;
+  line-height: 1.65;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  box-shadow: 0 6px 28px rgba(2, 6, 23, 0.14);
+  margin: 0.9rem auto 1.25rem;
+  width: calc(100% - 1.5rem);
+  max-width: 100%;
+}
+
+.peel-editor-placeholder {
+  pointer-events: none;
+  position: absolute;
+  margin: 2rem;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.peel-editor-paragraph {
+  margin: 0.75rem 0;
+}
+
+.peel-script-chip {
+  display: inline-block;
+  border: 1px solid rgba(14, 116, 144, 0.35);
+  border-radius: 999px;
+  background: rgba(8, 145, 178, 0.13);
+  color: #164e63;
+  padding: 0.07rem 0.55rem;
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.peel-editor-page-a4 {
+  width: min(100% - 1.5rem, 794px);
+  min-height: 1123px;
+}
+
+.peel-editor-page-letter {
+  width: min(100% - 1.5rem, 816px);
+  min-height: 1056px;
+}

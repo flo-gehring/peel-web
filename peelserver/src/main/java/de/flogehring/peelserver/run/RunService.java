@@ -1,5 +1,8 @@
 package de.flogehring.peelserver.run;
 
+import de.flogehring.peel.convenience.output.TraceMapOutput;
+import de.flogehring.peel.core.trace.TraceProgram;
+import de.flogehring.peel.core.trace.TraceValueMapper;
 import de.flogehring.peelserver.api.RunRequest;
 import de.flogehring.peelserver.api.RunResponse;
 import lombok.RequiredArgsConstructor;
@@ -12,10 +15,13 @@ public class RunService {
     private final PeelExecutionService peelExecutionService;
 
     public RunResponse run(RunRequest request) {
-        if (request == null || request.script() == null || request.script().isBlank()) {
+        if (request == null || request.script().isBlank()) {
             throw new IllegalArgumentException("script must not be blank");
         }
-        PeelExecutionService.ExecutionResult executionResult = peelExecutionService.execute(request.script(), request.bindings());
-        return new RunResponse(executionResult.trace(), executionResult.result());
+        TraceProgram traceProgram = peelExecutionService.execute(request.script(), request.bindings());
+        return new RunResponse(
+                TraceMapOutput.programmStatements(traceProgram),
+                TraceMapOutput.fromValue(traceProgram.result())
+        );
     }
 }

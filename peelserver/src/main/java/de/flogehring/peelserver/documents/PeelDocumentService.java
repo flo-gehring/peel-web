@@ -23,20 +23,14 @@ public class PeelDocumentService implements DocumentController {
 
     @Override
     public DocumentResponse saveDocument(DocumentSaveRequest request) {
-        if (request == null) {
-            throw new IllegalArgumentException("request must not be null");
-        }
-
         Map<String, Object> content = requireContent(request.content());
-        Map<String, Object> bindings = normalizeBindings(request.exampleBindings());
-
-        if (request.id() != null && !request.id().isBlank()) {
+        Map<String, Object> bindings = request.exampleBindings();
+        if (!request.id().isBlank()) {
             PeelDocument existing = peelDocumentRepository.findById(request.id())
                     .orElseThrow(() -> new ResourceNotFoundException("Document not found: " + request.id()));
             PeelDocument saved = peelDocumentRepository.save(existing.update(request.name(), content, bindings));
             return toResponse(saved);
         }
-
         PeelDocument created = PeelDocument.newDocument(request.name(), content, bindings);
         PeelDocument saved = peelDocumentRepository.save(created);
         return toResponse(saved);
@@ -90,16 +84,9 @@ public class PeelDocumentService implements DocumentController {
     }
 
     private Map<String, Object> requireContent(Map<String, Object> content) {
-        if (content == null || content.isEmpty()) {
+        if (content.isEmpty()) {
             throw new IllegalArgumentException("content must not be empty");
         }
         return content;
-    }
-
-    private Map<String, Object> normalizeBindings(Map<String, Object> bindings) {
-        if (bindings == null) {
-            return Map.of();
-        }
-        return bindings;
     }
 }
