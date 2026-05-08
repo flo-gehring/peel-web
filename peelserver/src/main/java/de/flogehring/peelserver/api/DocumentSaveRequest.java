@@ -5,7 +5,8 @@ import java.util.Map;
 public record DocumentSaveRequest(
         String id,
         String name,
-        Map<String, Object> content,
+        String script,
+        String template,
         Map<String, Object> exampleBindings
 ) {
 }

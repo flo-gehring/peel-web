@@ -31,7 +31,7 @@ export function DocumentsHeader({
         placeholder="Document name"
       />
       <p className="text-xs text-slate-400">
-        Use <span className="font-mono text-slate-200">{'{{script:SCRIPT_ID}}'}</span> or Insert &gt; Script chip.
+        Provide a Peel script and a Pebble template.
       </p>
       <div className="flex items-center gap-2">
         <button

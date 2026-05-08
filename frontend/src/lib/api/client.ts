@@ -54,28 +54,17 @@ const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
 const documentDetailSchema = z.object({
   id: z.string(),
   name: z.string(),
-  content: z.record(z.string(), jsonValueSchema),
+  script: z.string(),
+  template: z.string(),
   exampleBindings: z.record(z.string(), jsonValueSchema),
   createdAt: z.string(),
   updatedAt: z.string(),
 })
 
-const documentPreviewReferenceSchema = z.object({
-  refId: z.string(),
-  scriptId: z.string(),
-  status: z.enum(['ok', 'error']),
-})
-
-const documentPreviewDiagnosticSchema = z.object({
-  refId: z.string(),
-  code: z.string(),
-  message: z.string(),
-})
-
 const documentPreviewResponseSchema = z.object({
-  renderedContent: z.record(z.string(), jsonValueSchema),
-  references: z.array(documentPreviewReferenceSchema),
-  diagnostics: z.array(documentPreviewDiagnosticSchema),
+  html: z.string(),
+  trace: z.record(z.string(), jsonValueSchema),
+  result: z.record(z.string(), jsonValueSchema),
 })
 
 const runResponseSchema = z.object({

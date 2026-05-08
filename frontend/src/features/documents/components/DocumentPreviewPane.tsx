@@ -4,20 +4,18 @@ type DocumentPreviewPaneProps = {
   isOpen: boolean
   onClose: () => void
   previewPending: boolean
-  pdfUrl: string | null
+  html: string | null
   previewError: string | null
   parseError: string | null
-  diagnostics: Array<{ refId: string; code: string; message: string }>
 }
 
 export function DocumentPreviewPane({
   isOpen,
   onClose,
   previewPending,
-  pdfUrl,
+  html,
   previewError,
   parseError,
-  diagnostics,
 }: DocumentPreviewPaneProps) {
   if (!isOpen) {
     return null
@@ -52,27 +50,15 @@ export function DocumentPreviewPane({
 
           {previewPending ? <p className="mb-3 text-slate-400">Rendering preview...</p> : null}
 
-          {diagnostics.length > 0 ? (
-            <div className="mb-3 rounded border border-amber-700/70 bg-amber-950/30 px-3 py-2">
-              <p className="mb-1 text-[11px] uppercase tracking-[0.14em] text-amber-300">Script Diagnostics</p>
-              <ul className="space-y-1 text-amber-100">
-                {diagnostics.map((diagnostic) => (
-                  <li key={`${diagnostic.refId}-${diagnostic.code}-${diagnostic.message}`}>
-                    [{diagnostic.refId}] {diagnostic.message}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {pdfUrl ? (
+          {html ? (
             <iframe
-              src={pdfUrl}
-              title="PDF Preview"
+              srcDoc={html}
+              title="HTML Preview"
+              sandbox=""
               className="h-full min-h-[70vh] w-full rounded border border-slate-700 bg-white"
             />
           ) : (
-            <p className="text-slate-400">Run preview to inspect the rendered PDF.</p>
+            <p className="text-slate-400">Run preview to inspect rendered HTML.</p>
           )}
         </div>
       </div>

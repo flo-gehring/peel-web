@@ -1,17 +1,11 @@
 import { useEffect, useState } from 'react'
 
-import type { JsonObject } from '../../../lib/api/types'
-import {
-  defaultDocumentBindings,
-  defaultDocumentContent,
-  normalizeDocumentContent,
-} from '../lib/content'
-
-const STORAGE_KEY = 'peel-documents-draft-v2'
+const STORAGE_KEY = 'peel-documents-draft-v3'
 
 type DocumentDraft = {
   name: string
-  content: JsonObject
+  script: string
+  template: string
   bindingsText: string
   selectedDocumentId: string | null
 }
@@ -19,8 +13,9 @@ type DocumentDraft = {
 function fallbackDraft(): DocumentDraft {
   return {
     name: 'Untitled document',
-    content: defaultDocumentContent(),
-    bindingsText: JSON.stringify(defaultDocumentBindings(), null, 2),
+    script: '',
+    template: '<ul>\n{% for statement in statements %}\n  <li>{{ statement | renderTraceExpression }}</li>\n{% endfor %}\n</ul>',
+    bindingsText: '{}',
     selectedDocumentId: null,
   }
 }
@@ -33,17 +28,15 @@ function loadDraft(): DocumentDraft {
   }
 
   try {
-    const parsed = JSON.parse(raw) as Partial<DocumentDraft> & {
-      contentText?: string
-    }
+    const parsed = JSON.parse(raw) as Partial<DocumentDraft>
     return {
       name:
         typeof parsed.name === 'string' && parsed.name.trim().length > 0
           ? parsed.name
           : fallback.name,
-      content: parseStoredContent(parsed, fallback.content),
-      bindingsText:
-        typeof parsed.bindingsText === 'string' ? parsed.bindingsText : fallback.bindingsText,
+      script: typeof parsed.script === 'string' ? parsed.script : fallback.script,
+      template: typeof parsed.template === 'string' ? parsed.template : fallback.template,
+      bindingsText: typeof parsed.bindingsText === 'string' ? parsed.bindingsText : fallback.bindingsText,
       selectedDocumentId:
         typeof parsed.selectedDocumentId === 'string' ? parsed.selectedDocumentId : null,
     }
@@ -56,57 +49,42 @@ function loadDraft(): DocumentDraft {
 export function useDocumentDraftState() {
   const [seed] = useState<DocumentDraft>(() => loadDraft())
   const [name, setName] = useState(seed.name)
-  const [content, setContent] = useState(seed.content)
+  const [script, setScript] = useState(seed.script)
+  const [template, setTemplate] = useState(seed.template)
   const [bindingsText, setBindingsText] = useState(seed.bindingsText)
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(seed.selectedDocumentId)
 
   useEffect(() => {
     const payload: DocumentDraft = {
       name,
-      content,
+      script,
+      template,
       bindingsText,
       selectedDocumentId,
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
-  }, [bindingsText, content, name, selectedDocumentId])
+  }, [bindingsText, name, script, selectedDocumentId, template])
 
   const resetToDefault = () => {
     const fallback = fallbackDraft()
     setSelectedDocumentId(null)
     setName(fallback.name)
-    setContent(fallback.content)
+    setScript(fallback.script)
+    setTemplate(fallback.template)
     setBindingsText(fallback.bindingsText)
   }
 
   return {
     name,
     setName,
-    content,
-    setContent,
+    script,
+    setScript,
+    template,
+    setTemplate,
     bindingsText,
     setBindingsText,
     selectedDocumentId,
     setSelectedDocumentId,
     resetToDefault,
   }
-}
-
-function parseStoredContent(
-  parsed: Partial<DocumentDraft> & { contentText?: string },
-  fallback: JsonObject,
-): JsonObject {
-  if (parsed.content && typeof parsed.content === 'object' && !Array.isArray(parsed.content)) {
-    return normalizeDocumentContent(parsed.content)
-  }
-
-  if (typeof parsed.contentText === 'string') {
-    try {
-      const contentFromText = JSON.parse(parsed.contentText) as unknown
-      return normalizeDocumentContent(contentFromText)
-    } catch {
-      return fallback
-    }
-  }
-
-  return fallback
 }

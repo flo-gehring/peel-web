@@ -23,15 +23,16 @@ public class PeelDocumentService implements DocumentController {
 
     @Override
     public DocumentResponse saveDocument(DocumentSaveRequest request) {
-        Map<String, Object> content = requireContent(request.content());
+        String script = requireScript(request.script());
+        String template = requireTemplate(request.template());
         Map<String, Object> bindings = request.exampleBindings();
-        if (!request.id().isBlank()) {
+        if (request.id() != null && !request.id().isBlank()) {
             PeelDocument existing = peelDocumentRepository.findById(request.id())
                     .orElseThrow(() -> new ResourceNotFoundException("Document not found: " + request.id()));
-            PeelDocument saved = peelDocumentRepository.save(existing.update(request.name(), content, bindings));
+            PeelDocument saved = peelDocumentRepository.save(existing.update(request.name(), script, template, bindings));
             return toResponse(saved);
         }
-        PeelDocument created = PeelDocument.newDocument(request.name(), content, bindings);
+        PeelDocument created = PeelDocument.newDocument(request.name(), script, template, bindings);
         PeelDocument saved = peelDocumentRepository.save(created);
         return toResponse(saved);
     }
@@ -68,7 +69,8 @@ public class PeelDocumentService implements DocumentController {
         return new DocumentResponse(
                 document.getId(),
                 document.getName(),
-                document.getContent(),
+                document.getScript(),
+                document.getTemplate(),
                 document.getExampleBindings(),
                 document.getCreatedAt(),
                 document.getUpdatedAt()
@@ -83,10 +85,17 @@ public class PeelDocumentService implements DocumentController {
         );
     }
 
-    private Map<String, Object> requireContent(Map<String, Object> content) {
-        if (content.isEmpty()) {
-            throw new IllegalArgumentException("content must not be empty");
+    private String requireScript(String script) {
+        if (script == null || script.isBlank()) {
+            throw new IllegalArgumentException("script must not be blank");
         }
-        return content;
+        return script;
+    }
+
+    private String requireTemplate(String template) {
+        if (template == null || template.isBlank()) {
+            throw new IllegalArgumentException("template must not be blank");
+        }
+        return template;
     }
 }

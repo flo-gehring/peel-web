@@ -1,9 +1,8 @@
 package de.flogehring.peelserver.api;
 
-import java.util.List;
 import java.util.Map;
 
-public record DocumentPreviewResponse(
+public record TraceRenderResponse(
         String html,
         Map<String, Object> trace,
         Map<String, Object> result

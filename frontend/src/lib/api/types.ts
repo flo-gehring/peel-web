@@ -26,7 +26,8 @@ export interface ScriptDetail {
 export interface DocumentDetail {
   id: string
   name: string
-  content: JsonObject
+  script: string
+  template: string
   exampleBindings: JsonObject
   createdAt: string
   updatedAt: string
@@ -41,31 +42,21 @@ export interface ScriptSaveRequest {
 export interface DocumentSaveRequest {
   id?: string
   name: string
-  content: JsonObject
+  script: string
+  template: string
   exampleBindings: JsonObject
 }
 
 export interface DocumentPreviewRequest {
-  content: JsonObject
-  exampleBindings: JsonObject
-}
-
-export interface DocumentPreviewReferenceStatus {
-  refId: string
-  scriptId: string
-  status: 'ok' | 'error'
-}
-
-export interface DocumentPreviewDiagnostic {
-  refId: string
-  code: string
-  message: string
+  script: string
+  bindings: JsonObject
+  template: string
 }
 
 export interface DocumentPreviewResponse {
-  renderedContent: JsonObject
-  references: DocumentPreviewReferenceStatus[]
-  diagnostics: DocumentPreviewDiagnostic[]
+  html: string
+  trace: JsonObject
+  result: JsonObject
 }
 
 export interface RunRequest {

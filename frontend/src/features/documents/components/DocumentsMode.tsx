@@ -1,23 +1,14 @@
 import clsx from 'clsx'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 
-import { DocumentBindingsPane } from './DocumentBindingsPane'
-import { DocumentEditorPane } from './DocumentEditorPane'
+import { DocumentJsonEditorPane } from './DocumentJsonEditorPane'
 import { DocumentPreviewPane } from './DocumentPreviewPane'
 import { DocumentsHeader } from './DocumentsHeader'
 import { DocumentsSidebar } from './DocumentsSidebar'
 import { useDocumentDraftState } from '../hooks/useDocumentDraftState'
 import { useDocumentsApi } from '../hooks/useDocumentsApi'
-import {
-  defaultDocumentBindings,
-  defaultDocumentContent,
-  documentContentToPlainText,
-  normalizeDocumentContent,
-} from '../lib/content'
-import { renderDocumentPdf } from '../lib/pdf'
 import { parseBindings } from '../../workbench/lib/bindings'
 import { formatError } from '../../workbench/lib/errors'
-import type { DocumentPreviewDiagnostic } from '../../../lib/api/types'
 
 const SIDEBAR_STATE_STORAGE_KEY = 'peel-documents-sidebar-open'
 
@@ -25,8 +16,10 @@ export function DocumentsMode() {
   const {
     name,
     setName,
-    content,
-    setContent,
+    script,
+    setScript,
+    template,
+    setTemplate,
     bindingsText,
     setBindingsText,
     selectedDocumentId,
@@ -34,7 +27,7 @@ export function DocumentsMode() {
     resetToDefault,
   } = useDocumentDraftState()
 
-  const bindingsState = useMemo(() => parseBindings(bindingsText), [bindingsText])
+  const bindingsState = parseBindings(bindingsText)
 
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
     const raw = localStorage.getItem(SIDEBAR_STATE_STORAGE_KEY)
@@ -45,9 +38,8 @@ export function DocumentsMode() {
   })
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [previewPending, setPreviewPending] = useState(false)
-  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null)
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null)
   const [previewRenderError, setPreviewRenderError] = useState<string | null>(null)
-  const [previewDiagnostics, setPreviewDiagnostics] = useState<DocumentPreviewDiagnostic[]>([])
 
   const {
     documentsQuery,
@@ -59,12 +51,15 @@ export function DocumentsMode() {
     onDocumentLoaded: (document) => {
       setSelectedDocumentId(document.id)
       setName(document.name)
-      setContent(normalizeDocumentContent(document.content))
+      setScript(document.script)
+      setTemplate(document.template)
       setBindingsText(JSON.stringify(document.exampleBindings, null, 2))
     },
     onDocumentSaved: (document) => {
       setSelectedDocumentId(document.id)
       setName(document.name)
+      setScript(document.script)
+      setTemplate(document.template)
     },
     onDocumentDeleted: (deletedId) => {
       if (selectedDocumentId === deletedId) {
@@ -78,21 +73,20 @@ export function DocumentsMode() {
   const saveDisabled =
     saveDocumentMutation.isPending ||
     name.trim().length === 0 ||
+    script.trim().length === 0 ||
+    template.trim().length === 0 ||
     bindingsState.value === null
 
   const previewDisabled =
-    previewPending ||
-    bindingsState.value === null
+    previewPending || script.trim().length === 0 || template.trim().length === 0 || bindingsState.value === null
 
   const deleteDisabled = deleteDocumentMutation.isPending || selectedDocumentId === null
 
   useEffect(() => {
     return () => {
-      if (previewPdfUrl) {
-        URL.revokeObjectURL(previewPdfUrl)
-      }
+      setPreviewHtml(null)
     }
-  }, [previewPdfUrl])
+  }, [])
 
   function toggleSidebar() {
     const nextState = !isSidebarOpen
@@ -107,7 +101,8 @@ export function DocumentsMode() {
     saveDocumentMutation.mutate({
       id: selectedDocumentId ?? undefined,
       name: name.trim(),
-      content,
+      script,
+      template,
       exampleBindings: bindingsState.value,
     })
   }
@@ -119,28 +114,18 @@ export function DocumentsMode() {
 
     setPreviewPending(true)
     setPreviewRenderError(null)
-    setPreviewDiagnostics([])
     setIsPreviewOpen(true)
-    if (previewPdfUrl) {
-      URL.revokeObjectURL(previewPdfUrl)
-    }
 
     try {
       const previewResponse = await previewDocumentMutation.mutateAsync({
-        content,
-        exampleBindings: bindingsState.value,
+        script,
+        bindings: bindingsState.value,
+        template,
       })
-
-      setPreviewDiagnostics(previewResponse.diagnostics)
-
-      const plainText = documentContentToPlainText(previewResponse.renderedContent)
-      const pdfUrl = await renderDocumentPdf({
-        body: plainText,
-      })
-      setPreviewPdfUrl(pdfUrl)
+      setPreviewHtml(previewResponse.html)
     } catch (error) {
-      setPreviewPdfUrl(null)
-      setPreviewRenderError(formatError(error) ?? 'Could not render PDF preview.')
+      setPreviewHtml(null)
+      setPreviewRenderError(formatError(error) ?? 'Could not render preview.')
     } finally {
       setPreviewPending(false)
     }
@@ -148,17 +133,20 @@ export function DocumentsMode() {
 
   function handleCreateDocument() {
     const nextName = nextUntitledDocumentName(documents.map((documentSummary) => documentSummary.name))
-    const nextContent = defaultDocumentContent()
-    const nextBindings = defaultDocumentBindings()
+    const nextScript = ''
+    const nextTemplate = '<ul>\n{% for statement in statements %}\n  <li>{{ statement | renderTraceExpression }}</li>\n{% endfor %}\n</ul>'
+    const nextBindings = {}
 
     setSelectedDocumentId(null)
     setName(nextName)
-    setContent(nextContent)
+    setScript(nextScript)
+    setTemplate(nextTemplate)
     setBindingsText(JSON.stringify(nextBindings, null, 2))
 
     saveDocumentMutation.mutate({
       name: nextName,
-      content: nextContent,
+      script: nextScript,
+      template: nextTemplate,
       exampleBindings: nextBindings,
     })
   }
@@ -216,11 +204,24 @@ export function DocumentsMode() {
           </p>
         ) : null}
 
-        <div className="grid min-h-0 gap-4 lg:grid-cols-[6fr_3fr]">
-          <DocumentEditorPane content={content} onContentChange={setContent} />
-          <DocumentBindingsPane
-            bindingsText={bindingsText}
-            onBindingsTextChange={setBindingsText}
+        <div className="grid min-h-0 gap-4 lg:grid-cols-[1fr_1fr_0.9fr]">
+          <DocumentJsonEditorPane
+            title="Script (Peel)"
+            language="peel"
+            value={script}
+            onValueChange={setScript}
+          />
+          <DocumentJsonEditorPane
+            title="Template (Pebble)"
+            language="twig"
+            value={template}
+            onValueChange={setTemplate}
+          />
+          <DocumentJsonEditorPane
+            title="Bindings (JSON)"
+            language="json"
+            value={bindingsText}
+            onValueChange={setBindingsText}
           />
         </div>
 
@@ -230,10 +231,9 @@ export function DocumentsMode() {
             setIsPreviewOpen(false)
           }}
           previewPending={previewPending}
-          pdfUrl={previewPdfUrl}
+          html={previewHtml}
           previewError={previewError}
           parseError={bindingsState.error}
-          diagnostics={previewDiagnostics}
         />
       </section>
     </div>
