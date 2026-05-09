@@ -18,13 +18,8 @@ public class PeelExecutionService {
     private final BindingsMapper bindingsMapper;
 
     public TraceProgram execute(String script, Map<String, Object> bindings) {
-        if (script == null || script.isBlank()) {
-            throw new IllegalArgumentException("script must not be blank");
-        }
-
         Program program = PeelGrammar.parse(script);
         RequestBindings requestBindings = bindingsMapper.toRequestBindings(bindings);
-
         PeelRuntime runtime = RuntimeFactory.defaultLanguage();
         return runtime.run(program, requestBindings);
     }

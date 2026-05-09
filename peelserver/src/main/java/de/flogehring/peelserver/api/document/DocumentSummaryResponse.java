@@ -1,4 +1,4 @@
-package de.flogehring.peelserver.api;
+package de.flogehring.peelserver.api.document;
 
 import java.time.Instant;
 

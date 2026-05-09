@@ -2,7 +2,9 @@ package de.flogehring.peelserver.run.render;
 
 import de.flogehring.peel.convenience.output.TraceMapOutput;
 import de.flogehring.peel.core.trace.TraceExpression;
+import de.flogehring.peel.core.trace.TraceExpressionKind;
 import de.flogehring.peel.core.trace.TraceValue;
+import de.flogehring.peelserver.renderconfig.ExpressionRenderConfiguration;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -10,14 +12,14 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class DefaultTraceExpressionRenderersTest {
+class ExpressionRendererTest {
 
     @Test
     void supportsExpressionMapByType() {
         Map<String, Object> expression = TraceMapOutput.fromExpression(new TraceExpression.Literal(TraceValue.integer(1)));
 
-        assertThat(DefaultTraceExpressionRenderers.supports(expression)).isTrue();
-        assertThat(DefaultTraceExpressionRenderers.supports(Map.of("type", "unknown"))).isFalse();
+        assertThat(ExpressionRenderer.supports(expression)).isTrue();
+        assertThat(ExpressionRenderer.supports(Map.of("type", "unknown"))).isFalse();
     }
 
     @Test
@@ -35,9 +37,9 @@ class DefaultTraceExpressionRenderersTest {
         );
 
         Map<String, Object> expression = TraceMapOutput.fromExpression(assignment);
-        String rendered = DefaultTraceExpressionRenderers.render(expression, true);
+        String rendered = ExpressionRenderer.ofDefaultRenderers().render(expression);
 
-        assertThat(rendered).contains("x = 1 => 1 + 2 => 2 => 3");
+        assertThat(rendered).isEqualTo("x = 1 + 2");
     }
 
     @Test
@@ -55,8 +57,17 @@ class DefaultTraceExpressionRenderersTest {
         );
 
         Map<String, Object> expression = TraceMapOutput.fromExpression(functionCall);
-        String rendered = DefaultTraceExpressionRenderers.render(expression, false);
-
+        String rendered = ExpressionRenderer.ofDefaultRenderers().render(expression);
         assertThat(rendered).isEqualTo("add(1, 2)");
+    }
+
+    @Test
+    void appliesConfiguredTemplateForKind() {
+        Map<TraceExpressionKind, String> templates = new java.util.EnumMap<>(TraceExpressionKind.class);
+        templates.put(TraceExpressionKind.LITERAL, "lit({{ valueText }})");
+        ExpressionRenderConfiguration config = ExpressionRenderConfiguration.of(templates);
+        Map<String, Object> expression = TraceMapOutput.fromExpression(new TraceExpression.Literal(TraceValue.integer(5)));
+        String rendered = ExpressionRenderer.of(config).render(expression);
+        assertThat(rendered).isEqualTo("lit(5)");
     }
 }

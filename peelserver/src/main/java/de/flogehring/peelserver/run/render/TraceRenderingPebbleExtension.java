@@ -1,5 +1,6 @@
 package de.flogehring.peelserver.run.render;
 
+import de.flogehring.peelserver.renderconfig.ExpressionRenderConfiguration;
 import io.pebbletemplates.pebble.extension.AbstractExtension;
 import io.pebbletemplates.pebble.extension.Filter;
 
@@ -10,7 +11,11 @@ public final class TraceRenderingPebbleExtension extends AbstractExtension {
     private final Filter renderTraceExpressionFilter;
 
     public TraceRenderingPebbleExtension() {
-        this.renderTraceExpressionFilter = new TraceExpressionRenderFilter();
+        this(ExpressionRenderConfiguration.defaultConfig());
+    }
+
+    public TraceRenderingPebbleExtension(ExpressionRenderConfiguration configuration) {
+        this.renderTraceExpressionFilter = new TraceExpressionRenderFilter(configuration);
     }
 
     @Override

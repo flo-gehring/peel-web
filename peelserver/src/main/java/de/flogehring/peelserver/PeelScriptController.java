@@ -1,7 +1,7 @@
 package de.flogehring.peelserver;
 
-import de.flogehring.peelserver.api.ScriptResponse;
-import de.flogehring.peelserver.api.ScriptSaveRequest;
+import de.flogehring.peelserver.api.scripts.ScriptDtoResponse;
+import de.flogehring.peelserver.api.scripts.ScriptSaveRequest;
 import de.flogehring.peelserver.api.ScriptSummaryResponse;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,11 +15,11 @@ import java.util.List;
 public interface PeelScriptController {
 
     @PostExchange
-    ScriptResponse saveScript(@RequestBody ScriptSaveRequest request);
+    ScriptDtoResponse saveScript(@RequestBody ScriptSaveRequest request);
 
     @GetExchange
     List<ScriptSummaryResponse> listScripts();
 
     @GetExchange("/{id}")
-    ScriptResponse getScript(@PathVariable String id);
+    ScriptDtoResponse getScript(@PathVariable String id);
 }

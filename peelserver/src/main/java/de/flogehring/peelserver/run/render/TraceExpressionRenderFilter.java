@@ -1,5 +1,6 @@
 package de.flogehring.peelserver.run.render;
 
+import de.flogehring.peelserver.renderconfig.ExpressionRenderConfiguration;
 import io.pebbletemplates.pebble.extension.Filter;
 import io.pebbletemplates.pebble.extension.escaper.SafeString;
 import io.pebbletemplates.pebble.template.EvaluationContext;
@@ -10,9 +11,15 @@ import java.util.Map;
 
 public final class TraceExpressionRenderFilter implements Filter {
 
+    private final ExpressionRenderer expressionRenderer;
+
+    public TraceExpressionRenderFilter(ExpressionRenderConfiguration configuration) {
+        this.expressionRenderer = ExpressionRenderer.of(configuration);
+    }
+
     @Override
     public List<String> getArgumentNames() {
-        return List.of("showValue");
+        return List.of();
     }
 
     @Override
@@ -23,17 +30,10 @@ public final class TraceExpressionRenderFilter implements Filter {
             EvaluationContext context,
             int lineNumber
     ) {
-        if (!DefaultTraceExpressionRenderers.supports(input)) {
+        if (!ExpressionRenderer.supportsExpression(input)) {
             return input;
         }
-        boolean showValue = true;
-        Object showValueArg = args.get("showValue");
-        if (showValueArg instanceof Boolean value) {
-            showValue = value;
-        } else if (showValueArg != null) {
-            showValue = Boolean.parseBoolean(String.valueOf(showValueArg));
-        }
-        String rendered = DefaultTraceExpressionRenderers.render(input, showValue);
+        String rendered = expressionRenderer.renderExpressionNode(input);
         return new SafeString(rendered);
     }
 }

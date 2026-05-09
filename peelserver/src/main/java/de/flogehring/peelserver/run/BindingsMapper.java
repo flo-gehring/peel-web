@@ -20,7 +20,7 @@ import java.util.Map;
 public class BindingsMapper {
 
     public RequestBindings toRequestBindings(Map<String, Object> rawBindings) {
-        if (rawBindings == null || rawBindings.isEmpty()) {
+        if (rawBindings.isEmpty()) {
             return RequestBindings.empty();
         }
         RequestBindings.Builder builder = RequestBindings.builder();
