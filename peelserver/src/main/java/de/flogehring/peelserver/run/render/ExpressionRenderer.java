@@ -64,6 +64,7 @@ public final class ExpressionRenderer {
 
     private String renderTemplate(String template, Map<String, Object> context) {
         PebbleEngine engine = new PebbleEngine.Builder()
+                .autoEscaping(false)
                 .extension(new TraceRenderingPebbleExtension(expressionRenderConfiguration))
                 .build();
         try {

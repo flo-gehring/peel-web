@@ -25,12 +25,42 @@ export interface ScriptDetail {
 
 export interface DocumentDetail {
   id: string
-  name: string
-  script: string
-  template: string
-  exampleBindings: JsonObject
   createdAt: string
   updatedAt: string
+}
+
+export type TraceExpressionKind =
+  | 'LITERAL'
+  | 'BINARY_OPERATOR'
+  | 'UNARY_PREFIX_OPERATOR'
+  | 'VARIABLE_NAME'
+  | 'FUNCTION_CALL'
+  | 'RETURN_EXPR'
+  | 'ASSIGNMENT'
+  | 'IF_STATEMENT'
+  | 'WHILE_LOOP'
+  | 'FOR_EACH_LOOP'
+  | 'LIST_LITERAL'
+  | 'MAP_LITERAL'
+  | 'SELECTOR'
+  | 'BLOCK'
+
+export interface RenderConfigurationDto {
+  renderConfigurations: Partial<Record<TraceExpressionKind, string>>
+}
+
+export interface RenderConfigurationSummary {
+  id: string
+  name: string
+}
+
+export interface RenderConfigurationDetail {
+  name: string
+  renderConfigurationDto: RenderConfigurationDto
+}
+
+export interface RenderConfigurationCreateResponse {
+  id: string
 }
 
 export interface ScriptSaveRequest {
@@ -40,23 +70,31 @@ export interface ScriptSaveRequest {
 }
 
 export interface DocumentSaveRequest {
-  id?: string
+  id: string
   name: string
-  script: string
+  scriptNameTags: Record<string, string>
   template: string
-  exampleBindings: JsonObject
+  renderConfigurationId: string
+  localOverrides: RenderConfigurationDto
+}
+
+export interface DocumentSaveResponse {
+  id: string
+  createdAt: string
+  updatedAt: string
+  type: 'CREATED' | 'UPDATED'
 }
 
 export interface DocumentPreviewRequest {
-  script: string
+  scripTags: Record<string, { id: string }>
   bindings: JsonObject
+  renderConfigId: string
+  localOverrides: RenderConfigurationDto
   template: string
 }
 
 export interface DocumentPreviewResponse {
   html: string
-  trace: JsonObject
-  result: JsonObject
 }
 
 export interface RunRequest {

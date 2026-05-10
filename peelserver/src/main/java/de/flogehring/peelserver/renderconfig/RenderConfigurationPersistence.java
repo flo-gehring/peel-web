@@ -13,15 +13,26 @@ public class RenderConfigurationPersistence {
     @PersistenceCreator
     private RenderConfigurationPersistence(
             String id,
+            String name,
             ExpressionRenderConfiguration expressionRenderConfiguration
     ) {
         this.id = id;
+        this.name = name;
         this.expressionRenderConfiguration = expressionRenderConfiguration;
     }
 
     @Indexed(unique = true)
     @Id
-    private String id;
-    private ExpressionRenderConfiguration expressionRenderConfiguration;
+    private final String id;
+    private final ExpressionRenderConfiguration expressionRenderConfiguration;
+    private final String name;
+
+    public static RenderConfigurationPersistence valueOf(
+            String id,
+            String name,
+            ExpressionRenderConfiguration expressionRenderConfiguration
+    ) {
+        return new RenderConfigurationPersistence(id, name, expressionRenderConfiguration);
+    }
 
 }

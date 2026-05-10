@@ -31,6 +31,13 @@ public class PeelScriptPersistence {
         );
     }
 
+    public static PeelScriptPersistence newScript(String id, String name, String script) {
+        return new PeelScriptPersistence(
+                id,
+                new PeelScript(name, script)
+        );
+    }
+
     public PeelScriptPersistence update(String name, String script) {
         return new PeelScriptPersistence(
                 id,

@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { Banana } from 'lucide-react'
 
-export type AppMode = 'workbench' | 'documents' | 'batch'
+export type AppMode = 'workbench' | 'documents' | 'render-configs' | 'batch'
 
 type WorkbenchHeaderProps = {
   mode: AppMode
@@ -29,6 +29,11 @@ export function WorkbenchHeader({ mode, onModeChange }: WorkbenchHeaderProps) {
           active={mode === 'documents'}
           label="Documents"
           onClick={() => onModeChange('documents')}
+        />
+        <ModeButton
+          active={mode === 'render-configs'}
+          label="Render Configs"
+          onClick={() => onModeChange('render-configs')}
         />
         <ModeButton
           active={mode === 'batch'}

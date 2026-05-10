@@ -38,6 +38,7 @@ public class DocumentPersistence {
     }
 
     public static DocumentPersistence newDocument(
+            String id,
             String name,
             Map<String, PeelScriptId> scriptNameTags,
             String template,
@@ -46,7 +47,7 @@ public class DocumentPersistence {
     ) {
         Instant now = Instant.now();
         return new DocumentPersistence(
-                UUID.randomUUID().toString(),
+                id,
                 new DocumentPersistenceData(
                         name,
                         scriptNameTags,

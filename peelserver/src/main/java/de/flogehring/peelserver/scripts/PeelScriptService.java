@@ -22,7 +22,7 @@ public class PeelScriptService implements PeelScriptController {
         String scriptContent = requireScript(request.script());
         if (request.id() != null && !request.id().isBlank()) {
             PeelScriptPersistence existing = peelScriptRepository.findById(request.id())
-                    .orElseThrow(() -> new ResourceNotFoundException("Script not found: " + request.id()));
+                    .orElseGet(() -> PeelScriptPersistence.newScript(request.id(), request.name(), request.script()));
             PeelScriptPersistence updated = existing.update(request.name(), scriptContent);
             PeelScriptPersistence saved = peelScriptRepository.save(updated);
             return toResponse(saved);

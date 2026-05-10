@@ -6,8 +6,13 @@ import type {
   DocumentPreviewRequest,
   DocumentPreviewResponse,
   DocumentSaveRequest,
+  DocumentSaveResponse,
   DocumentSummary,
   JsonValue,
+  RenderConfigurationCreateResponse,
+  RenderConfigurationDetail,
+  RenderConfigurationDto,
+  RenderConfigurationSummary,
   RunRequest,
   RunResponse,
   ScriptDetail,
@@ -53,18 +58,19 @@ const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
 
 const documentDetailSchema = z.object({
   id: z.string(),
-  name: z.string(),
-  script: z.string(),
-  template: z.string(),
-  exampleBindings: z.record(z.string(), jsonValueSchema),
   createdAt: z.string(),
   updatedAt: z.string(),
 })
 
+const documentSaveResponseSchema = z.object({
+  id: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  type: z.enum(['CREATED', 'UPDATED']),
+})
+
 const documentPreviewResponseSchema = z.object({
   html: z.string(),
-  trace: z.record(z.string(), jsonValueSchema),
-  result: z.record(z.string(), jsonValueSchema),
 })
 
 const runResponseSchema = z.object({
@@ -78,6 +84,41 @@ const apiErrorSchema = z.object({
     message: z.string(),
     details: z.record(z.string(), z.unknown()).optional(),
   }),
+})
+
+const traceExpressionKindSchema = z.enum([
+  'LITERAL',
+  'BINARY_OPERATOR',
+  'UNARY_PREFIX_OPERATOR',
+  'VARIABLE_NAME',
+  'FUNCTION_CALL',
+  'RETURN_EXPR',
+  'ASSIGNMENT',
+  'IF_STATEMENT',
+  'WHILE_LOOP',
+  'FOR_EACH_LOOP',
+  'LIST_LITERAL',
+  'MAP_LITERAL',
+  'SELECTOR',
+  'BLOCK',
+])
+
+const renderConfigurationDtoSchema = z.object({
+  renderConfigurations: z.partialRecord(traceExpressionKindSchema, z.string()),
+})
+
+const renderConfigurationSummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+})
+
+const renderConfigurationDetailSchema = z.object({
+  name: z.string(),
+  renderConfigurationDto: renderConfigurationDtoSchema,
+})
+
+const renderConfigurationCreateResponseSchema = z.object({
+  id: z.string(),
 })
 
 export class ApiClientError extends Error {
@@ -145,11 +186,11 @@ export function saveScript(payload: ScriptSaveRequest): Promise<ScriptDetail> {
   )
 }
 
-export function saveDocument(payload: DocumentSaveRequest): Promise<DocumentDetail> {
+export function saveDocument(payload: DocumentSaveRequest): Promise<DocumentSaveResponse> {
   return request(
     '/api/documents',
     { method: 'POST', body: JSON.stringify(payload) },
-    documentDetailSchema,
+    documentSaveResponseSchema,
   )
 }
 
@@ -178,5 +219,33 @@ export function validateScript(payload: ValidationRequest): Promise<ValidationRe
     '/api/validate',
     { method: 'POST', body: JSON.stringify(payload) },
     validationResponseSchema,
+  )
+}
+
+export function listRenderConfigurations(): Promise<RenderConfigurationSummary[]> {
+  return request('/api/render-config/list-ids', { method: 'GET' }, z.array(renderConfigurationSummarySchema))
+}
+
+export function getRenderConfiguration(id: string): Promise<RenderConfigurationDetail> {
+  return request(`/api/render-config/${id}`, { method: 'GET' }, renderConfigurationDetailSchema)
+}
+
+export function getDefaultRenderConfiguration(): Promise<RenderConfigurationDto> {
+  return request('/api/render-config/default', { method: 'GET' }, renderConfigurationDtoSchema)
+}
+
+export function createRenderConfiguration(payload: RenderConfigurationDetail): Promise<RenderConfigurationCreateResponse> {
+  return request(
+    '/api/render-config/save',
+    { method: 'POST', body: JSON.stringify(payload) },
+    renderConfigurationCreateResponseSchema,
+  )
+}
+
+export async function updateRenderConfiguration(id: string, payload: RenderConfigurationDetail): Promise<void> {
+  await request(
+    `/api/render-config/update/${id}`,
+    { method: 'PUT', body: JSON.stringify(payload) },
+    z.object({}).passthrough(),
   )
 }

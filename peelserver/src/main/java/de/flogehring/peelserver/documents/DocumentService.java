@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static de.flogehring.peelserver.util.StreamUtil.transformMapValues;
@@ -34,7 +35,14 @@ public class DocumentService implements DocumentController {
         String template = requireTemplate(request.template());
         if (!request.id().isBlank()) {
             DocumentPersistence existing = peelDocumentRepository.findById(request.id())
-                    .orElseThrow(() -> new ResourceNotFoundException("Document not found: " + request.id()));
+                    .orElseGet(() -> DocumentPersistence.newDocument(
+                            request.id(),
+                            request.name(),
+                            transformMapValues(request.scriptNameTags(), PeelScriptId::new),
+                            request.template(),
+                            new RenderConfigurationId(request.renderConfigurationId()),
+                            toExpressionRenderConfig(request.localOverrides())
+                    ));
             DocumentPersistence saved = peelDocumentRepository.save(
                     existing.update(
                             request.name(),
@@ -46,6 +54,7 @@ public class DocumentService implements DocumentController {
             return getSaveResponse(saved, DocumentSaveResponse.SaveType.CREATED);
         }
         DocumentPersistence created = DocumentPersistence.newDocument(
+                UUID.randomUUID().toString(),
                 request.name(),
                 transformMapValues(request.scriptNameTags(), PeelScriptId::new),
                 template,
@@ -98,7 +107,7 @@ public class DocumentService implements DocumentController {
         return new DocumentPreviewResponse(html);
     }
 
-    private ExpressionRenderConfiguration toExpressionRenderConfig(RenderConfigurationDto renderConfigurationDto) {
+    public static ExpressionRenderConfiguration toExpressionRenderConfig(RenderConfigurationDto renderConfigurationDto) {
         return ExpressionRenderConfiguration.of(renderConfigurationDto.renderConfigurations());
     }
 

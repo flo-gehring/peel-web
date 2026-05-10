@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import { DocumentsMode } from './features/documents/components/DocumentsMode'
+import { RenderConfigurationsMode } from './features/render-configs/components/RenderConfigurationsMode'
 import { WorkbenchHeader } from './features/workbench/components/WorkbenchHeader'
 import type { AppMode } from './features/workbench/components/WorkbenchHeader'
 import { WorkbenchMode } from './features/workbench/components/WorkbenchMode'
@@ -15,6 +16,7 @@ function App() {
 
         {mode === 'workbench' ? <WorkbenchMode /> : null}
         {mode === 'documents' ? <DocumentsMode /> : null}
+        {mode === 'render-configs' ? <RenderConfigurationsMode /> : null}
         {mode === 'batch' ? (
           <section className="flex flex-1 items-center justify-center border border-dashed border-slate-700 bg-slate-900/40">
             <p className="text-sm text-slate-400">Batch mode will be implemented after document workflows are complete.</p>
