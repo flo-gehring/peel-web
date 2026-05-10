@@ -177,8 +177,9 @@ export function RenderConfigurationsMode() {
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
-            className="min-w-56 grow bg-transparent text-sm font-semibold text-slate-100 outline-none placeholder:text-slate-500"
+            className="min-w-56 grow cursor-text rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-semibold text-slate-100 outline-none placeholder:text-slate-500 hover:border-slate-500 focus:border-teal-500"
             placeholder="Render configuration name"
+            title="Editable render configuration title"
           />
           <p className="text-xs text-slate-400">Edit templates per TraceExpressionKind and save.</p>
           <button

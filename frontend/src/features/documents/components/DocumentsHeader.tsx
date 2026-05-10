@@ -54,8 +54,9 @@ export function DocumentsHeader({
       <input
         value={name}
         onChange={(event) => onNameChange(event.target.value)}
-        className="min-w-56 drop-shadow-lg bg-transparent text-sm font-semibold text-slate-100 outline-none placeholder:text-slate-500 lg:w-72"
+        className="min-w-56 cursor-text rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-semibold text-slate-100 outline-none placeholder:text-slate-500 hover:border-slate-500 focus:border-teal-500 lg:w-72"
         placeholder="Document name"
+        title="Editable document title"
       />
       <div className="relative min-w-56 grow">
         <input
@@ -66,8 +67,9 @@ export function DocumentsHeader({
           }}
           onFocus={() => setIsMenuOpen(true)}
           onBlur={() => window.setTimeout(() => setIsMenuOpen(false), 100)}
-          className="w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-teal-500"
+          className="w-full cursor-text rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 hover:border-slate-500 focus:border-teal-500"
           placeholder={renderConfigurationsLoading ? 'Loading render configs...' : 'Search render config by name or id'}
+          title="Editable render configuration selector"
         />
         {isMenuOpen && !renderConfigurationsLoading ? (
           <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 max-h-64 overflow-auto rounded border border-slate-700 bg-slate-950 shadow-xl">

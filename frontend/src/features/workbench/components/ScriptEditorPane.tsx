@@ -87,8 +87,9 @@ export function ScriptEditorPane(
                 <input
                     value={scriptName}
                     onChange={(event) => onScriptNameChange(event.target.value)}
-                    className="w-full bg-transparent text-sm font-semibold text-slate-100 outline-none placeholder:text-slate-500"
+                    className="w-full cursor-text rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-semibold text-slate-100 outline-none placeholder:text-slate-500 hover:border-slate-500 focus:border-teal-500"
                     placeholder="Script name"
+                    title="Editable script title"
                 />
                 <div className="top-0 right-0">
                     <div className="flex items-center gap-2">
