@@ -28,7 +28,7 @@ public class ExpressionRenderConfiguration {
         templates.put(TraceExpressionKind.BINARY_OPERATOR, "{{  lhs | renderTraceExpression }} {{ operator }} {{ rhs | renderTraceExpression }}");
         templates.put(TraceExpressionKind.LITERAL, "{{ valueText }}");
         templates.put(TraceExpressionKind.UNARY_PREFIX_OPERATOR, "{{ operator }}{{ argument | renderTraceExpression }}");
-        templates.put(TraceExpressionKind.VARIABLE_NAME, "{{ name }}");
+        templates.put(TraceExpressionKind.VARIABLE_NAME, "{{valueText}}");
         templates.put(TraceExpressionKind.RETURN_EXPR, "return {{ expression | renderTraceExpression }}");
         templates.put(TraceExpressionKind.ASSIGNMENT, "{{ variableName }} = {{ expression | renderTraceExpression }}");
         templates.put(
