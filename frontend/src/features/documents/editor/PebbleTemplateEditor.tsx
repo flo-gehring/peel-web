@@ -19,17 +19,21 @@ import {
   $getRoot,
   $getSelection,
   $insertNodes,
+  $isNodeSelection,
   $isRangeSelection,
   $isTextNode,
   COMMAND_PRIORITY_EDITOR,
   FORMAT_TEXT_COMMAND,
   type EditorState,
   type LexicalEditor,
+  type LexicalNode,
 } from 'lexical'
 import {
   INSERT_TABLE_COMMAND,
-  TableCellNode,
+  $isTableNode,
+  $isTableSelection,
   TableNode,
+  TableCellNode,
   TableRowNode,
 } from '@lexical/table'
 import { useEffect, useMemo, useState } from 'react'
@@ -85,6 +89,14 @@ export function PebbleTemplateEditor({ initialHtml, initialEditorStateJson, onTe
       ],
       theme: {
         paragraph: 'peel-editor-paragraph',
+        heading: {
+          h1: 'peel-editor-h1',
+          h2: 'peel-editor-h2',
+        },
+        table: 'peel-editor-table',
+        tableRow: 'peel-editor-table-row',
+        tableCell: 'peel-editor-table-cell',
+        tableCellHeader: 'peel-editor-table-cell-header',
       },
       editorState: (lexicalEditor: LexicalEditor) => {
         if (initialEditorStateJson.trim().length > 0) {
@@ -168,8 +180,38 @@ export function PebbleTemplateEditor({ initialHtml, initialEditorStateJson, onTe
     if (!editor) {
       return
     }
+
     editor.dispatchCommand(INSERT_PEBBLE_BLOCK_COMMAND, blockMarkupDraft)
     setIsBlockPopoverOpen(false)
+  }
+
+  function removeTableAtSelection() {
+    if (!editor) {
+      return
+    }
+
+    editor.update(() => {
+      const selection = $getSelection()
+      if (!selection) {
+        return
+      }
+
+      if (!$isRangeSelection(selection) && !$isNodeSelection(selection) && !$isTableSelection(selection)) {
+        return
+      }
+
+      let anchorNode: LexicalNode | null = null
+      if ($isNodeSelection(selection)) {
+        anchorNode = selection.getNodes()[0] ?? null
+      } else {
+        anchorNode = selection.anchor.getNode()
+      }
+
+      const tableNode = findAncestorTableNode(anchorNode)
+      if (tableNode) {
+        tableNode.remove()
+      }
+    })
   }
 
   function setFontStyle(property: 'font-family' | 'font-size', value: string) {
@@ -224,8 +266,8 @@ export function PebbleTemplateEditor({ initialHtml, initialEditorStateJson, onTe
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col border border-slate-800 bg-slate-900/70">
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 px-3 py-2">
+    <div className="flex h-full min-h-0 flex-col overflow-visible border border-slate-800 bg-slate-900/70">
+      <div className="relative z-30 flex flex-wrap items-center gap-2 overflow-visible border-b border-slate-800 px-3 py-2">
         <ToolbarButton label="Bold" onClick={() => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold')} />
         <ToolbarButton label="Italic" onClick={() => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic')} />
         <ToolbarButton
@@ -326,6 +368,7 @@ export function PebbleTemplateEditor({ initialHtml, initialEditorStateJson, onTe
         </div>
 
         <ToolbarButton label="Table 3x3" onClick={() => insertSimpleTable(3, 3)} />
+        <ToolbarButton label="Delete Table" onClick={removeTableAtSelection} />
 
         <div className="relative">
           <ToolbarButton label="Inline Markup" onClick={() => setIsInlinePopoverOpen((open) => !open)} />
@@ -353,7 +396,7 @@ export function PebbleTemplateEditor({ initialHtml, initialEditorStateJson, onTe
         <div className="relative">
           <ToolbarButton label="Block Markup" onClick={() => setIsBlockPopoverOpen((open) => !open)} />
           {isBlockPopoverOpen ? (
-            <div className="absolute left-0 top-[calc(100%+4px)] z-20 w-[32rem] rounded border border-slate-700 bg-slate-950 p-2 shadow-xl">
+            <div className="absolute right-0 top-[calc(100%+4px)] z-50 w-[32rem] max-w-[calc(100vw-5rem)] rounded border border-slate-700 bg-slate-950 p-2 shadow-xl">
               <textarea
                 value={blockMarkupDraft}
                 onChange={(event) => setBlockMarkupDraft(event.target.value)}
@@ -419,6 +462,7 @@ function ToolbarButton({ label, onClick }: { label: string; onClick: () => void 
     <button
       type="button"
       className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100 hover:border-teal-500"
+      onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
     >
       {label}
@@ -477,4 +521,15 @@ function compilePebbleTemplateFromEditor(editor: LexicalEditor): string {
   }
 
   return compiledTemplate
+}
+
+function findAncestorTableNode(node: LexicalNode | null): TableNode | null {
+  let current: LexicalNode | null = node
+  while (current) {
+    if ($isTableNode(current)) {
+      return current
+    }
+    current = current.getParent()
+  }
+  return null
 }

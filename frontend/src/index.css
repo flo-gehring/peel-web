@@ -51,6 +51,44 @@ body {
   margin: 0.75rem 0;
 }
 
+.peel-editor-h1 {
+  font-size: 2rem;
+  line-height: 1.2;
+  font-weight: 700;
+  margin: 1rem 0 0.5rem;
+}
+
+.peel-editor-h2 {
+  font-size: 1.45rem;
+  line-height: 1.25;
+  font-weight: 700;
+  margin: 0.9rem 0 0.45rem;
+}
+
+.peel-editor-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  table-layout: fixed;
+}
+
+.peel-editor-table-row {
+  border-bottom: 1px solid #cbd5e1;
+}
+
+.peel-editor-table-cell,
+.peel-editor-table-cell-header {
+  border: 1px solid #cbd5e1;
+  padding: 0.5rem;
+  vertical-align: top;
+  min-height: 2rem;
+}
+
+.peel-editor-table-cell-header {
+  background: #f1f5f9;
+  font-weight: 600;
+}
+
 .peel-script-chip {
   display: inline-block;
   border: 1px solid rgba(14, 116, 144, 0.35);
@@ -62,6 +100,62 @@ body {
   font-family: var(--font-mono);
   letter-spacing: 0.01em;
   white-space: nowrap;
+}
+
+.peel-block-card {
+  border: 1px solid rgba(14, 116, 144, 0.45);
+  border-radius: 0.5rem;
+  background: rgba(8, 47, 73, 0.12);
+  padding: 0.6rem;
+}
+
+.peel-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.45rem;
+}
+
+.peel-block-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #0e7490;
+  font-weight: 600;
+}
+
+.peel-block-delete {
+  border: 1px solid rgba(190, 24, 93, 0.35);
+  border-radius: 0.35rem;
+  background: rgba(190, 24, 93, 0.08);
+  color: #9f1239;
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 0.3rem 0.45rem;
+  cursor: pointer;
+}
+
+.peel-block-delete:hover {
+  background: rgba(190, 24, 93, 0.16);
+}
+
+.peel-block-textarea {
+  width: 100%;
+  min-height: 6rem;
+  border: 1px solid #94a3b8;
+  border-radius: 0.4rem;
+  padding: 0.5rem;
+  color: #0f172a;
+  background: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.peel-block-textarea:focus {
+  outline: 2px solid #0891b2;
+  outline-offset: 1px;
 }
 
 .peel-editor-page-a4 {

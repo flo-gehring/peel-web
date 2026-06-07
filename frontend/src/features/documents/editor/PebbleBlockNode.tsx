@@ -3,14 +3,17 @@ import type {
   DOMConversionOutput,
   DOMExportOutput,
   EditorConfig,
+  LexicalEditor,
   LexicalNode,
   NodeKey,
   SerializedLexicalNode,
   Spread,
 } from 'lexical'
+import type { ChangeEvent, ReactElement } from 'react'
 
 import { addClassNamesToElement } from '@lexical/utils'
-import { $applyNodeReplacement, DecoratorNode } from 'lexical'
+import { $applyNodeReplacement, $getNodeByKey, DecoratorNode } from 'lexical'
+import { useEffect, useState } from 'react'
 
 type SerializedPebbleBlockNode = Spread<
   {
@@ -21,7 +24,7 @@ type SerializedPebbleBlockNode = Spread<
 
 const BLOCK_ATTR = 'data-peel-block'
 
-export class PebbleBlockNode extends DecoratorNode<null> {
+export class PebbleBlockNode extends DecoratorNode<ReactElement> {
   __markup: string
 
   static getType(): string {
@@ -61,25 +64,13 @@ export class PebbleBlockNode extends DecoratorNode<null> {
 
   createDOM(_config: EditorConfig): HTMLElement {
     const element = document.createElement('div')
-    addClassNamesToElement(element, 'rounded', 'border', 'border-cyan-700/50', 'bg-cyan-950/20', 'p-3', 'my-2')
+    addClassNamesToElement(element, 'my-2')
     element.setAttribute('contenteditable', 'false')
-    element.setAttribute(BLOCK_ATTR, this.__markup)
-    const label = document.createElement('div')
-    label.className = 'text-[11px] uppercase tracking-[0.12em] text-cyan-300'
-    label.textContent = 'Pebble Block'
-    const body = document.createElement('pre')
-    body.className = 'mt-2 whitespace-pre-wrap text-xs text-cyan-100'
-    body.textContent = this.__markup
-    element.append(label, body)
     return element
   }
 
   updateDOM(prevNode: PebbleBlockNode, dom: HTMLElement): boolean {
     if (prevNode.__markup !== this.__markup) {
-      const pre = dom.querySelector('pre')
-      if (pre) {
-        pre.textContent = this.__markup
-      }
       dom.setAttribute(BLOCK_ATTR, this.__markup)
     }
     return false
@@ -100,8 +91,14 @@ export class PebbleBlockNode extends DecoratorNode<null> {
     }
   }
 
-  decorate(): null {
-    return null
+  decorate(editor: LexicalEditor): ReactElement {
+    return (
+      <PebbleBlockEditor
+        nodeKey={this.__key}
+        markup={this.__markup}
+        editor={editor}
+      />
+    )
   }
 
   isInline(): boolean {
@@ -116,6 +113,58 @@ export class PebbleBlockNode extends DecoratorNode<null> {
   getMarkup(): string {
     return this.getLatest().__markup
   }
+}
+
+function PebbleBlockEditor({ nodeKey, markup, editor }: { nodeKey: NodeKey; markup: string; editor: LexicalEditor }) {
+  const [draft, setDraft] = useState(markup)
+
+  useEffect(() => {
+    setDraft(markup)
+  }, [markup])
+
+  const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    const nextMarkup = event.target.value
+    setDraft(nextMarkup)
+    editor.update(() => {
+      const node = $getNodeByKey(nodeKey)
+      if ($isPebbleBlockNode(node)) {
+        node.setMarkup(nextMarkup)
+      }
+    })
+  }
+
+  const handleDelete = () => {
+    editor.update(() => {
+      const node = $getNodeByKey(nodeKey)
+      if ($isPebbleBlockNode(node)) {
+        node.remove()
+      }
+    })
+  }
+
+  return (
+    <div className="peel-block-card" data-peel-block={markup}>
+      <div className="peel-block-header">
+        <span className="peel-block-label">Pebble Block</span>
+        <button
+          type="button"
+          className="peel-block-delete"
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={handleDelete}
+        >
+          Delete
+        </button>
+      </div>
+      <textarea
+        value={draft}
+        onChange={handleChange}
+        onMouseDown={(event) => event.stopPropagation()}
+        className="peel-block-textarea"
+        spellCheck={false}
+        aria-label="Pebble block markup"
+      />
+    </div>
+  )
 }
 
 export function $createPebbleBlockNode(markup: string): PebbleBlockNode {

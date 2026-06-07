@@ -67,6 +67,7 @@ export function DocumentsMode() {
   const [previewPending, setPreviewPending] = useState(false)
   const [previewHtml, setPreviewHtml] = useState<string | null>(null)
   const [previewRenderError, setPreviewRenderError] = useState<string | null>(null)
+  const [leftEditorTab, setLeftEditorTab] = useState<'scriptTags' | 'bindings'>('scriptTags')
   const [documentLoadNotice, setDocumentLoadNotice] = useState<string | null>(null)
   const [localDocumentStateMap, setLocalDocumentStateMap] = useState<LocalDocumentStateMap>(() =>
     loadLocalDocumentStateMap(),
@@ -410,13 +411,52 @@ export function DocumentsMode() {
           </div>
         </div>
 
-        <div className="grid min-h-0 gap-4 lg:grid-cols-[1fr_1fr]">
-          <DocumentJsonEditorPane
-            title="Script Name Tags (JSON)"
-            language="json"
-            value={scriptNameTagsText}
-            onValueChange={setScriptNameTagsText}
-          />
+        <div className="grid min-h-0 gap-4 overflow-visible lg:grid-cols-[360px_1fr]">
+          <div className="grid min-h-0 gap-2">
+            <div className="inline-flex w-fit items-center gap-1 rounded border border-slate-700 bg-slate-950/70 p-1">
+              <button
+                type="button"
+                onClick={() => setLeftEditorTab('scriptTags')}
+                className={clsx(
+                  'rounded px-2.5 py-1 text-xs font-medium transition',
+                  leftEditorTab === 'scriptTags'
+                    ? 'bg-cyan-500/20 text-cyan-100 border border-cyan-500/60'
+                    : 'text-slate-300 border border-transparent hover:border-slate-700 hover:bg-slate-800/60',
+                )}
+              >
+                Script Name Tags
+              </button>
+              <button
+                type="button"
+                onClick={() => setLeftEditorTab('bindings')}
+                className={clsx(
+                  'rounded px-2.5 py-1 text-xs font-medium transition',
+                  leftEditorTab === 'bindings'
+                    ? 'bg-cyan-500/20 text-cyan-100 border border-cyan-500/60'
+                    : 'text-slate-300 border border-transparent hover:border-slate-700 hover:bg-slate-800/60',
+                )}
+              >
+                Bindings
+              </button>
+            </div>
+
+            {leftEditorTab === 'scriptTags' ? (
+              <DocumentJsonEditorPane
+                title="Script Name Tags (JSON)"
+                language="json"
+                value={scriptNameTagsText}
+                onValueChange={setScriptNameTagsText}
+              />
+            ) : (
+              <DocumentJsonEditorPane
+                title="Bindings (JSON)"
+                language="json"
+                value={bindingsText}
+                onValueChange={setBindingsText}
+              />
+            )}
+          </div>
+
           <PebbleTemplateEditor
             initialHtml={templateHtml}
             initialEditorStateJson={editorStateJson}
@@ -425,15 +465,6 @@ export function DocumentsMode() {
               setTemplateHtml(next.templateHtml)
               setEditorStateJson(next.editorStateJson)
             }}
-          />
-        </div>
-
-        <div className="grid min-h-0 gap-4 lg:grid-cols-[1fr]">
-          <DocumentJsonEditorPane
-            title="Bindings (JSON)"
-            language="json"
-            value={bindingsText}
-            onValueChange={setBindingsText}
           />
         </div>
 
