@@ -15,8 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static de.flogehring.peelserver.documents.DocumentService.toExpressionRenderConfig;
-
 @RestController
 @RequiredArgsConstructor
 public class RenderConfigurationController implements RenderConfigurationService {
@@ -83,5 +81,12 @@ public class RenderConfigurationController implements RenderConfigurationService
         return renderConfigurationRepository.findAll().stream().map(
                 renderConfig -> new IdNameTuple(renderConfig.getId(), renderConfig.getName())
         ).toList();
+    }
+
+    private static ExpressionRenderConfiguration toExpressionRenderConfig(RenderConfigurationDto renderConfigurationDto) {
+        return ExpressionRenderConfiguration.of(
+                renderConfigurationDto.renderConfigurations(),
+                renderConfigurationDto.namedOverrides()
+        );
     }
 }

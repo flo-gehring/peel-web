@@ -1,10 +1,8 @@
 package de.flogehring.peelserver.documents;
 
 import de.flogehring.peelserver.DocumentController;
-import de.flogehring.peelserver.api.RenderConfigurationDto;
 import de.flogehring.peelserver.api.document.*;
 import de.flogehring.peelserver.error.ResourceNotFoundException;
-import de.flogehring.peelserver.renderconfig.ExpressionRenderConfiguration;
 import de.flogehring.peelserver.renderconfig.RenderConfigurationId;
 import de.flogehring.peelserver.renderconfig.RenderConfigurationRepository;
 import de.flogehring.peelserver.scripts.PeelScript;
@@ -37,6 +35,8 @@ public class DocumentService implements DocumentController {
                             request.name(),
                             transformMapValues(request.scriptNameTags(), PeelScriptId::new),
                             request.template(),
+                            request.templateHtml(),
+                            request.editorStateJson(),
                             new RenderConfigurationId(request.renderConfigurationId())
                     ));
             DocumentPersistence saved = peelDocumentRepository.save(
@@ -44,6 +44,8 @@ public class DocumentService implements DocumentController {
                             request.name(),
                             transformMapValues(request.scriptNameTags(), PeelScriptId::new),
                             template,
+                            request.templateHtml(),
+                            request.editorStateJson(),
                             new RenderConfigurationId(request.renderConfigurationId())
                     ));
             return getSaveResponse(saved, DocumentSaveResponse.SaveType.CREATED);
@@ -53,6 +55,8 @@ public class DocumentService implements DocumentController {
                 request.name(),
                 transformMapValues(request.scriptNameTags(), PeelScriptId::new),
                 template,
+                request.templateHtml(),
+                request.editorStateJson(),
                 new RenderConfigurationId(request.renderConfigurationId())
         );
         DocumentPersistence saved = peelDocumentRepository.save(created);
@@ -98,13 +102,6 @@ public class DocumentService implements DocumentController {
         );
         String html = documentRenderService.render(document, request.bindings());
         return new DocumentPreviewResponse(html);
-    }
-
-    public static ExpressionRenderConfiguration toExpressionRenderConfig(RenderConfigurationDto renderConfigurationDto) {
-        return ExpressionRenderConfiguration.of(
-                renderConfigurationDto.renderConfigurations(),
-                new HashMap<>() // TODO Update RenderConfigurationDto
-        );
     }
 
     @Override

@@ -6,6 +6,7 @@ import { DocumentJsonEditorPane } from './DocumentJsonEditorPane'
 import { DocumentPreviewPane } from './DocumentPreviewPane'
 import { DocumentsHeader } from './DocumentsHeader'
 import { DocumentsSidebar } from './DocumentsSidebar'
+import { PebbleTemplateEditor } from '../editor/PebbleTemplateEditor'
 import { getRenderConfiguration, listRenderConfigurations } from '../../../lib/api/client'
 import { useDocumentDraftState } from '../hooks/useDocumentDraftState'
 import { useDocumentsApi } from '../hooks/useDocumentsApi'
@@ -23,6 +24,8 @@ type LocalDocumentState = {
   name: string
   scriptNameTagsText: string
   template: string
+  templateHtml: string
+  editorStateJson: string
   bindingsText: string
   renderConfigurationName: string
 }
@@ -37,6 +40,10 @@ export function DocumentsMode() {
     setScriptNameTagsText,
     template,
     setTemplate,
+    templateHtml,
+    setTemplateHtml,
+    editorStateJson,
+    setEditorStateJson,
     bindingsText,
     setBindingsText,
     renderConfigurationId,
@@ -110,11 +117,15 @@ export function DocumentsMode() {
       setName(payload.name)
       setScriptNameTagsText(JSON.stringify(payload.scriptNameTags, null, 2))
       setTemplate(payload.template)
+      setTemplateHtml(payload.templateHtml)
+      setEditorStateJson(payload.editorStateJson)
       setRenderConfigurationId(payload.renderConfigurationId)
       rememberLocalDocumentState(document.id, {
         name: payload.name,
         scriptNameTagsText: JSON.stringify(payload.scriptNameTags, null, 2),
         template: payload.template,
+        templateHtml: payload.templateHtml,
+        editorStateJson: payload.editorStateJson,
         bindingsText,
         renderConfigurationName: resolveRenderConfigurationName(
           payload.renderConfigurationId,
@@ -180,6 +191,8 @@ export function DocumentsMode() {
       name: name.trim(),
       scriptNameTags: scriptNameTagsState.value,
       template,
+      templateHtml,
+      editorStateJson,
       renderConfigurationId: renderConfigurationId.trim(),
     })
   }
@@ -216,6 +229,8 @@ export function DocumentsMode() {
     const nextName = nextUntitledDocumentName(documents.map((documentSummary) => documentSummary.name))
     const nextScriptNameTagsText = DEFAULT_SCRIPT_NAME_TAGS_TEXT
     const nextTemplate = DEFAULT_TEMPLATE
+    const nextTemplateHtml = '<p>Result: <span data-peel-inline="{{ calc.result | renderTraceExpression }}"></span></p>'
+    const nextEditorStateJson = ''
     const nextBindings = {}
     const nextRenderConfigurationId = 'default'
     const nextRenderConfigurationName = DEFAULT_RENDER_CONFIGURATION_NAME
@@ -224,6 +239,8 @@ export function DocumentsMode() {
     setName(nextName)
     setScriptNameTagsText(nextScriptNameTagsText)
     setTemplate(nextTemplate)
+    setTemplateHtml(nextTemplateHtml)
+    setEditorStateJson(nextEditorStateJson)
     setBindingsText(JSON.stringify(nextBindings, null, 2))
     setRenderConfigurationId(nextRenderConfigurationId)
     setDocumentLoadNotice(null)
@@ -238,6 +255,8 @@ export function DocumentsMode() {
       name: nextName,
       scriptNameTags: nextScriptNameTags.value,
       template: nextTemplate,
+      templateHtml: nextTemplateHtml,
+      editorStateJson: nextEditorStateJson,
       renderConfigurationId: nextRenderConfigurationId,
     })
 
@@ -246,6 +265,8 @@ export function DocumentsMode() {
         name: nextName,
         scriptNameTagsText: nextScriptNameTagsText,
         template: nextTemplate,
+        templateHtml: nextTemplateHtml,
+        editorStateJson: nextEditorStateJson,
         bindingsText: JSON.stringify(nextBindings, null, 2),
         renderConfigurationName: nextRenderConfigurationName,
       })
@@ -260,6 +281,8 @@ export function DocumentsMode() {
       setName(summary?.name ?? 'Untitled document')
       setScriptNameTagsText(DEFAULT_SCRIPT_NAME_TAGS_TEXT)
       setTemplate(DEFAULT_TEMPLATE)
+      setTemplateHtml('<p>Result: <span data-peel-inline="{{ calc.result | renderTraceExpression }}"></span></p>')
+      setEditorStateJson('')
       setBindingsText('{}')
       setRenderConfigurationId('default')
       setDocumentLoadNotice('No local editor data found for this document. Using local defaults.')
@@ -269,6 +292,8 @@ export function DocumentsMode() {
     setName(localState.name)
     setScriptNameTagsText(localState.scriptNameTagsText)
     setTemplate(localState.template)
+    setTemplateHtml(localState.templateHtml)
+    setEditorStateJson(localState.editorStateJson)
     setBindingsText(localState.bindingsText)
     const matched = (renderConfigurationsQuery.data ?? []).find(
       (config) => config.name === localState.renderConfigurationName,
@@ -392,11 +417,14 @@ export function DocumentsMode() {
             value={scriptNameTagsText}
             onValueChange={setScriptNameTagsText}
           />
-          <DocumentJsonEditorPane
-            title="Template (Pebble)"
-            language="twig"
-            value={template}
-            onValueChange={setTemplate}
+          <PebbleTemplateEditor
+            initialHtml={templateHtml}
+            initialEditorStateJson={editorStateJson}
+            onTemplateChange={(next) => {
+              setTemplate(next.templatePebble)
+              setTemplateHtml(next.templateHtml)
+              setEditorStateJson(next.editorStateJson)
+            }}
           />
         </div>
 

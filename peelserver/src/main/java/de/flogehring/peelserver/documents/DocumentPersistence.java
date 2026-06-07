@@ -1,6 +1,5 @@
 package de.flogehring.peelserver.documents;
 
-import de.flogehring.peelserver.renderconfig.ExpressionRenderConfiguration;
 import de.flogehring.peelserver.renderconfig.RenderConfigurationId;
 import de.flogehring.peelserver.scripts.PeelScriptId;
 import lombok.Getter;
@@ -42,6 +41,8 @@ public class DocumentPersistence {
             String name,
             Map<String, PeelScriptId> scriptNameTags,
             String template,
+            String templateHtml,
+            String editorStateJson,
             RenderConfigurationId renderCondfigurationId
     ) {
         Instant now = Instant.now();
@@ -51,6 +52,8 @@ public class DocumentPersistence {
                         name,
                         scriptNameTags,
                         template,
+                        templateHtml,
+                        editorStateJson,
                         renderCondfigurationId
                 ),
                 now,
@@ -62,6 +65,8 @@ public class DocumentPersistence {
             String name,
             Map<String, PeelScriptId> scriptNameTags,
             String template,
+            String templateHtml,
+            String editorStateJson,
             RenderConfigurationId renderConfigurationId
     ) {
         return new DocumentPersistence(
@@ -70,6 +75,8 @@ public class DocumentPersistence {
                         name,
                         scriptNameTags,
                         template,
+                        templateHtml,
+                        editorStateJson,
                         renderConfigurationId
                 ),
                 createdAt,

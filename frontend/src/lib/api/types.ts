@@ -75,6 +75,8 @@ export interface DocumentSaveRequest {
   name: string
   scriptNameTags: Record<string, string>
   template: string
+  templateHtml: string
+  editorStateJson: string
   renderConfigurationId: string
 }
 

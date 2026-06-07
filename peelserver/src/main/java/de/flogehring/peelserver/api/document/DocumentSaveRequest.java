@@ -1,7 +1,5 @@
 package de.flogehring.peelserver.api.document;
 
-import de.flogehring.peelserver.api.RenderConfigurationDto;
-
 import java.util.Map;
 
 public record DocumentSaveRequest(
@@ -9,6 +7,8 @@ public record DocumentSaveRequest(
         String name,
         Map<String, String> scriptNameTags,
         String template,
+        String templateHtml,
+        String editorStateJson,
         String renderConfigurationId
 ) {
 }
