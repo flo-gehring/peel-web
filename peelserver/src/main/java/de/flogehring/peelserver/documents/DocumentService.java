@@ -13,10 +13,7 @@ import de.flogehring.peelserver.scripts.PeelScriptRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static de.flogehring.peelserver.util.StreamUtil.transformMapValues;
@@ -93,7 +90,7 @@ public class DocumentService implements DocumentController {
     public DocumentPreviewResponse previewDocument(DocumentPreviewRequest request) {
         Document document = new Document(
                 "PreviewDocumentRequest",
-                request.scripTags().entrySet().stream().collect(Collectors.toMap(
+                request.scriptTags().entrySet().stream().collect(Collectors.toMap(
                         entry -> entry.getKey().name(),
                         entry -> getPeelScript(new PeelScriptId(entry.getValue().id()))
                 )),
@@ -108,7 +105,10 @@ public class DocumentService implements DocumentController {
     }
 
     public static ExpressionRenderConfiguration toExpressionRenderConfig(RenderConfigurationDto renderConfigurationDto) {
-        return ExpressionRenderConfiguration.of(renderConfigurationDto.renderConfigurations());
+        return ExpressionRenderConfiguration.of(
+                renderConfigurationDto.renderConfigurations(),
+                new HashMap<>() // TODO Update RenderConfigurationDto
+        );
     }
 
     @Override

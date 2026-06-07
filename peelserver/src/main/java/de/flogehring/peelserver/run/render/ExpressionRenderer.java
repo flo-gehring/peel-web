@@ -1,7 +1,9 @@
 package de.flogehring.peelserver.run.render;
 
+import de.flogehring.peel.core.Nullable;
 import de.flogehring.peel.core.trace.TraceExpressionKind;
 import de.flogehring.peelserver.renderconfig.ExpressionRenderConfiguration;
+import de.flogehring.peelserver.renderconfig.ExpressionRenderTemplate;
 import io.pebbletemplates.pebble.PebbleEngine;
 
 import java.io.StringWriter;
@@ -13,10 +15,12 @@ import java.util.Objects;
 
 public final class ExpressionRenderer {
 
-    private final ExpressionRenderConfiguration expressionRenderConfiguration;
+    ExpressionRenderConfiguration configuration;
+    private final ExpressionRenderTemplate templates;
 
-    private ExpressionRenderer(ExpressionRenderConfiguration configuration) {
-        this.expressionRenderConfiguration = configuration;
+    private ExpressionRenderer(ExpressionRenderConfiguration configuration, ExpressionRenderTemplate expressionRenderTemplate) {
+        this.configuration = configuration;
+        this.templates = expressionRenderTemplate;
     }
 
     public static ExpressionRenderer ofDefaultRenderers() {
@@ -25,7 +29,13 @@ public final class ExpressionRenderer {
 
     public static ExpressionRenderer of(ExpressionRenderConfiguration configuration) {
         Objects.requireNonNull(configuration, "configuration");
-        return new ExpressionRenderer(configuration);
+        return new ExpressionRenderer(configuration, configuration.getDefaultTemplates());
+    }
+
+    public static ExpressionRenderer of(ExpressionRenderConfiguration configuration, ExpressionRenderTemplate expressionRenderTemplate) {
+        Objects.requireNonNull(configuration, "configuration");
+        Objects.requireNonNull(expressionRenderTemplate, "configuration");
+        return new ExpressionRenderer(configuration, expressionRenderTemplate);
     }
 
     public static boolean supports(Object input) {
@@ -53,7 +63,10 @@ public final class ExpressionRenderer {
         if (kind == null) {
             throw new IllegalStateException();
         }
-        String template = expressionRenderConfiguration.getTemplates().get(kind);
+        String template = templates.templates().get(kind);
+        if (template == null) {
+            template = configuration.getDefaultTemplates().templates().get(kind);
+        }
         String valueText = valueText(expression.get("value"));
         if (template == null || template.isBlank()) {
             return valueText;
@@ -64,8 +77,7 @@ public final class ExpressionRenderer {
 
     private String renderTemplate(String template, Map<String, Object> context) {
         PebbleEngine engine = new PebbleEngine.Builder()
-                .autoEscaping(false)
-                .extension(new TraceRenderingPebbleExtension(expressionRenderConfiguration))
+                .extension(new TraceRenderingPebbleExtension(configuration))
                 .build();
         try {
             StringWriter stringBuilder = new StringWriter();

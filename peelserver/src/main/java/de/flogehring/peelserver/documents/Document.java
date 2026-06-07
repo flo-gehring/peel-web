@@ -10,6 +10,6 @@ public record Document(
         Map<String, PeelScript> scriptNameTags,
         String template,
         ExpressionRenderConfiguration globalRenderConfiguration,
-        ExpressionRenderConfiguration localOverrides
+        ExpressionRenderConfiguration localOverrides // TODO remove local overrides
 ) {
 }

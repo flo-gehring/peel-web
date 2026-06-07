@@ -7,6 +7,7 @@ import de.flogehring.peel.core.trace.TraceValue;
 import de.flogehring.peelserver.renderconfig.ExpressionRenderConfiguration;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -163,7 +164,7 @@ class ExpressionRendererTest {
 
         String rendered = DEFAULT_RENDERER.render(expression);
 
-        assertThat(rendered).isEqualTo("while (i < 3) {i = i + 1}");
+        assertThat(rendered).isEqualTo("while (i &lt; 3) {i = i + 1}");
     }
 
     @Test
@@ -185,7 +186,7 @@ class ExpressionRendererTest {
 
         String rendered = DEFAULT_RENDERER.render(expression);
 
-        assertThat(rendered).isEqualTo("while (index < 10) {index = index + 1}");
+        assertThat(rendered).isEqualTo("while (index &lt; 10) {index = index + 1}");
     }
 
     @Test
@@ -287,7 +288,7 @@ class ExpressionRendererTest {
         String rendered = DEFAULT_RENDERER.render(expression);
 
         assertThat(rendered).isEqualTo(
-                "if (shouldProcess) {while (i < 3) {i = i + 1}; for (item in items) {sum = sum + item}}"
+                "if (shouldProcess) {while (i &lt; 3) {i = i + 1}; for (item in items) {sum = sum + item}}"
         );
     }
 
@@ -295,7 +296,9 @@ class ExpressionRendererTest {
     void appliesConfiguredTemplateForKind() {
         Map<TraceExpressionKind, String> templates = new java.util.EnumMap<>(TraceExpressionKind.class);
         templates.put(TraceExpressionKind.LITERAL, "lit({{ valueText }})");
-        ExpressionRenderConfiguration config = ExpressionRenderConfiguration.of(templates);
+        ExpressionRenderConfiguration config = ExpressionRenderConfiguration.of(
+                templates, Map.of("lol", Map.of(TraceExpressionKind.LITERAL, "lit({{ valueText }})"))
+        );
         Map<String, Object> expression = TraceMapOutput.fromExpression(new TraceExpression.Literal(TraceValue.integer(5)));
         String rendered = ExpressionRenderer.of(config).render(expression);
         assertThat(rendered).isEqualTo("lit(5)");

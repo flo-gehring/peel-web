@@ -1,6 +1,7 @@
 package de.flogehring.peelserver.run.render;
 
 import de.flogehring.peelserver.renderconfig.ExpressionRenderConfiguration;
+import de.flogehring.peelserver.renderconfig.ExpressionRenderTemplate;
 import io.pebbletemplates.pebble.extension.Filter;
 import io.pebbletemplates.pebble.extension.escaper.SafeString;
 import io.pebbletemplates.pebble.template.EvaluationContext;
@@ -13,8 +14,8 @@ public final class TraceExpressionRenderFilter implements Filter {
 
     private final ExpressionRenderer expressionRenderer;
 
-    public TraceExpressionRenderFilter(ExpressionRenderConfiguration configuration) {
-        this.expressionRenderer = ExpressionRenderer.of(configuration);
+    public TraceExpressionRenderFilter(ExpressionRenderTemplate expressionRenderTemplate, ExpressionRenderConfiguration configuration) {
+        this.expressionRenderer = ExpressionRenderer.of(configuration, expressionRenderTemplate);
     }
 
     @Override

@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static de.flogehring.peelserver.documents.DocumentService.toExpressionRenderConfig;
@@ -41,7 +42,7 @@ public class RenderConfigurationController implements RenderConfigurationService
             String id,
             RenderConfigurationPersistenceDto persistenceDto
     ) {
-        RenderConfigurationPersistence existing = renderConfigurationRepository.findById(id)
+        renderConfigurationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Render configuration with id " + id + " not found"));
         renderConfigurationRepository.save(
                 RenderConfigurationPersistence.valueOf(
@@ -50,7 +51,6 @@ public class RenderConfigurationController implements RenderConfigurationService
                         toExpressionRenderConfig(persistenceDto.renderConfigurationDto())
                 )
         );
-
     }
 
     @Override
@@ -61,12 +61,14 @@ public class RenderConfigurationController implements RenderConfigurationService
 
     public static RenderConfigurationDto toDto(ExpressionRenderConfiguration config) {
         return new RenderConfigurationDto(
-                config.getTemplates()
-        );
+                config.getDefaultTemplates().templates(),
+                config.getNamedOverrides().entrySet().stream().collect(
+                        java.util.stream.Collectors.toMap(Map.Entry::getKey, e -> e.getValue().templates())
+                ));
     }
 
     @Override
-    public RenderConfigurationPersistenceDto getId(String id) {
+    public RenderConfigurationPersistenceDto getById(String id) {
         RenderConfigurationPersistence renderConfig = renderConfigurationRepository.findById(
                 id
         ).orElseThrow(() -> new ResourceNotFoundException("Render configuration with id " + id + " not found"));

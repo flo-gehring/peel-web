@@ -26,7 +26,7 @@ public class DocumentRenderService {
                 document.scriptNameTags(),
                 script -> peelExecutionService.execute(script.script(), bindings)
         );
-        ExpressionRenderConfiguration expressionRenderConfiguration = document.globalRenderConfiguration().merge(document.localOverrides());
+        ExpressionRenderConfiguration expressionRenderConfiguration = document.globalRenderConfiguration();
         PebbleEngine engine = new PebbleEngine.Builder()
                 .extension(new TraceRenderingPebbleExtension(expressionRenderConfiguration))
                 .build();

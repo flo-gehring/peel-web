@@ -3,6 +3,7 @@ package de.flogehring.peelserver.renderconfig;
 import de.flogehring.peel.core.trace.TraceExpressionKind;
 import lombok.Getter;
 
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -10,20 +11,34 @@ import java.util.Map;
 @Getter
 public class ExpressionRenderConfiguration {
 
-    private final Map<TraceExpressionKind, String> templates;
+    private final ExpressionRenderTemplate defaultTemplates;
+    private final Map<String, ExpressionRenderTemplate> namedOverrides;
 
-    private ExpressionRenderConfiguration(Map<TraceExpressionKind, String> templates) {
-        this.templates = templates;
+    private ExpressionRenderConfiguration(
+            ExpressionRenderTemplate defaultTemplates,
+            Map<String, ExpressionRenderTemplate> namedOverrides
+
+    ) {
+        this.defaultTemplates = defaultTemplates;
+        this.namedOverrides = namedOverrides;
     }
 
     public static ExpressionRenderConfiguration of(
-            Map<TraceExpressionKind, String> render
+            Map<TraceExpressionKind, String> render,
+            Map<String, Map<TraceExpressionKind, String>> namedOverrides
     ) {
-        return new ExpressionRenderConfiguration(Map.copyOf(new EnumMap<>(render)));
+        return new ExpressionRenderConfiguration(
+                new ExpressionRenderTemplate(Map.copyOf(new EnumMap<>(render))),
+                namedOverrides.entrySet().stream().collect(
+                        LinkedHashMap::new,
+                        (map, entry) -> map.put(entry.getKey(), new ExpressionRenderTemplate(Map.copyOf(new EnumMap<>(entry.getValue())))),
+                        LinkedHashMap::putAll
+                )
+        );
     }
 
     public static ExpressionRenderConfiguration defaultConfig() {
-        Map<TraceExpressionKind, String> templates = new LinkedHashMap<>();
+        Map<TraceExpressionKind, String> templates = new EnumMap<>(TraceExpressionKind.class);
         templates.put(TraceExpressionKind.FUNCTION_CALL, "{{name}}({% for argument in arguments %}{{argument.value.value}}{% if not loop.last %}, {% endif %}{% endfor %})");
         templates.put(TraceExpressionKind.BINARY_OPERATOR, "{{  lhs | renderTraceExpression }} {{ operator }} {{ rhs | renderTraceExpression }}");
         templates.put(TraceExpressionKind.LITERAL, "{{ valueText }}");
@@ -56,12 +71,6 @@ public class ExpressionRenderConfiguration {
                 TraceExpressionKind.BLOCK,
                 "{{ '{' }}{% for statement in content %}{{ statement | renderTraceExpression }}{% if not loop.last %}; {% endif %}{% endfor %}{{ '}' }}"
         );
-        return new ExpressionRenderConfiguration(Map.copyOf(new EnumMap<>(templates)));
-    }
-
-    public ExpressionRenderConfiguration merge(ExpressionRenderConfiguration expressionRenderConfiguration) {
-        Map<TraceExpressionKind, String> merged = new EnumMap<>(this.templates);
-        merged.putAll(expressionRenderConfiguration.getTemplates());
-        return new ExpressionRenderConfiguration(Map.copyOf(merged));
+        return new ExpressionRenderConfiguration(new ExpressionRenderTemplate(Collections.unmodifiableMap(templates)), Map.of());
     }
 }

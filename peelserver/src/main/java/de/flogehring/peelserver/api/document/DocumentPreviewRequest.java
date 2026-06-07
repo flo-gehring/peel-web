@@ -6,7 +6,7 @@ import de.flogehring.peelserver.api.RenderConfigurationDto;
 import java.util.Map;
 
 public record DocumentPreviewRequest(
-        Map<NameTagInDocument, PeelScriptId> scripTags,
+        Map<NameTagInDocument, PeelScriptId> scriptTags,
         Map<String, Object> bindings,
         String renderConfigId,
         RenderConfigurationDto localOverrides,
