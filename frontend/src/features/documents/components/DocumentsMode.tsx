@@ -1,24 +1,22 @@
 import clsx from 'clsx'
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useEffect, useMemo, useState } from 'react'
 
 import { DocumentJsonEditorPane } from './DocumentJsonEditorPane'
 import { DocumentPreviewPane } from './DocumentPreviewPane'
 import { DocumentsHeader } from './DocumentsHeader'
 import { DocumentsSidebar } from './DocumentsSidebar'
+import { getRenderConfiguration, listRenderConfigurations } from '../../../lib/api/client'
 import { useDocumentDraftState } from '../hooks/useDocumentDraftState'
 import { useDocumentsApi } from '../hooks/useDocumentsApi'
-import { listRenderConfigurations } from '../../../lib/api/client'
 import { parseBindings } from '../../workbench/lib/bindings'
 import { formatError } from '../../workbench/lib/errors'
-import type { RenderConfigurationDto } from '../../../lib/api/types'
-import { useQuery } from '@tanstack/react-query'
 
 const SIDEBAR_STATE_STORAGE_KEY = 'peel-documents-sidebar-open'
-const LOCAL_DOCUMENT_STATE_STORAGE_KEY = 'peel-documents-local-state-v1'
+const LOCAL_DOCUMENT_STATE_STORAGE_KEY = 'peel-documents-local-state-v2'
 const DEFAULT_SCRIPT_NAME_TAGS_TEXT = '{\n  "calc": "SCRIPT_ID"\n}'
 const DEFAULT_TEMPLATE =
   '<ul>\n{% for statement in calc.statements %}\n  <li>{{ statement | renderTraceExpression }}</li>\n{% endfor %}\n</ul>'
-const DEFAULT_LOCAL_OVERRIDES_TEXT = '{\n  "renderConfigurations": {}\n}'
 const DEFAULT_RENDER_CONFIGURATION_NAME = 'default'
 
 type LocalDocumentState = {
@@ -27,7 +25,6 @@ type LocalDocumentState = {
   template: string
   bindingsText: string
   renderConfigurationName: string
-  localOverridesText: string
 }
 
 type LocalDocumentStateMap = Record<string, LocalDocumentState>
@@ -44,8 +41,6 @@ export function DocumentsMode() {
     setBindingsText,
     renderConfigurationId,
     setRenderConfigurationId,
-    localOverridesText,
-    setLocalOverridesText,
     selectedDocumentId,
     setSelectedDocumentId,
     resetToDefault,
@@ -53,7 +48,6 @@ export function DocumentsMode() {
 
   const bindingsState = parseBindings(bindingsText)
   const scriptNameTagsState = parseScriptNameTags(scriptNameTagsText)
-  const localOverridesState = parseLocalOverrides(localOverridesText)
 
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
     const raw = localStorage.getItem(SIDEBAR_STATE_STORAGE_KEY)
@@ -67,17 +61,32 @@ export function DocumentsMode() {
   const [previewHtml, setPreviewHtml] = useState<string | null>(null)
   const [previewRenderError, setPreviewRenderError] = useState<string | null>(null)
   const [documentLoadNotice, setDocumentLoadNotice] = useState<string | null>(null)
-  const [localDocumentStateMap, setLocalDocumentStateMap] = useState<LocalDocumentStateMap>(() => loadLocalDocumentStateMap())
+  const [localDocumentStateMap, setLocalDocumentStateMap] = useState<LocalDocumentStateMap>(() =>
+    loadLocalDocumentStateMap(),
+  )
 
   const renderConfigurationsQuery = useQuery({
     queryKey: ['render-configs'],
     queryFn: listRenderConfigurations,
   })
 
+  const selectedRenderConfigurationDetailQuery = useQuery({
+    queryKey: ['render-config', renderConfigurationId],
+    queryFn: () => getRenderConfiguration(renderConfigurationId),
+    enabled: renderConfigurationId.trim().length > 0,
+  })
+
   const renderConfigurationName = resolveRenderConfigurationName(
     renderConfigurationId,
     renderConfigurationsQuery.data ?? [],
   )
+
+  const availableTemplateFilters = useMemo(() => {
+    const detail = selectedRenderConfigurationDetailQuery.data
+    const namedOverrides = detail?.renderConfigurationDto.namedOverrides ?? {}
+    const overrideNames = Object.keys(namedOverrides).sort((left, right) => left.localeCompare(right))
+    return ['renderTraceExpression', ...overrideNames]
+  }, [selectedRenderConfigurationDetailQuery.data])
 
   useEffect(() => {
     localStorage.setItem(LOCAL_DOCUMENT_STATE_STORAGE_KEY, JSON.stringify(localDocumentStateMap))
@@ -102,14 +111,15 @@ export function DocumentsMode() {
       setScriptNameTagsText(JSON.stringify(payload.scriptNameTags, null, 2))
       setTemplate(payload.template)
       setRenderConfigurationId(payload.renderConfigurationId)
-      setLocalOverridesText(JSON.stringify(payload.localOverrides, null, 2))
       rememberLocalDocumentState(document.id, {
         name: payload.name,
         scriptNameTagsText: JSON.stringify(payload.scriptNameTags, null, 2),
         template: payload.template,
         bindingsText,
-        renderConfigurationName: resolveRenderConfigurationName(payload.renderConfigurationId, renderConfigurationsQuery.data ?? []),
-        localOverridesText: JSON.stringify(payload.localOverrides, null, 2),
+        renderConfigurationName: resolveRenderConfigurationName(
+          payload.renderConfigurationId,
+          renderConfigurationsQuery.data ?? [],
+        ),
       })
       setDocumentLoadNotice(null)
     },
@@ -137,16 +147,14 @@ export function DocumentsMode() {
     scriptNameTagsState.value === null ||
     template.trim().length === 0 ||
     bindingsState.value === null ||
-    renderConfigurationId.trim().length === 0 ||
-    localOverridesState.value === null
+    renderConfigurationId.trim().length === 0
 
   const previewDisabled =
     previewPending ||
     scriptNameTagsState.value === null ||
     template.trim().length === 0 ||
     bindingsState.value === null ||
-    renderConfigurationId.trim().length === 0 ||
-    localOverridesState.value === null
+    renderConfigurationId.trim().length === 0
 
   const deleteDisabled = deleteDocumentMutation.isPending || selectedDocumentId === null
 
@@ -163,7 +171,7 @@ export function DocumentsMode() {
   }
 
   function handleSave() {
-    if (!bindingsState.value || !scriptNameTagsState.value || !localOverridesState.value) {
+    if (!bindingsState.value || !scriptNameTagsState.value) {
       return
     }
 
@@ -173,12 +181,11 @@ export function DocumentsMode() {
       scriptNameTags: scriptNameTagsState.value,
       template,
       renderConfigurationId: renderConfigurationId.trim(),
-      localOverrides: localOverridesState.value,
     })
   }
 
   async function handlePreview() {
-    if (!bindingsState.value || !scriptNameTagsState.value || !localOverridesState.value) {
+    if (!bindingsState.value || !scriptNameTagsState.value) {
       return
     }
 
@@ -191,10 +198,9 @@ export function DocumentsMode() {
         Object.entries(scriptNameTagsState.value).map(([nameTag, scriptId]) => [nameTag, { id: scriptId }]),
       )
       const previewResponse = await previewDocumentMutation.mutateAsync({
-        scripTags: previewScriptTags,
+        scriptTags: previewScriptTags,
         bindings: bindingsState.value,
         renderConfigId: renderConfigurationId.trim(),
-        localOverrides: localOverridesState.value,
         template,
       })
       setPreviewHtml(previewResponse.html)
@@ -213,7 +219,6 @@ export function DocumentsMode() {
     const nextBindings = {}
     const nextRenderConfigurationId = 'default'
     const nextRenderConfigurationName = DEFAULT_RENDER_CONFIGURATION_NAME
-    const nextLocalOverridesText = DEFAULT_LOCAL_OVERRIDES_TEXT
 
     setSelectedDocumentId(null)
     setName(nextName)
@@ -221,12 +226,10 @@ export function DocumentsMode() {
     setTemplate(nextTemplate)
     setBindingsText(JSON.stringify(nextBindings, null, 2))
     setRenderConfigurationId(nextRenderConfigurationId)
-    setLocalOverridesText(nextLocalOverridesText)
     setDocumentLoadNotice(null)
 
     const nextScriptNameTags = parseScriptNameTags(nextScriptNameTagsText)
-    const nextLocalOverrides = parseLocalOverrides(nextLocalOverridesText)
-    if (!nextScriptNameTags.value || !nextLocalOverrides.value) {
+    if (!nextScriptNameTags.value) {
       return
     }
 
@@ -236,7 +239,6 @@ export function DocumentsMode() {
       scriptNameTags: nextScriptNameTags.value,
       template: nextTemplate,
       renderConfigurationId: nextRenderConfigurationId,
-      localOverrides: nextLocalOverrides.value,
     })
 
     if (selectedDocumentId) {
@@ -246,7 +248,6 @@ export function DocumentsMode() {
         template: nextTemplate,
         bindingsText: JSON.stringify(nextBindings, null, 2),
         renderConfigurationName: nextRenderConfigurationName,
-        localOverridesText: nextLocalOverridesText,
       })
     }
   }
@@ -261,7 +262,6 @@ export function DocumentsMode() {
       setTemplate(DEFAULT_TEMPLATE)
       setBindingsText('{}')
       setRenderConfigurationId('default')
-      setLocalOverridesText(DEFAULT_LOCAL_OVERRIDES_TEXT)
       setDocumentLoadNotice('No local editor data found for this document. Using local defaults.')
       return
     }
@@ -270,9 +270,10 @@ export function DocumentsMode() {
     setScriptNameTagsText(localState.scriptNameTagsText)
     setTemplate(localState.template)
     setBindingsText(localState.bindingsText)
-    const matched = (renderConfigurationsQuery.data ?? []).find((config) => config.name === localState.renderConfigurationName)
+    const matched = (renderConfigurationsQuery.data ?? []).find(
+      (config) => config.name === localState.renderConfigurationName,
+    )
     setRenderConfigurationId(matched?.id ?? 'default')
-    setLocalOverridesText(localState.localOverridesText)
     setDocumentLoadNotice(null)
   }
 
@@ -310,6 +311,7 @@ export function DocumentsMode() {
   const saveError = formatError(saveDocumentMutation.error)
   const deleteError = formatError(deleteDocumentMutation.error)
   const previewError = previewRenderError ?? formatError(previewDocumentMutation.error)
+  const renderConfigError = formatError(selectedRenderConfigurationDetailQuery.error)
 
   return (
     <div
@@ -318,17 +320,17 @@ export function DocumentsMode() {
         isSidebarOpen ? 'lg:grid-cols-[300px_1fr]' : 'lg:grid-cols-[56px_1fr]',
       )}
     >
-        <DocumentsSidebar
-          documentsQuery={documentsQuery}
-          documents={documents}
-          selectedDocumentId={selectedDocumentId}
-          isOpen={isSidebarOpen}
-          onToggle={toggleSidebar}
-          onSelectDocument={handleSelectDocument}
-          onCreateDocument={handleCreateDocument}
-          onDeleteSelected={handleDeleteSelected}
-          deleteDisabled={deleteDisabled}
-        />
+      <DocumentsSidebar
+        documentsQuery={documentsQuery}
+        documents={documents}
+        selectedDocumentId={selectedDocumentId}
+        isOpen={isSidebarOpen}
+        onToggle={toggleSidebar}
+        onSelectDocument={handleSelectDocument}
+        onCreateDocument={handleCreateDocument}
+        onDeleteSelected={handleDeleteSelected}
+        deleteDisabled={deleteDisabled}
+      />
 
       <section className="grid min-h-0 gap-4 overflow-hidden">
         <DocumentsHeader
@@ -366,11 +368,22 @@ export function DocumentsMode() {
             {scriptNameTagsState.error}
           </p>
         ) : null}
-        {localOverridesState.error ? (
+        {renderConfigError ? (
           <p className="rounded border border-rose-800/70 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">
-            {localOverridesState.error}
+            {renderConfigError}
           </p>
         ) : null}
+
+        <div className="rounded border border-slate-800 bg-slate-900/60 px-3 py-2 text-xs text-slate-300">
+          <p className="mb-2 font-semibold text-slate-200">Available template filters for selected render configuration:</p>
+          <div className="flex flex-wrap gap-2">
+            {availableTemplateFilters.map((filterName) => (
+              <span key={filterName} className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-[11px]">
+                {`{{ expression | ${filterName} }}`}
+              </span>
+            ))}
+          </div>
+        </div>
 
         <div className="grid min-h-0 gap-4 lg:grid-cols-[1fr_1fr]">
           <DocumentJsonEditorPane
@@ -387,18 +400,12 @@ export function DocumentsMode() {
           />
         </div>
 
-        <div className="grid min-h-0 gap-4 lg:grid-cols-[1fr_1fr]">
+        <div className="grid min-h-0 gap-4 lg:grid-cols-[1fr]">
           <DocumentJsonEditorPane
             title="Bindings (JSON)"
             language="json"
             value={bindingsText}
             onValueChange={setBindingsText}
-          />
-          <DocumentJsonEditorPane
-            title="Local Overrides (JSON)"
-            language="json"
-            value={localOverridesText}
-            onValueChange={setLocalOverridesText}
           />
         </div>
 
@@ -467,47 +474,8 @@ function parseScriptNameTags(value: string): { value: Record<string, string> | n
   }
 }
 
-function parseLocalOverrides(value: string): { value: RenderConfigurationDto | null; error: string | null } {
-  try {
-    const parsed = JSON.parse(value) as unknown
-    if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object') {
-      throw new Error('Local overrides must be a JSON object with a renderConfigurations object.')
-    }
-
-    const renderConfigurations = (parsed as Record<string, unknown>).renderConfigurations
-    if (
-      renderConfigurations === null ||
-      renderConfigurations === undefined ||
-      Array.isArray(renderConfigurations) ||
-      typeof renderConfigurations !== 'object'
-    ) {
-      throw new Error('Local overrides require renderConfigurations to be an object.')
-    }
-
-    const nextRenderConfigurations: Record<string, string> = {}
-    for (const [expressionKind, template] of Object.entries(renderConfigurations)) {
-      if (typeof template !== 'string') {
-        throw new Error('Each renderConfigurations value must be a string template.')
-      }
-      nextRenderConfigurations[expressionKind] = template
-    }
-
-    return {
-      value: {
-        renderConfigurations: nextRenderConfigurations,
-      },
-      error: null,
-    }
-  } catch (error) {
-    return {
-      value: null,
-      error: error instanceof Error ? error.message : 'Local overrides must be valid JSON.',
-    }
-  }
-}
-
 function nextUntitledDocumentName(existingNames: string[]): string {
-  const normalizedNames = new Set(existingNames.map((name) => name.trim().toLowerCase()))
+  const normalizedNames = new Set(existingNames.map((existingName) => existingName.trim().toLowerCase()))
   if (!normalizedNames.has('untitled document')) {
     return 'Untitled document'
   }

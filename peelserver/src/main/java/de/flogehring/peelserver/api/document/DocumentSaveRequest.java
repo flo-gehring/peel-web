@@ -9,7 +9,6 @@ public record DocumentSaveRequest(
         String name,
         Map<String, String> scriptNameTags,
         String template,
-        String renderConfigurationId,
-        RenderConfigurationDto localOverrides
+        String renderConfigurationId
 ) {
 }

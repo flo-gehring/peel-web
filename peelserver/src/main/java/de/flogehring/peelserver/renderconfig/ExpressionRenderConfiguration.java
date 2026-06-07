@@ -22,7 +22,7 @@ public class ExpressionRenderConfiguration {
         this.defaultTemplates = defaultTemplates;
         this.namedOverrides = namedOverrides;
     }
-
+ 
     public static ExpressionRenderConfiguration of(
             Map<TraceExpressionKind, String> render,
             Map<String, Map<TraceExpressionKind, String>> namedOverrides

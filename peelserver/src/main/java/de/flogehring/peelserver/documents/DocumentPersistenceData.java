@@ -10,7 +10,6 @@ public record DocumentPersistenceData(
         String name,
         Map<String, PeelScriptId> scriptNameTags,
         String template,
-        RenderConfigurationId renderConfigurationId,
-        ExpressionRenderConfiguration localOverrides
+        RenderConfigurationId renderConfigurationId
 ) {
 }

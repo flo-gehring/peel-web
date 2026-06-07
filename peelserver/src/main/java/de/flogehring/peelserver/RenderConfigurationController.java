@@ -72,7 +72,6 @@ public class RenderConfigurationController implements RenderConfigurationService
         RenderConfigurationPersistence renderConfig = renderConfigurationRepository.findById(
                 id
         ).orElseThrow(() -> new ResourceNotFoundException("Render configuration with id " + id + " not found"));
-
         return new RenderConfigurationPersistenceDto(
                 renderConfig.getName(),
                 toDto(renderConfig.getExpressionRenderConfiguration())
@@ -84,6 +83,5 @@ public class RenderConfigurationController implements RenderConfigurationService
         return renderConfigurationRepository.findAll().stream().map(
                 renderConfig -> new IdNameTuple(renderConfig.getId(), renderConfig.getName())
         ).toList();
-
     }
 }

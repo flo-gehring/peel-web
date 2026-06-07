@@ -5,9 +5,10 @@ import de.flogehring.peel.core.trace.TraceExpression;
 import de.flogehring.peel.core.trace.TraceExpressionKind;
 import de.flogehring.peel.core.trace.TraceValue;
 import de.flogehring.peelserver.renderconfig.ExpressionRenderConfiguration;
+import io.pebbletemplates.pebble.PebbleEngine;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashMap;
+import java.io.StringWriter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -302,6 +303,93 @@ class ExpressionRendererTest {
         Map<String, Object> expression = TraceMapOutput.fromExpression(new TraceExpression.Literal(TraceValue.integer(5)));
         String rendered = ExpressionRenderer.of(config).render(expression);
         assertThat(rendered).isEqualTo("lit(5)");
+    }
+
+    @Test
+    void rendersWithSingleNamedOverrideFilter() {
+        ExpressionRenderConfiguration defaults = ExpressionRenderConfiguration.defaultConfig();
+        ExpressionRenderConfiguration config = ExpressionRenderConfiguration.of(
+                defaults.getDefaultTemplates().templates(),
+                Map.of(
+                        "literalOverride",
+                        Map.of(TraceExpressionKind.LITERAL, "OVR({{ valueText }})")
+                )
+        );
+
+        String rendered = renderWithFilter(config, "literalOverride", literal("42"));
+
+        assertThat(rendered).isEqualTo("OVR(42)");
+    }
+
+    @Test
+    void namedOverrideTemplateCanFallbackToDefaultTemplate() {
+        ExpressionRenderConfiguration defaults = ExpressionRenderConfiguration.defaultConfig();
+        ExpressionRenderConfiguration config = ExpressionRenderConfiguration.of(
+                defaults.getDefaultTemplates().templates(),
+                Map.of(
+                        "returnOverride",
+                        Map.of(
+                                TraceExpressionKind.RETURN_EXPR,
+                                "ret({{ expression | renderTraceExpression }})"
+                        )
+                )
+        );
+
+        Map<String, Object> expression = returnExpression(binaryOperator("+", literal("1"), literal("2")));
+        String rendered = renderWithFilter(config, "returnOverride", expression);
+
+        assertThat(rendered).isEqualTo("ret(1 + 2)");
+    }
+
+    @Test
+    void multipleNamedOverridesCanCallEachOther() {
+        ExpressionRenderConfiguration defaults = ExpressionRenderConfiguration.defaultConfig();
+        ExpressionRenderConfiguration config = ExpressionRenderConfiguration.of(
+                defaults.getDefaultTemplates().templates(),
+                Map.of(
+                        "verboseBinary",
+                        Map.of(
+                                TraceExpressionKind.BINARY_OPERATOR,
+                                "{{ lhs | literalPretty }} {{ operator }} {{ rhs | literalPretty }}"
+                        ),
+                        "literalPretty",
+                        Map.of(
+                                TraceExpressionKind.LITERAL,
+                                "lit({{ valueText }})"
+                        )
+                )
+        );
+
+        Map<String, Object> expression = binaryOperator("+", literal("1"), literal("2"));
+        String rendered = renderWithFilter(config, "verboseBinary", expression);
+
+        assertThat(rendered).isEqualTo("lit(1) + lit(2)");
+    }
+
+    private static String renderWithFilter(
+            ExpressionRenderConfiguration config,
+            String filterName,
+            Map<String, Object> expression
+    ) {
+        return renderWithTemplate(config, "{{ expression | " + filterName + " }}", expression);
+    }
+
+    private static String renderWithTemplate(
+            ExpressionRenderConfiguration config,
+            String template,
+            Map<String, Object> expression
+    ) {
+        PebbleEngine engine = new PebbleEngine.Builder()
+                .extension(new TraceRenderingPebbleExtension(config))
+                .build();
+
+        StringWriter writer = new StringWriter();
+        try {
+            engine.getLiteralTemplate(template).evaluate(writer, Map.of("expression", expression));
+            return writer.toString();
+        } catch (Exception ex) {
+            throw new RuntimeException("Failed rendering test template", ex);
+        }
     }
 
     private static Map<String, Object> literal(String valueText) {

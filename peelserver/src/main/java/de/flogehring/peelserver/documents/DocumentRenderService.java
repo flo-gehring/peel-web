@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.StringWriter;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -39,9 +40,11 @@ public class DocumentRenderService {
                         )
                 )
         );
+        HashMap<String, Object> context = new HashMap<>(bindings);
+        context.putAll(programmContext);
         StringWriter writer = new StringWriter();
         try {
-            engine.getLiteralTemplate(document.template()).evaluate(writer, programmContext);
+            engine.getLiteralTemplate(document.template()).evaluate(writer, context);
             return writer.toString();
         } catch (Exception ex) {
             throw new IllegalArgumentException("Template rendering failed: " + ex.getMessage(), ex);

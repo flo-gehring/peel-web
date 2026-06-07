@@ -105,6 +105,7 @@ const traceExpressionKindSchema = z.enum([
 
 const renderConfigurationDtoSchema = z.object({
   renderConfigurations: z.partialRecord(traceExpressionKindSchema, z.string()),
+  namedOverrides: z.record(z.string(), z.partialRecord(traceExpressionKindSchema, z.string())),
 })
 
 const renderConfigurationSummarySchema = z.object({

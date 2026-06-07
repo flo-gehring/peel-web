@@ -6,6 +6,6 @@ import java.util.Map;
 
 public record RenderConfigurationDto(
         Map<TraceExpressionKind, String> renderConfigurations,
-        Map<String, Map<TraceExpressionKind, String>> defaultOverrides
+        Map<String, Map<TraceExpressionKind, String>> namedOverrides
 ) {
 }

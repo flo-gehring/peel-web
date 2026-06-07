@@ -47,6 +47,7 @@ export type TraceExpressionKind =
 
 export interface RenderConfigurationDto {
   renderConfigurations: Partial<Record<TraceExpressionKind, string>>
+  namedOverrides: Record<string, Partial<Record<TraceExpressionKind, string>>>
 }
 
 export interface RenderConfigurationSummary {
@@ -75,7 +76,6 @@ export interface DocumentSaveRequest {
   scriptNameTags: Record<string, string>
   template: string
   renderConfigurationId: string
-  localOverrides: RenderConfigurationDto
 }
 
 export interface DocumentSaveResponse {
@@ -86,10 +86,9 @@ export interface DocumentSaveResponse {
 }
 
 export interface DocumentPreviewRequest {
-  scripTags: Record<string, { id: string }>
+  scriptTags: Record<string, { id: string }>
   bindings: JsonObject
   renderConfigId: string
-  localOverrides: RenderConfigurationDto
   template: string
 }
 

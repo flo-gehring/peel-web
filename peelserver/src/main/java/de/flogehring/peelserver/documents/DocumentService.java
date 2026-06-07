@@ -37,16 +37,14 @@ public class DocumentService implements DocumentController {
                             request.name(),
                             transformMapValues(request.scriptNameTags(), PeelScriptId::new),
                             request.template(),
-                            new RenderConfigurationId(request.renderConfigurationId()),
-                            toExpressionRenderConfig(request.localOverrides())
+                            new RenderConfigurationId(request.renderConfigurationId())
                     ));
             DocumentPersistence saved = peelDocumentRepository.save(
                     existing.update(
                             request.name(),
                             transformMapValues(request.scriptNameTags(), PeelScriptId::new),
                             template,
-                            new RenderConfigurationId(request.renderConfigurationId()),
-                            toExpressionRenderConfig(request.localOverrides())
+                            new RenderConfigurationId(request.renderConfigurationId())
                     ));
             return getSaveResponse(saved, DocumentSaveResponse.SaveType.CREATED);
         }
@@ -55,8 +53,7 @@ public class DocumentService implements DocumentController {
                 request.name(),
                 transformMapValues(request.scriptNameTags(), PeelScriptId::new),
                 template,
-                new RenderConfigurationId(request.renderConfigurationId()),
-                toExpressionRenderConfig(request.localOverrides())
+                new RenderConfigurationId(request.renderConfigurationId())
         );
         DocumentPersistence saved = peelDocumentRepository.save(created);
         return getSaveResponse(saved, DocumentSaveResponse.SaveType.UPDATED);
@@ -97,8 +94,7 @@ public class DocumentService implements DocumentController {
                 request.template(),
                 renderConfigurationRepository.findById(request.renderConfigId())
                         .orElseThrow(() -> new ResourceNotFoundException("Render configuration not found: " + request.renderConfigId()))
-                        .getExpressionRenderConfiguration(),
-                toExpressionRenderConfig(request.localOverrides())
+                        .getExpressionRenderConfiguration()
         );
         String html = documentRenderService.render(document, request.bindings());
         return new DocumentPreviewResponse(html);
@@ -120,8 +116,7 @@ public class DocumentService implements DocumentController {
                 data.name(),
                 transformMapValues(data.scriptNameTags(), this::getPeelScript),
                 documentPersistence.getData().template(),
-                renderConfigurationRepository.findById(data.renderConfigurationId().id()).orElseThrow(() -> new ResourceNotFoundException("Render configuration not found: " + data.renderConfigurationId().id())).getExpressionRenderConfiguration(),
-                documentPersistence.getData().localOverrides()
+                renderConfigurationRepository.findById(data.renderConfigurationId().id()).orElseThrow(() -> new ResourceNotFoundException("Render configuration not found: " + data.renderConfigurationId().id())).getExpressionRenderConfiguration()
         );
         String html = documentRenderService.render(document, bindings);
         return new DocumentPreviewResponse(html);

@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, FilePlus2, LoaderCircle, Save } from 'lucide-react'
+import { ChevronLeft, ChevronRight, FilePlus2, LoaderCircle, Plus, Save, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 import {
@@ -20,7 +20,12 @@ export function RenderConfigurationsMode() {
   const queryClient = useQueryClient()
   const [selectedRenderConfigId, setSelectedRenderConfigId] = useState<string | null>(null)
   const [name, setName] = useState('Untitled render config')
-  const [templatesByKind, setTemplatesByKind] = useState<Partial<Record<TraceExpressionKind, string>>>({})
+  const [defaultTemplatesByKind, setDefaultTemplatesByKind] = useState<Partial<Record<TraceExpressionKind, string>>>({})
+  const [namedOverrides, setNamedOverrides] = useState<
+    Record<string, Partial<Record<TraceExpressionKind, string>>>
+  >({})
+  const [selectedOverrideName, setSelectedOverrideName] = useState<string | null>(null)
+  const [newOverrideName, setNewOverrideName] = useState('')
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
     const raw = localStorage.getItem(SIDEBAR_STATE_STORAGE_KEY)
     if (raw === null) {
@@ -39,7 +44,10 @@ export function RenderConfigurationsMode() {
     onSuccess: (loadedConfig, id) => {
       setSelectedRenderConfigId(id)
       setName(loadedConfig.name)
-      setTemplatesByKind(loadedConfig.renderConfigurationDto.renderConfigurations)
+      setDefaultTemplatesByKind(loadedConfig.renderConfigurationDto.renderConfigurations)
+      setNamedOverrides(loadedConfig.renderConfigurationDto.namedOverrides)
+      const overrideNames = Object.keys(loadedConfig.renderConfigurationDto.namedOverrides)
+      setSelectedOverrideName(overrideNames.length > 0 ? overrideNames[0] : null)
     },
   })
 
@@ -48,7 +56,11 @@ export function RenderConfigurationsMode() {
     onSuccess: (defaultConfig) => {
       setSelectedRenderConfigId(null)
       setName('Untitled render config')
-      setTemplatesByKind(defaultConfig.renderConfigurations)
+      setDefaultTemplatesByKind(defaultConfig.renderConfigurations)
+      setNamedOverrides(defaultConfig.namedOverrides)
+      const overrideNames = Object.keys(defaultConfig.namedOverrides)
+      setSelectedOverrideName(overrideNames.length > 0 ? overrideNames[0] : null)
+      setNewOverrideName('')
     },
   })
 
@@ -76,6 +88,8 @@ export function RenderConfigurationsMode() {
   const defaultError = formatError(getDefaultMutation.error)
 
   const sortedKinds = useMemo(() => TRACE_EXPRESSION_KINDS, [])
+  const overrideNames = useMemo(() => Object.keys(namedOverrides).sort((left, right) => left.localeCompare(right)), [namedOverrides])
+  const selectedOverrideTemplates = selectedOverrideName ? namedOverrides[selectedOverrideName] ?? {} : {}
 
   function toggleSidebar() {
     const nextState = !isSidebarOpen
@@ -91,7 +105,8 @@ export function RenderConfigurationsMode() {
     const payload: RenderConfigurationDetail = {
       name: name.trim(),
       renderConfigurationDto: {
-        renderConfigurations: templatesByKind,
+        renderConfigurations: defaultTemplatesByKind,
+        namedOverrides,
       },
     }
 
@@ -101,6 +116,30 @@ export function RenderConfigurationsMode() {
     }
 
     updateRenderConfigMutation.mutate({ id: selectedRenderConfigId, payload })
+  }
+
+  function handleAddOverride() {
+    const nextName = newOverrideName.trim()
+    if (nextName.length === 0 || nextName in namedOverrides) {
+      return
+    }
+    setNamedOverrides((current) => ({ ...current, [nextName]: {} }))
+    setSelectedOverrideName(nextName)
+    setNewOverrideName('')
+  }
+
+  function handleDeleteSelectedOverride() {
+    if (!selectedOverrideName) {
+      return
+    }
+    const deletedOverrideName = selectedOverrideName
+    setNamedOverrides((current) => {
+      const next = { ...current }
+      delete next[deletedOverrideName]
+      return next
+    })
+    const remaining = overrideNames.filter((overrideName) => overrideName !== deletedOverrideName)
+    setSelectedOverrideName(remaining.length > 0 ? remaining[0] : null)
   }
 
   return (
@@ -181,7 +220,7 @@ export function RenderConfigurationsMode() {
             placeholder="Render configuration name"
             title="Editable render configuration title"
           />
-          <p className="text-xs text-slate-400">Edit templates per TraceExpressionKind and save.</p>
+          <p className="text-xs text-slate-400">Edit default templates and named overrides per TraceExpressionKind.</p>
           <button
             type="button"
             className={clsx(
@@ -208,33 +247,135 @@ export function RenderConfigurationsMode() {
           <p className="rounded border border-rose-800/70 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">{saveError}</p>
         ) : null}
 
-        <div className="min-h-0 overflow-auto border border-slate-800 bg-slate-900/60 p-3">
-          <div className="space-y-2">
-            {sortedKinds.map((kind) => {
-              const currentValue = templatesByKind[kind] ?? ''
-              return (
-                <details key={kind} className="rounded border border-slate-800 bg-slate-950/40" open={currentValue.length > 0}>
-                  <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-200">
-                    {kind}
-                    <span className="ml-2 text-xs text-slate-500">{currentValue.trim().length > 0 ? 'configured' : 'empty'}</span>
-                  </summary>
-                  <div className="border-t border-slate-800 p-3">
-                    <textarea
-                      value={currentValue}
-                      onChange={(event) => {
-                        const nextValue = event.target.value
-                        setTemplatesByKind((current) => ({
-                          ...current,
-                          [kind]: nextValue,
-                        }))
-                      }}
-                      className="h-28 w-full resize-y rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none focus:border-teal-500"
-                      spellCheck={false}
-                    />
-                  </div>
-                </details>
-              )
-            })}
+        <div className="grid min-h-0 gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="min-h-0 overflow-auto rounded border border-slate-800 bg-slate-900/60 p-3">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">Default Templates</h3>
+            <div className="space-y-2">
+              {sortedKinds.map((kind) => {
+                const currentValue = defaultTemplatesByKind[kind] ?? ''
+                return (
+                  <details key={kind} className="rounded border border-slate-800 bg-slate-950/40" open={currentValue.length > 0}>
+                    <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-200">
+                      {kind}
+                      <span className="ml-2 text-xs text-slate-500">{currentValue.trim().length > 0 ? 'configured' : 'empty'}</span>
+                    </summary>
+                    <div className="border-t border-slate-800 p-3">
+                      <textarea
+                        value={currentValue}
+                        onChange={(event) => {
+                          const nextValue = event.target.value
+                          setDefaultTemplatesByKind((current) => ({
+                            ...current,
+                            [kind]: nextValue,
+                          }))
+                        }}
+                        className="h-28 w-full resize-y rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none focus:border-teal-500"
+                        spellCheck={false}
+                      />
+                    </div>
+                  </details>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="grid min-h-0 gap-3 overflow-hidden">
+            <div className="rounded border border-slate-800 bg-slate-900/60 p-3">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">Named Overrides</h3>
+              <div className="mb-2 flex items-center gap-2">
+                <input
+                  value={newOverrideName}
+                  onChange={(event) => setNewOverrideName(event.target.value)}
+                  className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-100 outline-none focus:border-teal-500"
+                  placeholder="New override name"
+                />
+                <button
+                  type="button"
+                  className="rounded border border-slate-700 bg-slate-900 p-2 text-slate-300 hover:border-teal-500"
+                  onClick={handleAddOverride}
+                  disabled={newOverrideName.trim().length === 0 || newOverrideName.trim() in namedOverrides}
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
+              <div className="max-h-40 space-y-1 overflow-auto pr-1">
+                {overrideNames.map((overrideName) => (
+                  <button
+                    key={overrideName}
+                    type="button"
+                    className={clsx(
+                      'w-full rounded border px-2 py-1.5 text-left text-sm',
+                      selectedOverrideName === overrideName
+                        ? 'border-teal-500 bg-teal-500/10 text-teal-100'
+                        : 'border-slate-800 bg-slate-950/40 text-slate-300 hover:border-slate-700',
+                    )}
+                    onClick={() => setSelectedOverrideName(overrideName)}
+                  >
+                    {overrideName}
+                  </button>
+                ))}
+                {overrideNames.length === 0 ? (
+                  <p className="text-xs text-slate-500">No named overrides yet.</p>
+                ) : null}
+              </div>
+              <div className="mt-2 flex justify-end">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded border border-rose-800 bg-rose-950/30 px-2 py-1 text-xs text-rose-200 hover:bg-rose-950/50 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={handleDeleteSelectedOverride}
+                  disabled={!selectedOverrideName}
+                >
+                  <Trash2 size={12} />
+                  Remove
+                </button>
+              </div>
+            </div>
+
+            <div className="min-h-0 overflow-auto rounded border border-slate-800 bg-slate-900/60 p-3">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">
+                {selectedOverrideName ? `Override Templates: ${selectedOverrideName}` : 'Select or create an override'}
+              </h3>
+              {selectedOverrideName ? (
+                <div className="space-y-2">
+                  {sortedKinds.map((kind) => {
+                    const currentValue = selectedOverrideTemplates[kind] ?? ''
+                    return (
+                      <details
+                        key={kind}
+                        className="rounded border border-slate-800 bg-slate-950/40"
+                        open={currentValue.length > 0}
+                      >
+                        <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-slate-200">
+                          {kind}
+                          <span className="ml-2 text-xs text-slate-500">
+                            {currentValue.trim().length > 0 ? 'configured' : 'falls back to default'}
+                          </span>
+                        </summary>
+                        <div className="border-t border-slate-800 p-3">
+                          <textarea
+                            value={currentValue}
+                            onChange={(event) => {
+                              const nextValue = event.target.value
+                              setNamedOverrides((current) => ({
+                                ...current,
+                                [selectedOverrideName]: {
+                                  ...(current[selectedOverrideName] ?? {}),
+                                  [kind]: nextValue,
+                                },
+                              }))
+                            }}
+                            className="h-24 w-full resize-y rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none focus:border-teal-500"
+                            spellCheck={false}
+                          />
+                        </div>
+                      </details>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500">Named override templates appear here once selected.</p>
+              )}
+            </div>
           </div>
         </div>
       </section>

@@ -42,8 +42,7 @@ public class DocumentPersistence {
             String name,
             Map<String, PeelScriptId> scriptNameTags,
             String template,
-            RenderConfigurationId renderCondfigurationId,
-            ExpressionRenderConfiguration localOverrides
+            RenderConfigurationId renderCondfigurationId
     ) {
         Instant now = Instant.now();
         return new DocumentPersistence(
@@ -52,8 +51,7 @@ public class DocumentPersistence {
                         name,
                         scriptNameTags,
                         template,
-                        renderCondfigurationId,
-                        localOverrides
+                        renderCondfigurationId
                 ),
                 now,
                 now
@@ -64,8 +62,7 @@ public class DocumentPersistence {
             String name,
             Map<String, PeelScriptId> scriptNameTags,
             String template,
-            RenderConfigurationId renderConfigurationId,
-            ExpressionRenderConfiguration localOverrides
+            RenderConfigurationId renderConfigurationId
     ) {
         return new DocumentPersistence(
                 id,
@@ -73,8 +70,7 @@ public class DocumentPersistence {
                         name,
                         scriptNameTags,
                         template,
-                        renderConfigurationId,
-                        localOverrides
+                        renderConfigurationId
                 ),
                 createdAt,
                 Instant.now()
