@@ -449,18 +449,32 @@ function compilePebbleTemplateFromEditor(editor: LexicalEditor): string {
   const html = $generateHtmlFromNodes(editor, null)
   const parser = new DOMParser()
   const document = parser.parseFromString(html, 'text/html')
+  const replacements = new Map<string, string>()
+  let replacementIndex = 0
+
+  const createToken = (value: string): string => {
+    const token = `__PEEL_MARKUP_TOKEN_${replacementIndex}__`
+    replacementIndex += 1
+    replacements.set(token, value)
+    return token
+  }
 
   const inlineElements = document.querySelectorAll('[data-peel-inline]')
   inlineElements.forEach((element) => {
     const expression = element.getAttribute('data-peel-inline') ?? ''
-    element.replaceWith(document.createTextNode(expression))
+    element.replaceWith(document.createTextNode(createToken(expression)))
   })
 
   const blockElements = document.querySelectorAll('[data-peel-block]')
   blockElements.forEach((element) => {
     const markup = element.getAttribute('data-peel-block') ?? ''
-    element.replaceWith(document.createTextNode(markup))
+    element.replaceWith(document.createTextNode(createToken(markup)))
   })
 
-  return document.body.innerHTML
+  let compiledTemplate = document.body.innerHTML
+  for (const [token, rawMarkup] of replacements.entries()) {
+    compiledTemplate = compiledTemplate.replaceAll(token, rawMarkup)
+  }
+
+  return compiledTemplate
 }
