@@ -1,6 +1,7 @@
 package de.flogehring.peelserver.error;
 
 import de.flogehring.peel.run.exceptions.PeelException;
+import de.flogehring.peelserver.projects.ProjectAlreadyExistsException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -20,6 +21,12 @@ public class ApiExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleBadRequest(IllegalArgumentException ex) {
         return ResponseEntity.badRequest().body(ApiErrorResponse.of("bad_request", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ProjectAlreadyExistsException.class)
+    public ResponseEntity<ApiErrorResponse> handleProjectConflict(ProjectAlreadyExistsException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiErrorResponse.of("project_already_exists", ex.getMessage()));
     }
 
     @ExceptionHandler(PeelException.class)

@@ -1,0 +1,18 @@
+{
+  "name": "peel-theia",
+  "private": true,
+  "version": "0.0.1",
+  "workspaces": [
+    "browser-app",
+    "extensions/peel-ide"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build:browser": "npm run -w browser-app bundle",
+    "start:browser": "npm run -w browser-app start",
+    "watch:browser": "npm run -w browser-app watch",
+    "watch:extension": "npm run -w peel-ide watch"
+  }
+}

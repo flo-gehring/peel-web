@@ -1,0 +1,31 @@
+{
+  "name": "peel-ide",
+  "version": "0.0.1",
+  "keywords": [
+    "theia-extension"
+  ],
+  "files": [
+    "lib",
+    "src"
+  ],
+  "dependencies": {
+    "@theia/core": "latest"
+  },
+  "devDependencies": {
+    "@types/react": "latest",
+    "rimraf": "latest",
+    "typescript": "~5.7.3"
+  },
+  "scripts": {
+    "prepare": "npm run clean && npm run build",
+    "clean": "rimraf lib",
+    "build": "tsc",
+    "watch": "tsc -w"
+  },
+  "theiaExtensions": [
+    {
+      "frontend": "lib/browser/peel-frontend-module",
+      "backend": "lib/node/peel-backend-module"
+    }
+  ]
+}
