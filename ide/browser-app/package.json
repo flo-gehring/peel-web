@@ -3,21 +3,21 @@
   "name": "browser-app",
   "version": "0.0.1",
   "dependencies": {
-    "@theia/core": "latest",
-    "@theia/editor": "latest",
-    "@theia/filesystem": "latest",
-    "@theia/messages": "latest",
-    "@theia/monaco": "latest",
-    "@theia/navigator": "latest",
-    "@theia/preferences": "latest",
-    "@theia/process": "latest",
-    "@theia/search-in-workspace": "latest",
-    "@theia/terminal": "latest",
-    "@theia/workspace": "latest",
+    "@theia/core": "1.73.0",
+    "@theia/editor": "1.73.0",
+    "@theia/filesystem": "1.73.0",
+    "@theia/messages": "1.73.0",
+    "@theia/monaco": "1.73.0",
+    "@theia/navigator": "1.73.0",
+    "@theia/preferences": "1.73.0",
+    "@theia/process": "1.73.0",
+    "@theia/search-in-workspace": "1.73.0",
+    "@theia/terminal": "1.73.0",
+    "@theia/workspace": "1.73.0",
     "peel-ide": "0.0.1"
   },
   "devDependencies": {
-    "@theia/cli": "latest"
+    "@theia/cli": "1.73.0"
   },
   "scripts": {
     "bundle": "theia build --mode development",
