@@ -1,0 +1,43 @@
+
+{
+  "name": "peel-web-theia",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  // Installs development tools right into the image cleanly
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:1": {
+      "installZsh": false,
+      "configureZshAsDefaultShell": false
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      },
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "redhat.vscode-yaml"
+      ]
+    }
+  },
+  // Forwards your Theia application port back to Windows
+  "forwardPorts": [
+    3000
+  ],
+  // Extra arguments passed directly to Docker on startup
+  "runArgs": [
+    // This allows the container to talk to localhost apps running on your Windows host
+    "--add-host=host.docker.internal:host-gateway",
+    // These two lines create anonymous native Linux volumes over the compiled output folders:
+    "--volume", "peel-theia-lib:/workspaces/peel-web/ide/browser-app/lib",
+    "--volume", "peel-theia-srcgen:/workspaces/peel-web/ide/browser-app/src-gen"
+  ],
+  "containerEnv": {
+    "PEEL_API_BASE_URL": "http://host.docker.internal:8080"
+  },
+  // This runs cleanly as the non-root node user with correct host permissions mapped
+  "remoteUser": "node",
+  "onCreateCommand": "sudo apt-get update && sudo apt-get install -y build-essential python3",
+  "postCreateCommand": "cd ide && npm install && sudo mkdir -p browser-app/lib browser-app/src-gen && sudo chown -R node:node browser-app/lib browser-app/src-gen && npm run build:browser"
+}

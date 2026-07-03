@@ -1,0 +1,9 @@
+.DS_Store
+Thumbs.db
+
+# Root editor settings
+.vscode/*
+!.vscode/extensions.json
+
+# Legacy/generated Theia artifacts at repo root
+src-gen/
