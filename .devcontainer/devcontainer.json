@@ -1,0 +1,39 @@
+{
+  "name": "PEEL Frontend and Backend Unified Devcontainer",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "java.configuration.runtimes": [
+          {
+            "name": "JavaSE-25",
+            "path": "/opt/java/openjdk",
+            "default": true
+          }
+        ],
+        "editor.formatOnSave": true
+      },
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vmware.vscode-spring-boot-dashboard",
+        
+        "Vue.volar",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
+  "forwardPorts": [8080, 5173],
+  "portsAttributes": {
+    "8080": {
+      "label": "Spring Boot Backend API"
+    },
+    "5173": {
+      "label": "Vue Frontend Dev Server"
+    }
+  },
+  "postCreateCommand": "java -version && node -v && npm -v"
+}
