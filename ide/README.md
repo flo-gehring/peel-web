@@ -15,6 +15,12 @@ This folder contains the Theia-based IDE application and custom Theia extension 
    npm install
    ```
 
+   If workspace linking gets out of sync, run:
+
+   ```bash
+   npm install --workspaces
+   ```
+
 2. Build and start browser app:
 
    ```bash

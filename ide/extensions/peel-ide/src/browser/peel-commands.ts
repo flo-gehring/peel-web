@@ -1,6 +1,11 @@
 import { Command } from '@theia/core/lib/common'
 
 export namespace PeelCommands {
+  export const SelectProject: Command = {
+    id: 'peel.project.select',
+    label: 'Peel: Select Project',
+  }
+
   export const OpenProjectsView: Command = {
     id: 'peel.projects.openView',
     label: 'Peel: Open Projects View',

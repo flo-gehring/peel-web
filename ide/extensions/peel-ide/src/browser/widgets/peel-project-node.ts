@@ -1,6 +1,7 @@
 import { CompositeTreeNode, ExpandableTreeNode, TreeNode } from '@theia/core/lib/browser'
+import { SelectableTreeNode } from '@theia/core/lib/browser/tree/tree-selection'
 
-export interface PeelTreeGroupNode extends CompositeTreeNode, ExpandableTreeNode {
+export interface PeelTreeGroupNode extends CompositeTreeNode, ExpandableTreeNode, SelectableTreeNode {
   readonly kind: 'group'
   readonly groupType: 'scripts' | 'documents' | 'render-configs'
 }
@@ -11,10 +12,11 @@ export namespace PeelTreeGroupNode {
   }
 }
 
-export interface PeelProjectNode extends CompositeTreeNode, ExpandableTreeNode {
+export interface PeelProjectNode extends CompositeTreeNode, ExpandableTreeNode, SelectableTreeNode {
   readonly kind: 'project'
   readonly projectId: string
   readonly description?: string
+  active?: boolean
 }
 
 export namespace PeelProjectNode {
@@ -23,7 +25,7 @@ export namespace PeelProjectNode {
   }
 }
 
-export interface PeelRootNode extends CompositeTreeNode {
+export interface PeelRootNode extends CompositeTreeNode, SelectableTreeNode {
   readonly kind: 'root'
 }
 

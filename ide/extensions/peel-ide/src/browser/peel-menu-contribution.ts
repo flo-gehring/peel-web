@@ -21,5 +21,10 @@ export class PeelMenuContribution implements MenuContribution {
       commandId: PeelCommands.RefreshProjects.id,
       label: 'Refresh Peel Projects',
     })
+
+    menus.registerMenuAction(CommonMenus.VIEW_VIEWS, {
+      commandId: PeelCommands.SelectProject.id,
+      label: 'Select Active Project',
+    })
   }
 }

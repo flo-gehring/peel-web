@@ -44,7 +44,10 @@ export class PeelProjectTreeWidget extends TreeWidget {
   }
 
   override toNodeName(node: TreeNode): string {
-    if (PeelRootNode.is(node) || PeelProjectNode.is(node) || PeelTreeGroupNode.is(node)) {
+    if (PeelProjectNode.is(node)) {
+      return node.active ? `${node.name ?? node.id} (active)` : node.name ?? node.id
+    }
+    if (PeelRootNode.is(node) || PeelTreeGroupNode.is(node)) {
       return node.name ?? node.id
     }
     return super.toNodeName(node)

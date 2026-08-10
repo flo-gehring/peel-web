@@ -4,7 +4,7 @@
   "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
   // Installs development tools right into the image cleanly
   "features": {
-    "ghcr.io/devcontainers/features/common-utils:1": {
+    "ghcr.io/devcontainers/features/common-utils:2.5.9": {
       "installZsh": false,
       "configureZshAsDefaultShell": false
     }

@@ -12,6 +12,11 @@ import de.flogehring.peelserver.api.projects.ProjectHealth;
 import de.flogehring.peelserver.api.projects.ProjectListResponse;
 import de.flogehring.peelserver.api.projects.ProjectPaths;
 import de.flogehring.peelserver.api.projects.ProjectSummaryResponse;
+import de.flogehring.peelserver.api.ScriptSummaryResponse;
+import de.flogehring.peelserver.api.scripts.ProjectRunRequest;
+import de.flogehring.peelserver.api.scripts.RunResponse;
+import de.flogehring.peelserver.api.scripts.ScriptDtoResponse;
+import de.flogehring.peelserver.api.scripts.ScriptSaveRequest;
 import de.flogehring.peelserver.error.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -52,6 +57,7 @@ public class ProjectApiService implements ProjectController {
     private static final String PEEL_PROJECT_FILE_NAME = "peel-project.json";
 
     private final ProjectSettings projectSettings;
+    private final ProjectScriptService projectScriptService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -106,6 +112,31 @@ public class ProjectApiService implements ProjectController {
         String encodedWorkspace = URLEncoder.encode(projectDirectory.toUri().toString(), StandardCharsets.UTF_8);
         String theiaBaseUrl = trimTrailingSlash(projectSettings.effectiveTheiaBaseUrl());
         return new IdeOpenUrlResponse(theiaBaseUrl + "/?workspace=" + encodedWorkspace);
+    }
+
+    @Override
+    public List<ScriptSummaryResponse> listProjectScripts(String projectId) {
+        return projectScriptService.listScripts(projectId);
+    }
+
+    @Override
+    public ScriptDtoResponse saveProjectScript(String projectId, ScriptSaveRequest request) {
+        return projectScriptService.saveScript(projectId, request);
+    }
+
+    @Override
+    public ScriptDtoResponse getProjectScript(String projectId, String scriptId) {
+        return projectScriptService.getScript(projectId, scriptId);
+    }
+
+    @Override
+    public void deleteProjectScript(String projectId, String scriptId) {
+        projectScriptService.deleteScript(projectId, scriptId);
+    }
+
+    @Override
+    public RunResponse runProjectScript(String projectId, ProjectRunRequest request) {
+        return projectScriptService.runScript(projectId, request);
     }
 
     private List<ProjectSnapshot> readProjectSnapshots() {
