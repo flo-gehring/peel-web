@@ -69,13 +69,8 @@ watch(code, (newVal) => {
 
 <template>
   <div class="editor-container">
-    <VueMonacoEditor
-      v-model:value="code"
-      :language="language"
-      :options="editorOptions"
-      @mount="handleMount"
-      class="monaco-editor-instance"
-    />
+    <VueMonacoEditor v-model:value="code" :language="language" :options="editorOptions" @mount="handleMount"
+      class="monaco-editor-instance" />
   </div>
 </template>
 

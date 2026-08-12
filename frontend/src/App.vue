@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { shallowRef, type DefineComponent } from 'vue'
-import { DockviewVue, type DockviewReadyEvent, type DockviewApi } from 'dockview-vue'
+import { DockviewVue, type DockviewReadyEvent, type DockviewApi, type VueComponent } from 'dockview-vue'
 
 // Mandatory CSS theme import for Dockview
 import 'dockview-vue/dist/styles/dockview.css'
@@ -8,6 +8,8 @@ import 'dockview-vue/dist/styles/dockview.css'
 import FileTreePanel from './components/FileTreePanel.vue'
 import EditorPanel from './components/EditorPanel.vue'
 import OutputPanel from './components/OutputPanel.vue'
+import GroupActions from './components/GroupActions.vue';
+
 
 // 1. Component Registry: Map identifier strings to Vue component definitions
 const components: Record<string, DefineComponent<Record<string, unknown>>> = {
@@ -15,6 +17,13 @@ const components: Record<string, DefineComponent<Record<string, unknown>>> = {
   editor: EditorPanel as DefineComponent<Record<string, unknown>>,
   output: OutputPanel as DefineComponent<Record<string, unknown>>,
 }
+
+const rightHeaderActionsComponent = GroupActions as unknown as VueComponent
+
+const percentageWidth = (percent: number): number => {
+  if (typeof window === 'undefined') return 0;
+  return Math.round((window.innerWidth * percent) / 100);
+};
 
 // Store reference to Dockview API
 const dockviewApi = shallowRef<DockviewApi | null>(null)
@@ -24,24 +33,33 @@ const onReady = (event: DockviewReadyEvent) => {
   const api = event.api
   dockviewApi.value = api
 
-  const fileTreePanel = api.addPanel({
+  const editorGroup = api.addGroup({ direction: 'right', id: 'editor-group' });
+
+  const leftGroup = api.addEdgeGroup('left', {
+    id: 'left-group',
+    initialSize: percentageWidth(20),
+    minimumSize: 50,
+  });
+  api.addPanel({
     id: 'file-tree',
     component: 'fileTree',
     title: 'Explorer',
-    initialWidth: 250,
+    initialWidth: percentageWidth(15),
     params: {
       onFileSelect: (filename: string) => openFileInEditor(filename),
     },
+    position: {
+      referenceGroup: leftGroup.id,
+    },
   })
 
-  const editorPanel = api.addPanel({
+  api.addPanel({
     id: 'editor-App.java',
     component: 'editor',
     title: 'App.java',
     params: { filename: 'App.java' },
     position: {
-      referencePanel: fileTreePanel,
-      direction: 'right',
+      referenceGroup: editorGroup,
     },
   })
 
@@ -51,7 +69,7 @@ const onReady = (event: DockviewReadyEvent) => {
     title: 'Output',
     initialHeight: 180,
     position: {
-      referencePanel: editorPanel,
+      referenceGroup: editorGroup,
       direction: 'below',
     },
   })
@@ -77,10 +95,10 @@ function openFileInEditor(filename: string) {
       params: { filename },
       ...(activeGroup
         ? {
-            position: {
-              referenceGroup: activeGroup,
-            },
-          }
+          position: {
+            referenceGroup: activeGroup,
+          },
+        }
         : {}),
     })
   }
@@ -89,11 +107,8 @@ function openFileInEditor(filename: string) {
 
 <template>
   <div class="app-layout">
-    <DockviewVue
-      class="dockview-root dockview-theme-abyss"
-      :components="components"
-      @ready="onReady"
-    />
+    <DockviewVue class="dockview-root dockview-theme-abyss" :components="components"
+      :rightHeaderActionsComponent="rightHeaderActionsComponent" @ready="onReady" />
   </div>
 </template>
 
