@@ -2,15 +2,16 @@
 import { ref, onMounted } from 'vue'
 
 import { api } from '@/adapter/client'
+import type { PeelWorkspaceDocument } from '@/adapter/ClientTypeDefinition'
+import { useWorkspaceSelectionStore } from '@/stores/workspaceSelection'
+
+type PeelScriptDocument = Extract<PeelWorkspaceDocument, { kind: 'peel' }>
 
 // Dockview passes panel props automatically to registered components
-defineProps<{
-  params?: {
-    onFileSelect?: (filename: string) => void
-  }
-}>()
+defineProps<{ params?: Record<string, never> }>()
 
-const files = ref<{ id: string; name: string; icon: string }[]>([])
+const files = ref<PeelScriptDocument[]>([])
+const selectionStore = useWorkspaceSelectionStore()
 
 const isLoading = ref(false)
 const activeFile = ref<string | null>(null)
@@ -22,9 +23,10 @@ async function fetchFiles() {
     .GET('/scripts')
     .then(({ data }) => {
       files.value = (data ?? []).map((script) => ({
+        kind: 'peel',
         id: script.id ?? '',
         name: script.name ?? '',
-        icon: '📄',
+        icon: '🍌',
       }))
     })
     .catch((error) => {
@@ -34,11 +36,9 @@ async function fetchFiles() {
   isLoading.value = false
 }
 
-function selectFile(filename: string, onFileSelect?: (fn: string) => void) {
-  activeFile.value = filename
-  if (onFileSelect) {
-    onFileSelect(filename)
-  }
+function selectDocument(file: PeelScriptDocument) {
+  activeFile.value = file.name
+  selectionStore.selectScript(file)
 }
 
 onMounted(() => fetchFiles())
@@ -51,7 +51,7 @@ onMounted(() => fetchFiles())
         v-for="file in files"
         :key="file.id"
         :class="{ active: activeFile === file.name }"
-        @click="selectFile(file.name, params?.onFileSelect)"
+        @click="selectDocument(file)"
       >
         <span class="file-icon">{{ file.icon }}</span>
         <span class="file-name">{{ file.name }}</span>

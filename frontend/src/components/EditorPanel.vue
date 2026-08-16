@@ -5,25 +5,23 @@ import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
 // 1. Accept props passed by Dockview via params
 const props = defineProps<{
   params?: {
+    documentId?: string
     filename?: string
     content?: string
-    onChange?: (value: string) => void
   }
 }>()
 
-// Default starter code if none provided
-const defaultJavaCode = `public class App {
-    public static void main(String[] args) {
-        System.out.println("Hello from Spring Boot + Monaco!");
-    }
-}`
-
 // 2. Reactive code buffer
-const code = ref(props.params?.content || defaultJavaCode)
+console.log('EditorPanel.vue props:', props)
+console.log('EditorPanel.vue params:', props.params)
+const code = ref(
+  props.params?.params?.content ||
+    `Trouble loading content for ${props.params?.params?.filename ?? 'unknown file'}`,
+)
 
 // 3. Dynamic language detection based on file extension
 const language = computed(() => {
-  const filename = props.params?.filename?.toLowerCase() || ''
+  const filename = props.params?.params.filename?.toLowerCase() || ''
   if (filename.endsWith('.java')) return 'java'
   if (filename.endsWith('.ts') || filename.endsWith('.js')) return 'typescript'
   if (filename.endsWith('.json')) return 'json'
@@ -61,16 +59,19 @@ const editorOptions = {
 
 // 6. Notify parent or handle content updates
 watch(code, (newVal) => {
-  if (props.params?.onChange) {
-    props.params.onChange(newVal)
-  }
+  useEditorDraftStore.setDraft(props.params?.params?.documentId ?? '', newVal)
 })
 </script>
 
 <template>
   <div class="editor-container">
-    <VueMonacoEditor v-model:value="code" :language="language" :options="editorOptions" @mount="handleMount"
-      class="monaco-editor-instance" />
+    <VueMonacoEditor
+      v-model:value="code"
+      :language="language"
+      :options="editorOptions"
+      @mount="handleMount"
+      class="monaco-editor-instance"
+    />
   </div>
 </template>
 

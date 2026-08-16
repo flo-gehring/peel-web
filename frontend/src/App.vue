@@ -1,6 +1,15 @@
 <script setup lang="ts">
-import { shallowRef, type DefineComponent } from 'vue'
-import { DockviewVue, type DockviewReadyEvent, type DockviewApi, type VueComponent } from 'dockview-vue'
+import { shallowRef, watch, type DefineComponent } from 'vue'
+import {
+  DockviewVue,
+  type DockviewReadyEvent,
+  type DockviewApi,
+  type VueComponent,
+} from 'dockview-vue'
+import { api } from '@/adapter/client'
+import type { PeelWorkspaceDocument } from '@/adapter/ClientTypeDefinition'
+import { useEditorDraftStore } from '@/stores/editorDrafts'
+import { useWorkspaceSelectionStore } from '@/stores/workspaceSelection'
 
 // Mandatory CSS theme import for Dockview
 import 'dockview-vue/dist/styles/dockview.css'
@@ -8,8 +17,7 @@ import 'dockview-vue/dist/styles/dockview.css'
 import FileTreePanel from './components/FileTreePanel.vue'
 import EditorPanel from './components/EditorPanel.vue'
 import OutputPanel from './components/OutputPanel.vue'
-import GroupActions from './components/GroupActions.vue';
-
+import GroupActions from './components/GroupActions.vue'
 
 // 1. Component Registry: Map identifier strings to Vue component definitions
 const components: Record<string, DefineComponent<Record<string, unknown>>> = {
@@ -19,41 +27,44 @@ const components: Record<string, DefineComponent<Record<string, unknown>>> = {
 }
 
 const rightHeaderActionsComponent = GroupActions as unknown as VueComponent
+type PeelScriptDocument = Extract<PeelWorkspaceDocument, { kind: 'peel' }>
 
 const percentageWidth = (percent: number): number => {
-  if (typeof window === 'undefined') return 0;
-  return Math.round((window.innerWidth * percent) / 100);
-};
+  if (typeof window === 'undefined') return 0
+  return Math.round((window.innerWidth * percent) / 100)
+}
 
 // Store reference to Dockview API
 const dockviewApi = shallowRef<DockviewApi | null>(null)
+const editorGroupId = shallowRef<string | null>(null)
+const draftStore = useEditorDraftStore()
+const selectionStore = useWorkspaceSelectionStore()
+const pendingOpenById = new Map<string, Promise<void>>()
 
 // 2. Layout Initialization Callback
 const onReady = (event: DockviewReadyEvent) => {
-  const api = event.api
-  dockviewApi.value = api
+  const dockApi = event.api
+  dockviewApi.value = dockApi
 
-  const editorGroup = api.addGroup({ direction: 'right', id: 'editor-group' });
+  const editorGroup = dockApi.addGroup({ direction: 'right', id: 'editor-group' })
+  editorGroupId.value = editorGroup.id
 
-  const leftGroup = api.addEdgeGroup('left', {
+  const leftGroup = dockApi.addEdgeGroup('left', {
     id: 'left-group',
     initialSize: percentageWidth(20),
     minimumSize: 50,
-  });
-  api.addPanel({
+  })
+  dockApi.addPanel({
     id: 'file-tree',
     component: 'fileTree',
     title: 'Explorer',
     initialWidth: percentageWidth(15),
-    params: {
-      onFileSelect: (filename: string) => openFileInEditor(filename),
-    },
     position: {
       referenceGroup: leftGroup.id,
     },
   })
 
-  api.addPanel({
+  dockApi.addPanel({
     id: 'editor-App.java',
     component: 'editor',
     title: 'App.java',
@@ -63,7 +74,7 @@ const onReady = (event: DockviewReadyEvent) => {
     },
   })
 
-  api.addPanel({
+  dockApi.addPanel({
     id: 'output-console',
     component: 'output',
     title: 'Output',
@@ -75,40 +86,107 @@ const onReady = (event: DockviewReadyEvent) => {
   })
 }
 
+watch(
+  () => selectionStore.selectionVersion,
+  async () => {
+    const selected = selectionStore.selectedScript
+    if (!selected) {
+      return
+    }
+
+    try {
+      await openFileInEditor(selected)
+    } catch (error) {
+      console.error('Failed while handling file selection:', error)
+    }
+  },
+)
+
 // 3. Dynamic Action: Open or Switch Editor Tabs Programmatically
-function openFileInEditor(filename: string) {
+async function openFileInEditor(file: PeelScriptDocument) {
+  console.log(`Opening new editor tab for file: ${file.name} (ID: ${file.id})`)
+
   if (!dockviewApi.value) return
 
-  const panelId = `editor-${filename}`
+  const panelId = `editor-script-${file.id}`
   const existingPanel = dockviewApi.value.getPanel(panelId)
 
   if (existingPanel) {
-    // Panel already exists: Focus its tab
     existingPanel.api.setActive()
-  } else {
-    const activeGroup = dockviewApi.value.activeGroup || dockviewApi.value.groups[0]
+    return
+  }
 
-    dockviewApi.value.addPanel({
+  const inFlightOpen = pendingOpenById.get(file.id)
+  if (inFlightOpen) {
+    await inFlightOpen
+    const panelAfterOpen = dockviewApi.value?.getPanel(panelId)
+    panelAfterOpen?.api.setActive()
+    return
+  }
+
+  const openPromise = (async () => {
+    let content = draftStore.getDraft(file.id)
+
+    if (content === undefined) {
+      const { data, error } = await api.GET('/scripts/{id}', {
+        params: {
+          path: { id: file.id },
+        },
+      })
+      console.log(`Fetched script content for ${file.name}:`, data, error)
+
+      if (error) {
+        console.error('Failed to load script content for editor tab:', error)
+        content = ''
+      } else {
+        content = data?.script ?? ''
+      }
+
+      draftStore.markLoaded(file.id, content)
+    }
+
+    const editorGroup = dockviewApi.value?.groups.find((group) => group.id === editorGroupId.value)
+    const targetGroup =
+      editorGroup || dockviewApi.value?.activeGroup || dockviewApi.value?.groups[0]
+
+    dockviewApi.value?.addPanel({
       id: panelId,
       component: 'editor',
-      title: filename,
-      params: { filename },
-      ...(activeGroup
+      title: file.name,
+      params: {
+        filename: file.name,
+        content,
+        documentId: file.id,
+        onChange: (value: string) => draftStore.setDraft(file.id, value),
+      },
+      ...(targetGroup
         ? {
-          position: {
-            referenceGroup: activeGroup,
-          },
-        }
+            position: {
+              referenceGroup: targetGroup,
+            },
+          }
         : {}),
     })
+  })()
+
+  pendingOpenById.set(file.id, openPromise)
+
+  try {
+    await openPromise
+  } finally {
+    pendingOpenById.delete(file.id)
   }
 }
 </script>
 
 <template>
   <div class="app-layout">
-    <DockviewVue class="dockview-root dockview-theme-abyss" :components="components"
-      :rightHeaderActionsComponent="rightHeaderActionsComponent" @ready="onReady" />
+    <DockviewVue
+      class="dockview-root dockview-theme-abyss"
+      :components="components"
+      :rightHeaderActionsComponent="rightHeaderActionsComponent"
+      @ready="onReady"
+    />
   </div>
 </template>
 
