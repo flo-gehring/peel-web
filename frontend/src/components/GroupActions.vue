@@ -4,6 +4,7 @@ import type { IDockviewHeaderActionsProps } from 'dockview-vue'
 import { computed, ref } from 'vue'
 import { api } from '@/adapter/client'
 import { useEditorDraftStore } from '@/stores/editorDrafts'
+import { useRunOutputStore } from '@/stores/runOutput'
 
 // Dockview passes a `params` prop to header action components
 const props = defineProps<{
@@ -12,8 +13,10 @@ const props = defineProps<{
 
 const showActions = computed(() => props.params.activePanel?.id.startsWith('editor-') ?? false)
 const isSaving = ref(false)
+const isRunning = ref(false)
 
 const draftStore = useEditorDraftStore()
+const runOutputStore = useRunOutputStore()
 
 type EditorPanelParams = {
   filename?: string
@@ -99,16 +102,61 @@ const handleSave = async () => {
   }
 }
 
-const handleCustomAction = () => {
-  console.log('Active Panel in Group:', props.params.activePanel?.id)
-  console.log('Group ID:', props.params.group.id)
+const handleRun = async () => {
+  const context = getActiveEditorContext()
+  if (!context || isRunning.value) {
+    return
+  }
+
+  const latestDraft = draftStore.getDraftByReference(context.panelId, context.documentId)
+  const script = latestDraft ?? context.initialContent
+
+  if (!script) {
+    runOutputStore.setRunError('No script content available to run.')
+    return
+  }
+
+  isRunning.value = true
+  runOutputStore.startRun({
+    panelId: context.panelId,
+    name: context.name,
+    script,
+  })
+
+  try {
+    const { data, error } = await api.POST('/run', {
+      body: {
+        script,
+        bindings: {},
+      },
+    })
+
+    if (error) {
+      const message = (error as { message?: string })?.message || 'Run request failed.'
+      runOutputStore.setRunError(message)
+      return
+    }
+
+    runOutputStore.setRunSuccess({
+      trace: data?.trace,
+      result: data?.result,
+    })
+
+    const outputPanel = props.params.containerApi.getPanel('output-console')
+    outputPanel?.api.setActive()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unexpected run error.'
+    runOutputStore.setRunError(message)
+  } finally {
+    isRunning.value = false
+  }
 }
 </script>
 
 <template>
   <div v-if="showActions" class="group-header-actions">
     <button class="action-btn" :disabled="isSaving" title="Save file" @click="handleSave">💾</button>
-    <button class="action-btn" title="Run Action" @click="handleCustomAction">▶️</button>
+    <button class="action-btn" :disabled="isRunning" title="Run script" @click="handleRun">▶️</button>
   </div>
 </template>
 
