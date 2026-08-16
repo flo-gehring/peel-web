@@ -29,6 +29,7 @@ const formattedRequest = computed(() => {
       name: runOutputStore.request.name,
       panelId: runOutputStore.request.panelId,
       script: runOutputStore.request.script,
+      bindings: runOutputStore.request.bindings,
     },
     null,
     2,

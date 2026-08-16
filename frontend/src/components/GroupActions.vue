@@ -4,6 +4,7 @@ import type { IDockviewHeaderActionsProps } from 'dockview-vue'
 import { computed, ref } from 'vue'
 import { api } from '@/adapter/client'
 import { useEditorDraftStore } from '@/stores/editorDrafts'
+import { useRunBindingsStore } from '@/stores/runBindings'
 import { useRunOutputStore } from '@/stores/runOutput'
 
 // Dockview passes a `params` prop to header action components
@@ -16,6 +17,7 @@ const isSaving = ref(false)
 const isRunning = ref(false)
 
 const draftStore = useEditorDraftStore()
+const bindingsStore = useRunBindingsStore()
 const runOutputStore = useRunOutputStore()
 
 type EditorPanelParams = {
@@ -116,18 +118,28 @@ const handleRun = async () => {
     return
   }
 
+  const bindings = bindingsStore.parseBindings()
+  if (!bindings) {
+    const message = bindingsStore.parseError || 'Invalid bindings JSON.'
+    runOutputStore.setRunError(message)
+    const outputPanel = props.params.containerApi.getPanel('output-console')
+    outputPanel?.api.setActive()
+    return
+  }
+
   isRunning.value = true
   runOutputStore.startRun({
     panelId: context.panelId,
     name: context.name,
     script,
+    bindings,
   })
 
   try {
     const { data, error } = await api.POST('/run', {
       body: {
         script,
-        bindings: {},
+        bindings,
       },
     })
 

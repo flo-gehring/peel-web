@@ -16,6 +16,7 @@ import 'dockview-vue/dist/styles/dockview.css'
 // Import panel components
 import FileTreePanel from './components/FileTreePanel.vue'
 import EditorPanel from './components/EditorPanel.vue'
+import BindingsPanel from './components/BindingsPanel.vue'
 import OutputPanel from './components/OutputPanel.vue'
 import GroupActions from './components/GroupActions.vue'
 
@@ -23,6 +24,7 @@ import GroupActions from './components/GroupActions.vue'
 const components: Record<string, DefineComponent<Record<string, unknown>>> = {
   fileTree: FileTreePanel as DefineComponent<Record<string, unknown>>,
   editor: EditorPanel as DefineComponent<Record<string, unknown>>,
+  bindings: BindingsPanel as DefineComponent<Record<string, unknown>>,
   output: OutputPanel as DefineComponent<Record<string, unknown>>,
 }
 
@@ -54,6 +56,7 @@ const onReady = (event: DockviewReadyEvent) => {
     initialSize: percentageWidth(20),
     minimumSize: 50,
   })
+
   dockApi.addPanel({
     id: 'file-tree',
     component: 'fileTree',
@@ -69,6 +72,16 @@ const onReady = (event: DockviewReadyEvent) => {
     component: 'editor',
     title: 'App.java',
     params: { filename: 'App.java' },
+    position: {
+      referenceGroup: editorGroup,
+    },
+  })
+
+  dockApi.addPanel({
+    id: 'bindings-json',
+    component: 'bindings',
+    title: 'Bindings',
+    params: {},
     position: {
       referenceGroup: editorGroup,
     },

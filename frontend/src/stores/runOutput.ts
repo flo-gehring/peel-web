@@ -5,6 +5,7 @@ type RunRequestInfo = {
   panelId: string
   name: string
   script: string
+  bindings: Record<string, Record<string, never>>
 }
 
 type RunResponseInfo = {
