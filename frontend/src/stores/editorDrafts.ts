@@ -9,6 +9,7 @@ type DraftEntry = {
 
 export const useEditorDraftStore = defineStore('editorDrafts', () => {
   const draftsById = ref<Record<string, DraftEntry>>({})
+  const panelToDocumentId = ref<Record<string, string>>({})
 
   function hasDraft(id: string): boolean {
     return !!draftsById.value[id]
@@ -38,11 +39,64 @@ export const useEditorDraftStore = defineStore('editorDrafts', () => {
     }
   }
 
+  function markSaved(id: string, content?: string): void {
+    const existing = draftsById.value[id]
+    draftsById.value[id] = {
+      content: content ?? existing?.content ?? '',
+      dirty: false,
+      updatedAt: Date.now(),
+    }
+  }
+
+  function bindPanelToDocument(panelId: string, documentId: string): void {
+    panelToDocumentId.value[panelId] = documentId
+
+    const panelDraft = draftsById.value[panelId]
+    if (panelDraft) {
+      draftsById.value[documentId] = {
+        content: panelDraft.content,
+        dirty: panelDraft.dirty,
+        updatedAt: Date.now(),
+      }
+      delete draftsById.value[panelId]
+    }
+  }
+
+  function getDocumentIdForPanel(panelId: string): string | undefined {
+    return panelToDocumentId.value[panelId]
+  }
+
+  function resolveDraftKey(panelId: string, documentId?: string): string {
+    return documentId || panelToDocumentId.value[panelId] || panelId
+  }
+
+  function setDraftByReference(panelId: string, content: string, documentId?: string): void {
+    const key = resolveDraftKey(panelId, documentId)
+    setDraft(key, content)
+  }
+
+  function getDraftByReference(panelId: string, documentId?: string): string | undefined {
+    const key = resolveDraftKey(panelId, documentId)
+    return getDraft(key)
+  }
+
+  function markSavedByReference(panelId: string, content: string, documentId?: string): void {
+    const key = resolveDraftKey(panelId, documentId)
+    markSaved(key, content)
+  }
+
   return {
     draftsById,
+    panelToDocumentId,
     hasDraft,
     getDraft,
     markLoaded,
     setDraft,
+    markSaved,
+    bindPanelToDocument,
+    getDocumentIdForPanel,
+    setDraftByReference,
+    getDraftByReference,
+    markSavedByReference,
   }
 })

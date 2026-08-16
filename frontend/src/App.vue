@@ -157,7 +157,6 @@ async function openFileInEditor(file: PeelScriptDocument) {
         filename: file.name,
         content,
         documentId: file.id,
-        onChange: (value: string) => draftStore.setDraft(file.id, value),
       },
       ...(targetGroup
         ? {

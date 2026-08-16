@@ -1,34 +1,59 @@
 <script setup lang="ts">
 import { ref, computed, shallowRef, watch } from 'vue'
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
+import { useEditorDraftStore } from '@/stores/editorDrafts'
 
 // 1. Accept props passed by Dockview via params
 const props = defineProps<{
   params?: {
+    api?: {
+      id?: string
+    }
     documentId?: string
     filename?: string
     content?: string
+    id?: string
+    params?: {
+      documentId?: string
+      filename?: string
+      content?: string
+    }
   }
 }>()
 
-// 2. Reactive code buffer
-console.log('EditorPanel.vue props:', props)
-console.log('EditorPanel.vue params:', props.params)
-const code = ref(
-  props.params?.params?.content ||
-    `Trouble loading content for ${props.params?.params?.filename ?? 'unknown file'}`,
+const draftStore = useEditorDraftStore()
+
+const panelId = computed(() => props.params?.api?.id || props.params?.id || '')
+const documentId = computed(() => props.params?.params?.documentId || props.params?.documentId || '')
+const filename = computed(() => props.params?.params?.filename || props.params?.filename || 'untitled')
+const initialContent = computed(
+  () =>
+    props.params?.params?.content ||
+    props.params?.content ||
+    `Trouble loading content for ${filename.value}`,
 )
+
+if (panelId.value && documentId.value) {
+  draftStore.bindPanelToDocument(panelId.value, documentId.value)
+}
+
+const existingDraft = panelId.value
+  ? draftStore.getDraftByReference(panelId.value, documentId.value || undefined)
+  : undefined
+
+// 2. Reactive code buffer
+const code = ref(existingDraft ?? initialContent.value)
 
 // 3. Dynamic language detection based on file extension
 const language = computed(() => {
-  const filename = props.params?.params.filename?.toLowerCase() || ''
-  if (filename.endsWith('.java')) return 'java'
-  if (filename.endsWith('.ts') || filename.endsWith('.js')) return 'typescript'
-  if (filename.endsWith('.json')) return 'json'
-  if (filename.endsWith('.xml') || filename.endsWith('.pom')) return 'xml'
-  if (filename.endsWith('.md')) return 'markdown'
-  if (filename.endsWith('.css')) return 'css'
-  if (filename.endsWith('.html')) return 'html'
+  const lowered = filename.value.toLowerCase()
+  if (lowered.endsWith('.java')) return 'java'
+  if (lowered.endsWith('.ts') || lowered.endsWith('.js')) return 'typescript'
+  if (lowered.endsWith('.json')) return 'json'
+  if (lowered.endsWith('.xml') || lowered.endsWith('.pom')) return 'xml'
+  if (lowered.endsWith('.md')) return 'markdown'
+  if (lowered.endsWith('.css')) return 'css'
+  if (lowered.endsWith('.html')) return 'html'
   return 'plaintext'
 })
 
@@ -59,7 +84,11 @@ const editorOptions = {
 
 // 6. Notify parent or handle content updates
 watch(code, (newVal) => {
-  useEditorDraftStore.setDraft(props.params?.params?.documentId ?? '', newVal)
+  if (!panelId.value) {
+    return
+  }
+
+  draftStore.setDraftByReference(panelId.value, newVal, documentId.value || undefined)
 })
 </script>
 
