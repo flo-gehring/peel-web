@@ -20,9 +20,10 @@ repositories {
 
 dependencies {
 	implementation("de.flo-gehring:peel")
-	implementation("io.pebbletemplates:pebble:3.2.3")
+	implementation("io.pebbletemplates:pebble:3.2.4")
 	implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
 	implementation("org.springframework.boot:spring-boot-starter-mongodb")
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	compileOnly("org.projectlombok:lombok")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")

@@ -3,6 +3,12 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
+  "runArgs": [
+    "--add-host=host.docker.internal:host-gateway"
+  ],
+  "containerEnv": {
+    "VITE_API_BASE_URL": "http://host.docker.internal:8080"
+  },
   "remoteUser": "vscode",
   "customizations": {
     "vscode": {
@@ -19,20 +25,18 @@
       "extensions": [
         "vscjava.vscode-java-pack",
         "vmware.vscode-spring-boot-dashboard",
-        
         "Vue.volar",
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode"
       ]
     }
   },
-  "forwardPorts": [8080, 5173],
+  "forwardPorts": [
+    5173
+  ],
   "portsAttributes": {
-    "8080": {
-      "label": "Spring Boot Backend API"
-    },
     "5173": {
-      "label": "Vue Frontend Dev Server"
+      "label": "PEEL Frontend"
     }
   },
   "postCreateCommand": "java -version && node -v && npm -v"

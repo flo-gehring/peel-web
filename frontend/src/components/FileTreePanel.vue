@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+
+import { api } from '@/adapter/client'
 
 // Dockview passes panel props automatically to registered components
 defineProps<{
@@ -8,15 +10,29 @@ defineProps<{
   }
 }>()
 
-// Static file tree mock data
-const files = ref([
-  { id: '1', name: 'src/main/java/App.java', icon: '📄' },
-  { id: '2', name: 'src/main/java/Controller.java', icon: '📄' },
-  { id: '3', name: 'pom.xml', icon: '⚙️' },
-  { id: '4', name: 'README.md', icon: '📝' },
-])
+const files = ref<{ id: string; name: string; icon: string }[]>([])
 
-const activeFile = ref('App.java')
+const isLoading = ref(false)
+const activeFile = ref<string | null>(null)
+
+async function fetchFiles() {
+  console.log('Fetching files...')
+  isLoading.value = true
+  api
+    .GET('/scripts')
+    .then(({ data }) => {
+      files.value = (data ?? []).map((script) => ({
+        id: script.id ?? '',
+        name: script.name ?? '',
+        icon: '📄',
+      }))
+    })
+    .catch((error) => {
+      console.error('Error fetching files:', error)
+    })
+  console.log('Files fetched:', files.value)
+  isLoading.value = false
+}
 
 function selectFile(filename: string, onFileSelect?: (fn: string) => void) {
   activeFile.value = filename
@@ -24,8 +40,9 @@ function selectFile(filename: string, onFileSelect?: (fn: string) => void) {
     onFileSelect(filename)
   }
 }
-</script>
 
+onMounted(() => fetchFiles())
+</script>
 <template>
   <div class="file-tree-container">
     <div class="panel-header">PROJECT EXPLORER</div>
