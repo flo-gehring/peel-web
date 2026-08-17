@@ -6,6 +6,7 @@ import { api } from '@/adapter/client'
 import { useEditorDraftStore } from '@/stores/editorDrafts'
 import { useRunBindingsStore } from '@/stores/runBindings'
 import { useRunOutputStore } from '@/stores/runOutput'
+import { useWorkspaceSelectionStore } from '@/stores/workspaceSelection'
 
 // Dockview passes a `params` prop to header action components
 const props = defineProps<{
@@ -19,6 +20,7 @@ const isRunning = ref(false)
 const draftStore = useEditorDraftStore()
 const bindingsStore = useRunBindingsStore()
 const runOutputStore = useRunOutputStore()
+const workspaceSelectionStore = useWorkspaceSelectionStore()
 
 type EditorPanelParams = {
   filename?: string
@@ -71,6 +73,7 @@ const handleSave = async () => {
   try {
     const latestDraft = draftStore.getDraftByReference(context.panelId, context.documentId)
     const script = latestDraft ?? context.initialContent
+    const isNewScript = !context.documentId
     const payload = {
       id: context.documentId,
       name: context.name,
@@ -92,6 +95,9 @@ const handleSave = async () => {
     if (savedId) {
       draftStore.bindPanelToDocument(context.panelId, savedId)
       draftStore.markSavedByReference(context.panelId, script, savedId)
+      if (isNewScript) {
+        workspaceSelectionStore.notifyScriptsChanged()
+      }
     }
 
     if (savedName && props.params.activePanel) {

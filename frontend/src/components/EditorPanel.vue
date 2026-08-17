@@ -28,8 +28,8 @@ const documentId = computed(() => props.params?.params?.documentId || props.para
 const filename = computed(() => props.params?.params?.filename || props.params?.filename || 'untitled')
 const initialContent = computed(
   () =>
-    props.params?.params?.content ||
-    props.params?.content ||
+    props.params?.params?.content ??
+    props.params?.content ??
     `Trouble loading content for ${filename.value}`,
 )
 

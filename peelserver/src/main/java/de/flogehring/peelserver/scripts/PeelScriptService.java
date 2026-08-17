@@ -19,7 +19,7 @@ public class PeelScriptService implements PeelScriptController {
 
     @Override
     public ScriptDtoResponse saveScript(ScriptSaveRequest request) {
-        String scriptContent = requireScript(request.script());
+        String scriptContent = request.script();
         if (request.id() != null && !request.id().isBlank()) {
             PeelScriptPersistence existing = peelScriptRepository.findById(request.id())
                     .orElseGet(() -> PeelScriptPersistence.newScript(request.id(), request.name(), request.script()));
@@ -45,6 +45,11 @@ public class PeelScriptService implements PeelScriptController {
         PeelScriptPersistence peelScript = peelScriptRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Script not found: " + id));
         return toResponse(peelScript);
+    }
+
+    @Override
+    public void deleteScript(String id) {
+        peelScriptRepository.deleteById(id);
     }
 
     private String requireScript(String script) {

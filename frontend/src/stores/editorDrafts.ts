@@ -85,6 +85,16 @@ export const useEditorDraftStore = defineStore('editorDrafts', () => {
     markSaved(key, content)
   }
 
+  function removeDocument(id: string): void {
+    delete draftsById.value[id]
+
+    for (const [panelId, documentId] of Object.entries(panelToDocumentId.value)) {
+      if (documentId === id) {
+        delete panelToDocumentId.value[panelId]
+      }
+    }
+  }
+
   return {
     draftsById,
     panelToDocumentId,
@@ -98,5 +108,6 @@ export const useEditorDraftStore = defineStore('editorDrafts', () => {
     setDraftByReference,
     getDraftByReference,
     markSavedByReference,
+    removeDocument,
   }
 })

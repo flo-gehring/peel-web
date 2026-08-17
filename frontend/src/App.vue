@@ -115,6 +115,19 @@ watch(
   },
 )
 
+watch(
+  () => selectionStore.deletionVersion,
+  () => {
+    const id = selectionStore.deletedScriptId
+    if (!id) {
+      return
+    }
+
+    draftStore.removeDocument(id)
+    dockviewApi.value?.getPanel(`editor-script-${id}`)?.api.close()
+  },
+)
+
 // 3. Dynamic Action: Open or Switch Editor Tabs Programmatically
 async function openFileInEditor(file: PeelScriptDocument) {
   console.log(`Opening new editor tab for file: ${file.name} (ID: ${file.id})`)
