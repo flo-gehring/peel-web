@@ -18,7 +18,6 @@ export const useRunBindingsStore = defineStore('runBindings', () => {
       }
 
       const normalized = parsed as Record<string, unknown>
-
       const bindings = normalized as BindingsMap
       lastValidBindings.value = bindings
       parseError.value = null

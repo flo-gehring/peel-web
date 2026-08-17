@@ -7,8 +7,6 @@ public record DocumentSaveRequest(
         String name,
         Map<String, String> scriptNameTags,
         String template,
-        String templateHtml,
-        String editorStateJson,
         String renderConfigurationId
 ) {
 }

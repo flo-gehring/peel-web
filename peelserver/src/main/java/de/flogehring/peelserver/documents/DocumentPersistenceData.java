@@ -9,8 +9,6 @@ public record DocumentPersistenceData(
         String name,
         Map<String, PeelScriptId> scriptNameTags,
         String template,
-        String templateHtml,
-        String editorStateJson,
         RenderConfigurationId renderConfigurationId
 ) {
 }

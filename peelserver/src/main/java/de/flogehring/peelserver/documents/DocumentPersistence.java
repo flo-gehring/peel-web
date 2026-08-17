@@ -10,7 +10,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 import java.util.Map;
-import java.util.UUID;
 
 @Document("documents")
 @Getter
@@ -41,8 +40,6 @@ public class DocumentPersistence {
             String name,
             Map<String, PeelScriptId> scriptNameTags,
             String template,
-            String templateHtml,
-            String editorStateJson,
             RenderConfigurationId renderCondfigurationId
     ) {
         Instant now = Instant.now();
@@ -52,8 +49,6 @@ public class DocumentPersistence {
                         name,
                         scriptNameTags,
                         template,
-                        templateHtml,
-                        editorStateJson,
                         renderCondfigurationId
                 ),
                 now,
@@ -65,8 +60,6 @@ public class DocumentPersistence {
             String name,
             Map<String, PeelScriptId> scriptNameTags,
             String template,
-            String templateHtml,
-            String editorStateJson,
             RenderConfigurationId renderConfigurationId
     ) {
         return new DocumentPersistence(
@@ -75,8 +68,6 @@ public class DocumentPersistence {
                         name,
                         scriptNameTags,
                         template,
-                        templateHtml,
-                        editorStateJson,
                         renderConfigurationId
                 ),
                 createdAt,

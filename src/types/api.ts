@@ -282,8 +282,6 @@ export interface components {
                 [key: string]: string;
             };
             template?: string;
-            templateHtml?: string;
-            editorStateJson?: string;
             renderConfigurationId?: string;
         };
         DocumentSaveResponse: {

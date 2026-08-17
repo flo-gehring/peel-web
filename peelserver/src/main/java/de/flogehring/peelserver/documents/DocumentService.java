@@ -35,8 +35,6 @@ public class DocumentService implements DocumentController {
                             request.name(),
                             transformMapValues(request.scriptNameTags(), PeelScriptId::new),
                             request.template(),
-                            request.templateHtml(),
-                            request.editorStateJson(),
                             new RenderConfigurationId(request.renderConfigurationId())
                     ));
             DocumentPersistence saved = peelDocumentRepository.save(
@@ -44,8 +42,6 @@ public class DocumentService implements DocumentController {
                             request.name(),
                             transformMapValues(request.scriptNameTags(), PeelScriptId::new),
                             template,
-                            request.templateHtml(),
-                            request.editorStateJson(),
                             new RenderConfigurationId(request.renderConfigurationId())
                     ));
             return getSaveResponse(saved, DocumentSaveResponse.SaveType.CREATED);
@@ -55,8 +51,6 @@ public class DocumentService implements DocumentController {
                 request.name(),
                 transformMapValues(request.scriptNameTags(), PeelScriptId::new),
                 template,
-                request.templateHtml(),
-                request.editorStateJson(),
                 new RenderConfigurationId(request.renderConfigurationId())
         );
         DocumentPersistence saved = peelDocumentRepository.save(created);
