@@ -27,34 +27,37 @@ public class DocumentService implements DocumentController {
 
     @Override
     public DocumentSaveResponse saveDocument(DocumentSaveRequest request) {
-        String template = requireTemplate(request.template());
-        if (!request.id().isBlank()) {
-            DocumentPersistence existing = peelDocumentRepository.findById(request.id())
-                    .orElseGet(() -> DocumentPersistence.newDocument(
-                            request.id(),
-                            request.name(),
-                            transformMapValues(request.scriptNameTags(), PeelScriptId::new),
-                            request.template(),
-                            new RenderConfigurationId(request.renderConfigurationId())
-                    ));
+        String templateHtml = requireTemplate(request.templateHtml());
+        if (request.id() != null && !request.id().isBlank()) {
+            Optional<DocumentPersistence> existing = peelDocumentRepository.findById(request.id());
+            DocumentPersistence document = existing.orElseGet(() -> DocumentPersistence.newDocument(
+                    request.id(),
+                    request.name(),
+                    transformMapValues(request.scriptNameTags(), PeelScriptId::new),
+                    templateHtml,
+                    request.editorStateJson(),
+                    new RenderConfigurationId(request.renderConfigurationId())
+            ));
             DocumentPersistence saved = peelDocumentRepository.save(
-                    existing.update(
+                    document.update(
                             request.name(),
                             transformMapValues(request.scriptNameTags(), PeelScriptId::new),
-                            template,
+                            templateHtml,
+                            request.editorStateJson(),
                             new RenderConfigurationId(request.renderConfigurationId())
                     ));
-            return getSaveResponse(saved, DocumentSaveResponse.SaveType.CREATED);
+            return getSaveResponse(saved, existing.isPresent() ? DocumentSaveResponse.SaveType.UPDATED : DocumentSaveResponse.SaveType.CREATED);
         }
         DocumentPersistence created = DocumentPersistence.newDocument(
                 UUID.randomUUID().toString(),
                 request.name(),
                 transformMapValues(request.scriptNameTags(), PeelScriptId::new),
-                template,
+                templateHtml,
+                request.editorStateJson(),
                 new RenderConfigurationId(request.renderConfigurationId())
         );
         DocumentPersistence saved = peelDocumentRepository.save(created);
-        return getSaveResponse(saved, DocumentSaveResponse.SaveType.UPDATED);
+        return getSaveResponse(saved, DocumentSaveResponse.SaveType.CREATED);
     }
 
     @Override
@@ -106,7 +109,7 @@ public class DocumentService implements DocumentController {
         Document document = new Document(
                 data.name(),
                 transformMapValues(data.scriptNameTags(), this::getPeelScript),
-                documentPersistence.getData().template(),
+                documentPersistence.getData().templateHtml(),
                 renderConfigurationRepository.findById(data.renderConfigurationId().id()).orElseThrow(() -> new ResourceNotFoundException("Render configuration not found: " + data.renderConfigurationId().id())).getExpressionRenderConfiguration()
         );
         String html = documentRenderService.render(document, bindings);
@@ -121,6 +124,11 @@ public class DocumentService implements DocumentController {
     private DocumentContent toContent(DocumentPersistence document) {
         return new DocumentContent(
                 document.getId(),
+                document.getData().name(),
+                transformMapValues(document.getData().scriptNameTags(), PeelScriptId::id),
+                document.getData().templateHtml(),
+                document.getData().editorStateJson(),
+                document.getData().renderConfigurationId().id(),
                 document.getCreatedAt(),
                 document.getUpdatedAt()
         );

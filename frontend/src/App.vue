@@ -9,6 +9,8 @@ import {
 import { api } from '@/adapter/client'
 import type { PeelWorkspaceDocument } from '@/adapter/ClientTypeDefinition'
 import { useEditorDraftStore } from '@/stores/editorDrafts'
+import { useDocumentDraftStore, type DocumentDraft } from '@/stores/documentDrafts'
+import { useDocumentPreviewStore } from '@/stores/documentPreview'
 import { useWorkspaceSelectionStore } from '@/stores/workspaceSelection'
 
 // Mandatory CSS theme import for Dockview
@@ -16,6 +18,8 @@ import 'dockview-vue/dist/styles/dockview.css'
 // Import panel components
 import FileTreePanel from './components/FileTreePanel.vue'
 import EditorPanel from './components/EditorPanel.vue'
+import DocumentPanel from './components/DocumentPanel.vue'
+import RenderPreviewPanel from './components/RenderPreviewPanel.vue'
 import BindingsPanel from './components/BindingsPanel.vue'
 import OutputPanel from './components/OutputPanel.vue'
 import GroupActions from './components/GroupActions.vue'
@@ -24,6 +28,8 @@ import GroupActions from './components/GroupActions.vue'
 const components: Record<string, DefineComponent<Record<string, unknown>>> = {
   fileTree: FileTreePanel as DefineComponent<Record<string, unknown>>,
   editor: EditorPanel as DefineComponent<Record<string, unknown>>,
+  documentEditor: DocumentPanel as DefineComponent<Record<string, unknown>>,
+  renderPreview: RenderPreviewPanel as DefineComponent<Record<string, unknown>>,
   bindings: BindingsPanel as DefineComponent<Record<string, unknown>>,
   output: OutputPanel as DefineComponent<Record<string, unknown>>,
 }
@@ -39,6 +45,8 @@ const percentageWidth = (percent: number): number => {
 const dockviewApi = shallowRef<DockviewApi | null>(null)
 const editorGroupId = shallowRef<string | null>(null)
 const draftStore = useEditorDraftStore()
+const documentDraftStore = useDocumentDraftStore()
+const documentPreviewStore = useDocumentPreviewStore()
 const selectionStore = useWorkspaceSelectionStore()
 const pendingOpenById = new Map<string, Promise<void>>()
 
@@ -115,23 +123,47 @@ watch(
 )
 
 watch(
-  () => selectionStore.deletionVersion,
+  () => documentPreviewStore.previewVersion,
   () => {
-    const id = selectionStore.deletedScriptId
-    if (!id) {
+    if (!dockviewApi.value) return
+
+    const existingPanel = dockviewApi.value.getPanel('render-preview')
+    if (existingPanel) {
+      existingPanel.api.setActive()
       return
     }
 
-    draftStore.removeDocument(id)
-    dockviewApi.value?.getPanel(`editor-script-${id}`)?.api.close()
+    const editorGroup = dockviewApi.value.groups.find((group) => group.id === editorGroupId.value)
+    const targetGroup = editorGroup || dockviewApi.value.activeGroup || dockviewApi.value.groups[0]
+    dockviewApi.value.addPanel({
+      id: 'render-preview',
+      component: 'renderPreview',
+      title: 'Render Preview',
+      ...(targetGroup ? { position: { referenceGroup: targetGroup } } : {}),
+    })
+  },
+)
+
+watch(
+  () => selectionStore.deletionVersion,
+  () => {
+    const deletedDocument = selectionStore.deletedDocument
+    if (!deletedDocument) {
+      return
+    }
+
+    draftStore.removeDocument(deletedDocument.id)
+    documentDraftStore.removeDocument(deletedDocument.id)
+    const panelType = deletedDocument.kind === 'peel' ? 'script' : deletedDocument.kind
+    dockviewApi.value?.getPanel(`editor-${panelType}-${deletedDocument.id}`)?.api.close()
   },
 )
 
 // 3. Dynamic Action: Open or Switch Editor Tabs Programmatically
-async function openFileInEditor(file: Extract<PeelWorkspaceDocument, { kind: 'peel' | 'renderConfig' }>) {
+async function openFileInEditor(file: PeelWorkspaceDocument) {
   if (!dockviewApi.value) return
 
-  const panelId = `editor-${file.kind === 'peel' ? 'script' : 'render-config'}-${file.id}`
+  const panelId = `editor-${file.kind === 'peel' ? 'script' : file.kind === 'renderConfig' ? 'render-config' : 'document'}-${file.id}`
   const existingPanel = dockviewApi.value.getPanel(panelId)
 
   if (existingPanel) {
@@ -149,6 +181,45 @@ async function openFileInEditor(file: Extract<PeelWorkspaceDocument, { kind: 'pe
   }
 
   const openPromise = (async () => {
+    if (file.kind === 'document') {
+      let draft = documentDraftStore.getDraft(file.id)
+      if (!draft) {
+        const [{ data: document, error: documentError }, { data: renderConfigurations }] = await Promise.all([
+          api.GET('/documents/{id}', { params: { path: { id: file.id } } }),
+          api.GET('/render-config/list-ids'),
+        ])
+        if (documentError || !document) {
+          console.error('Failed to load document for editor tab:', documentError)
+          return
+        }
+        draft = {
+          name: document.name ?? file.name,
+          editorStateJson: document.editorStateJson ?? '{"type":"doc","content":[{"type":"paragraph"}]}',
+          templateHtml: document.templateHtml ?? '<p></p>',
+          scriptNameTags: document.scriptNameTags ?? {},
+          renderConfigurationId: document.renderConfigurationId ?? '',
+          renderConfigurations: (renderConfigurations ?? []).map((config) => ({
+            id: config.id ?? '',
+            name: config.name ?? '',
+          })),
+          dirty: false,
+        } satisfies DocumentDraft
+        documentDraftStore.setDraft(file.id, draft)
+      }
+
+      const editorGroup = dockviewApi.value?.groups.find((group) => group.id === editorGroupId.value)
+      const targetGroup =
+        editorGroup || dockviewApi.value?.activeGroup || dockviewApi.value?.groups[0]
+      dockviewApi.value?.addPanel({
+        id: panelId,
+        component: 'documentEditor',
+        title: file.name,
+        params: { documentId: file.id, draft },
+        ...(targetGroup ? { position: { referenceGroup: targetGroup } } : {}),
+      })
+      return
+    }
+
     let content = draftStore.getDraft(file.id)
 
     if (content === undefined) {

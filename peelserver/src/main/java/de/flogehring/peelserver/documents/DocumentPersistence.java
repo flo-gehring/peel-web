@@ -39,8 +39,9 @@ public class DocumentPersistence {
             String id,
             String name,
             Map<String, PeelScriptId> scriptNameTags,
-            String template,
-            RenderConfigurationId renderCondfigurationId
+            String templateHtml,
+            String editorStateJson,
+            RenderConfigurationId renderConfigurationId
     ) {
         Instant now = Instant.now();
         return new DocumentPersistence(
@@ -48,8 +49,9 @@ public class DocumentPersistence {
                 new DocumentPersistenceData(
                         name,
                         scriptNameTags,
-                        template,
-                        renderCondfigurationId
+                        templateHtml,
+                        editorStateJson,
+                        renderConfigurationId
                 ),
                 now,
                 now
@@ -59,7 +61,8 @@ public class DocumentPersistence {
     public DocumentPersistence update(
             String name,
             Map<String, PeelScriptId> scriptNameTags,
-            String template,
+            String templateHtml,
+            String editorStateJson,
             RenderConfigurationId renderConfigurationId
     ) {
         return new DocumentPersistence(
@@ -67,7 +70,8 @@ public class DocumentPersistence {
                 new DocumentPersistenceData(
                         name,
                         scriptNameTags,
-                        template,
+                        templateHtml,
+                        editorStateJson,
                         renderConfigurationId
                 ),
                 createdAt,

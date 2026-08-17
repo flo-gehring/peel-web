@@ -12,9 +12,12 @@
     "lint": "run-s \"lint:*\"",
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
-    "format": "prettier --write --experimental-cli src/"
+    "format": "prettier --write --experimental-cli src/",
+    "gen:openapi": "npx openapi-typescript http://host.docker.internal:8080/v3/api-docs -o ./src/types/api.ts "
   },
   "dependencies": {
+    "@tiptap/starter-kit": "^3.20.0",
+    "@tiptap/vue-3": "^3.20.0",
     "@guolao/vue-monaco-editor": "^1.6.0",
     "@tanstack/vue-query": "^5.101.4",
     "axios": "^1.19.0",

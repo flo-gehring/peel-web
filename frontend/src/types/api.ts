@@ -281,7 +281,6 @@ export interface components {
             scriptNameTags?: {
                 [key: string]: string;
             };
-            template?: string;
             templateHtml?: string;
             editorStateJson?: string;
             renderConfigurationId?: string;
@@ -327,6 +326,13 @@ export interface components {
         };
         DocumentContent: {
             id?: string;
+            name?: string;
+            scriptNameTags?: {
+                [key: string]: string;
+            };
+            templateHtml?: string;
+            editorStateJson?: string;
+            renderConfigurationId?: string;
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */

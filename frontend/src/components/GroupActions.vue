@@ -11,7 +11,10 @@ const props = defineProps<{
   params: IDockviewHeaderActionsProps
 }>()
 
-const showActions = computed(() => props.params.activePanel?.id.startsWith('editor-') ?? false)
+const showActions = computed(() => {
+  const panelId = props.params.activePanel?.id
+  return panelId?.startsWith('editor-') && !panelId.startsWith('editor-document-')
+})
 const isSaving = ref(false)
 const isRunning = ref(false)
 const saveError = ref<string | null>(null)
