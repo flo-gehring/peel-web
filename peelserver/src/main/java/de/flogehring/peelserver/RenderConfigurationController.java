@@ -9,6 +9,7 @@ import de.flogehring.peelserver.renderconfig.ExpressionRenderConfiguration;
 import de.flogehring.peelserver.renderconfig.RenderConfigurationPersistence;
 import de.flogehring.peelserver.renderconfig.RenderConfigurationRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -17,6 +18,7 @@ import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 public class RenderConfigurationController implements RenderConfigurationService {
 
     private final RenderConfigurationRepository renderConfigurationRepository;
@@ -40,6 +42,7 @@ public class RenderConfigurationController implements RenderConfigurationService
             String id,
             RenderConfigurationPersistenceDto persistenceDto
     ) {
+        log.info("Updating Render Config {}", id);
         renderConfigurationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Render configuration with id " + id + " not found"));
         renderConfigurationRepository.save(

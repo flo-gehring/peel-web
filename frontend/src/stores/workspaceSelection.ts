@@ -2,41 +2,36 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { PeelWorkspaceDocument } from '@/adapter/ClientTypeDefinition'
 
-type PeelScriptDocument = Extract<PeelWorkspaceDocument, { kind: 'peel' }>
-
 export const useWorkspaceSelectionStore = defineStore('workspaceSelection', () => {
-  const selectedScript = ref<PeelScriptDocument | null>(null)
+  const selectedDocument = ref<PeelWorkspaceDocument | null>(null)
   const selectionVersion = ref(0)
-  const scriptsVersion = ref(0)
   const deletedScriptId = ref<string | null>(null)
   const deletionVersion = ref(0)
 
-  function selectScript(file: PeelScriptDocument): void {
-    selectedScript.value = file
+  function selectDocument(document: PeelWorkspaceDocument): void {
+    selectedDocument.value = document
     selectionVersion.value += 1
   }
 
-  function notifyScriptsChanged(): void {
-    scriptsVersion.value += 1
+  function clearSelection(id: string): void {
+    if (selectedDocument.value?.id === id) {
+      selectedDocument.value = null
+    }
   }
 
   function deleteScript(id: string): void {
-    if (selectedScript.value?.id === id) {
-      selectedScript.value = null
-    }
+    clearSelection(id)
     deletedScriptId.value = id
     deletionVersion.value += 1
-    notifyScriptsChanged()
   }
 
   return {
-    selectedScript,
+    selectedDocument,
     selectionVersion,
-    scriptsVersion,
     deletedScriptId,
     deletionVersion,
-    selectScript,
-    notifyScriptsChanged,
+    selectDocument,
+    clearSelection,
     deleteScript,
   }
 })

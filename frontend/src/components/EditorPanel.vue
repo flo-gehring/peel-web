@@ -10,11 +10,13 @@ const props = defineProps<{
       id?: string
     }
     documentId?: string
+    documentKind?: 'peel' | 'renderConfig'
     filename?: string
     content?: string
     id?: string
     params?: {
       documentId?: string
+      documentKind?: 'peel' | 'renderConfig'
       filename?: string
       content?: string
     }
@@ -26,6 +28,9 @@ const draftStore = useEditorDraftStore()
 const panelId = computed(() => props.params?.api?.id || props.params?.id || '')
 const documentId = computed(() => props.params?.params?.documentId || props.params?.documentId || '')
 const filename = computed(() => props.params?.params?.filename || props.params?.filename || 'untitled')
+const documentKind = computed(
+  () => props.params?.params?.documentKind || props.params?.documentKind || 'peel',
+)
 const initialContent = computed(
   () =>
     props.params?.params?.content ??
@@ -46,6 +51,7 @@ const code = ref(existingDraft ?? initialContent.value)
 
 // 3. Dynamic language detection based on file extension
 const language = computed(() => {
+  if (documentKind.value === 'renderConfig') return 'json'
   const lowered = filename.value.toLowerCase()
   if (lowered.endsWith('.java')) return 'java'
   if (lowered.endsWith('.ts') || lowered.endsWith('.js')) return 'typescript'

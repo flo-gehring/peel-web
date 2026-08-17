@@ -29,7 +29,6 @@ const components: Record<string, DefineComponent<Record<string, unknown>>> = {
 }
 
 const rightHeaderActionsComponent = GroupActions as unknown as VueComponent
-type PeelScriptDocument = Extract<PeelWorkspaceDocument, { kind: 'peel' }>
 
 const percentageWidth = (percent: number): number => {
   if (typeof window === 'undefined') return 0
@@ -102,7 +101,7 @@ const onReady = (event: DockviewReadyEvent) => {
 watch(
   () => selectionStore.selectionVersion,
   async () => {
-    const selected = selectionStore.selectedScript
+    const selected = selectionStore.selectedDocument
     if (!selected) {
       return
     }
@@ -129,12 +128,10 @@ watch(
 )
 
 // 3. Dynamic Action: Open or Switch Editor Tabs Programmatically
-async function openFileInEditor(file: PeelScriptDocument) {
-  console.log(`Opening new editor tab for file: ${file.name} (ID: ${file.id})`)
-
+async function openFileInEditor(file: Extract<PeelWorkspaceDocument, { kind: 'peel' | 'renderConfig' }>) {
   if (!dockviewApi.value) return
 
-  const panelId = `editor-script-${file.id}`
+  const panelId = `editor-${file.kind === 'peel' ? 'script' : 'render-config'}-${file.id}`
   const existingPanel = dockviewApi.value.getPanel(panelId)
 
   if (existingPanel) {
@@ -142,7 +139,8 @@ async function openFileInEditor(file: PeelScriptDocument) {
     return
   }
 
-  const inFlightOpen = pendingOpenById.get(file.id)
+  const pendingKey = `${file.kind}-${file.id}`
+  const inFlightOpen = pendingOpenById.get(pendingKey)
   if (inFlightOpen) {
     await inFlightOpen
     const panelAfterOpen = dockviewApi.value?.getPanel(panelId)
@@ -154,18 +152,26 @@ async function openFileInEditor(file: PeelScriptDocument) {
     let content = draftStore.getDraft(file.id)
 
     if (content === undefined) {
-      const { data, error } = await api.GET('/scripts/{id}', {
-        params: {
-          path: { id: file.id },
-        },
-      })
-      console.log(`Fetched script content for ${file.name}:`, data, error)
-
-      if (error) {
-        console.error('Failed to load script content for editor tab:', error)
-        content = ''
+      if (file.kind === 'peel') {
+        const { data, error } = await api.GET('/scripts/{id}', {
+          params: { path: { id: file.id } },
+        })
+        if (error) {
+          console.error('Failed to load script content for editor tab:', error)
+          content = ''
+        } else {
+          content = data?.script ?? ''
+        }
       } else {
-        content = data?.script ?? ''
+        const { data, error } = await api.GET('/render-config/{id}', {
+          params: { path: { id: file.id } },
+        })
+        if (error) {
+          console.error('Failed to load render configuration for editor tab:', error)
+          content = ''
+        } else {
+          content = JSON.stringify(data?.renderConfigurationDto ?? {}, null, 2)
+        }
       }
 
       draftStore.markLoaded(file.id, content)
@@ -183,6 +189,7 @@ async function openFileInEditor(file: PeelScriptDocument) {
         filename: file.name,
         content,
         documentId: file.id,
+        documentKind: file.kind,
       },
       ...(targetGroup
         ? {
@@ -194,12 +201,12 @@ async function openFileInEditor(file: PeelScriptDocument) {
     })
   })()
 
-  pendingOpenById.set(file.id, openPromise)
+  pendingOpenById.set(pendingKey, openPromise)
 
   try {
     await openPromise
   } finally {
-    pendingOpenById.delete(file.id)
+    pendingOpenById.delete(pendingKey)
   }
 }
 </script>

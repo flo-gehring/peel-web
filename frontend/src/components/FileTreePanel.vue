@@ -6,52 +6,73 @@ import type { PeelWorkspaceDocument } from '@/adapter/ClientTypeDefinition'
 import { useWorkspaceSelectionStore } from '@/stores/workspaceSelection'
 
 type PeelScriptDocument = Extract<PeelWorkspaceDocument, { kind: 'peel' }>
+type RenderConfigDocument = Extract<PeelWorkspaceDocument, { kind: 'renderConfig' }>
+type CreatableDocumentKind = 'peel' | 'renderConfig'
 
 // Dockview passes panel props automatically to registered components
 defineProps<{ params?: Record<string, never> }>()
 
-const files = ref<PeelScriptDocument[]>([])
+const scripts = ref<PeelScriptDocument[]>([])
+const renderConfigs = ref<RenderConfigDocument[]>([])
 const selectionStore = useWorkspaceSelectionStore()
 
 const isLoading = ref(false)
-const activeFile = ref<string | null>(null)
+const activeFileId = ref<string | null>(null)
 const isCreateDialogOpen = ref(false)
-const newScriptName = ref('')
+const newDocumentName = ref('')
+const newDocumentKind = ref<CreatableDocumentKind>('peel')
 const isCreating = ref(false)
 const deletingScriptId = ref<string | null>(null)
 
 async function fetchFiles() {
-  console.log('Fetching files...')
   isLoading.value = true
-  api
-    .GET('/scripts')
-    .then(({ data }) => {
-      files.value = (data ?? []).map((script) => ({
+  try {
+    const [scriptsResponse, renderConfigsResponse] = await Promise.all([
+      api.GET('/scripts'),
+      api.GET('/render-config/list-ids'),
+    ])
+
+    if (scriptsResponse.error) {
+      console.error('Error fetching scripts:', scriptsResponse.error)
+    } else {
+      scripts.value = (scriptsResponse.data ?? []).map((script) => ({
         kind: 'peel',
         id: script.id ?? '',
         name: script.name ?? '',
         icon: '🍌',
       }))
-    })
-    .catch((error) => {
-      console.error('Error fetching files:', error)
-    })
-  console.log('Files fetched:', files.value)
-  isLoading.value = false
+    }
+
+    if (renderConfigsResponse.error) {
+      console.error('Error fetching render configurations:', renderConfigsResponse.error)
+    } else {
+      renderConfigs.value = (renderConfigsResponse.data ?? []).map((renderConfig) => ({
+        kind: 'renderConfig',
+        id: renderConfig.id ?? '',
+        name: renderConfig.name ?? '',
+        icon: '{}',
+      }))
+    }
+  } catch (error) {
+    console.error('Unexpected workspace item fetch error:', error)
+  } finally {
+    isLoading.value = false
+  }
 }
 
-function selectDocument(file: PeelScriptDocument) {
-  activeFile.value = file.name
-  selectionStore.selectScript(file)
+function selectDocument(file: PeelScriptDocument | RenderConfigDocument) {
+  activeFileId.value = `${file.kind}-${file.id}`
+  selectionStore.selectDocument(file)
 }
 
 function openCreateDialog() {
-  newScriptName.value = ''
+  newDocumentName.value = ''
+  newDocumentKind.value = 'peel'
   isCreateDialogOpen.value = true
 }
 
-async function createPeelScript() {
-  const name = newScriptName.value.trim()
+async function createDocument() {
+  const name = newDocumentName.value.trim()
   if (!name || isCreating.value) {
     return
   }
@@ -59,30 +80,56 @@ async function createPeelScript() {
   isCreating.value = true
 
   try {
-    const { data, error } = await api.POST('/scripts', {
-      body: {
-        name,
-        script: '',
-      },
-    })
+    if (newDocumentKind.value === 'peel') {
+      const { data, error } = await api.POST('/scripts', {
+        body: { name, script: '' },
+      })
 
-    if (error || !data?.id) {
-      console.error('Failed to create script:', error)
+      if (error || !data?.id) {
+        console.error('Failed to create script:', error)
+        return
+      }
+
+      const file: PeelScriptDocument = {
+        kind: 'peel',
+        id: data.id,
+        name: data.name ?? name,
+        icon: '🍌',
+      }
+      scripts.value.push(file)
+      isCreateDialogOpen.value = false
+      selectDocument(file)
       return
     }
 
-    const file: PeelScriptDocument = {
-      kind: 'peel',
-      id: data.id,
-      name: data.name ?? name,
-      icon: '🍌',
+    const { data: defaultConfig, error: defaultError } = await api.GET('/render-config/default')
+    if (defaultError || !defaultConfig) {
+      console.error('Failed to load default render configuration:', defaultError)
+      return
     }
 
-    files.value.push(file)
+    const { data, error } = await api.POST('/render-config/save', {
+      body: {
+        name,
+        renderConfigurationDto: defaultConfig,
+      },
+    })
+    if (error || !data?.id) {
+      console.error('Failed to create render configuration:', error)
+      return
+    }
+
+    const file: RenderConfigDocument = {
+      kind: 'renderConfig',
+      id: data.id,
+      name,
+      icon: '{}',
+    }
+    renderConfigs.value.push(file)
     isCreateDialogOpen.value = false
     selectDocument(file)
   } catch (error) {
-    console.error('Unexpected script creation error:', error)
+    console.error('Unexpected workspace item creation error:', error)
   } finally {
     isCreating.value = false
   }
@@ -107,7 +154,7 @@ async function deletePeelScript(file: PeelScriptDocument) {
       return
     }
 
-    files.value = files.value.filter((item) => item.id !== file.id)
+    scripts.value = scripts.value.filter((item) => item.id !== file.id)
     selectionStore.deleteScript(file.id)
   } catch (error) {
     console.error('Unexpected script deletion error:', error)
@@ -117,7 +164,6 @@ async function deletePeelScript(file: PeelScriptDocument) {
 }
 
 onMounted(() => fetchFiles())
-watch(() => selectionStore.scriptsVersion, fetchFiles)
 </script>
 <template>
   <div class="file-tree-container">
@@ -125,38 +171,57 @@ watch(() => selectionStore.scriptsVersion, fetchFiles)
       <span>PROJECT EXPLORER</span>
       <button class="create-button" title="New workspace item" @click="openCreateDialog">+</button>
     </div>
-    <ul class="file-list">
-      <li
-        v-for="file in files"
-        :key="file.id"
-        :class="{ active: activeFile === file.name }"
-        @click="selectDocument(file)"
-      >
-        <span class="file-icon">{{ file.icon }}</span>
-        <span class="file-name">{{ file.name }}</span>
-        <button
-          class="delete-button"
-          :disabled="deletingScriptId === file.id"
-          :title="`Delete ${file.name}`"
-          @click.stop="deletePeelScript(file)"
+    <div v-if="isLoading" class="loading">Loading...</div>
+    <section class="document-section">
+      <h2>PEEL SCRIPTS</h2>
+      <ul class="file-list">
+        <li
+          v-for="file in scripts"
+          :key="`peel-${file.id}`"
+          :class="{ active: activeFileId === `peel-${file.id}` }"
+          @click="selectDocument(file)"
         >
-          {{ deletingScriptId === file.id ? '...' : '×' }}
-        </button>
-      </li>
-    </ul>
+          <span class="file-icon">{{ file.icon }}</span>
+          <span class="file-name">{{ file.name }}</span>
+          <button
+            class="delete-button"
+            :disabled="deletingScriptId === file.id"
+            :title="`Delete ${file.name}`"
+            @click.stop="deletePeelScript(file)"
+          >
+            {{ deletingScriptId === file.id ? '...' : '×' }}
+          </button>
+        </li>
+      </ul>
+    </section>
+    <section class="document-section">
+      <h2>RENDER CONFIGS</h2>
+      <ul class="file-list">
+        <li
+          v-for="file in renderConfigs"
+          :key="`renderConfig-${file.id}`"
+          :class="{ active: activeFileId === `renderConfig-${file.id}` }"
+          @click="selectDocument(file)"
+        >
+          <span class="file-icon">{{ file.icon }}</span>
+          <span class="file-name">{{ file.name }}</span>
+        </li>
+      </ul>
+    </section>
 
     <div v-if="isCreateDialogOpen" class="create-dialog-backdrop" @click.self="isCreateDialogOpen = false">
-      <form class="create-dialog" @submit.prevent="createPeelScript">
+      <form class="create-dialog" @submit.prevent="createDocument">
         <h2>New Workspace Item</h2>
         <label for="workspace-item-type">Type</label>
-        <select id="workspace-item-type">
+        <select id="workspace-item-type" v-model="newDocumentKind">
           <option value="peel">PEEL Script</option>
+          <option value="renderConfig">Render Config</option>
         </select>
-        <label for="new-script-name">Name</label>
-        <input id="new-script-name" v-model="newScriptName" autofocus placeholder="Script name" />
+        <label for="new-document-name">Name</label>
+        <input id="new-document-name" v-model="newDocumentName" autofocus placeholder="Name" />
         <div class="dialog-actions">
           <button type="button" @click="isCreateDialogOpen = false">Cancel</button>
-          <button type="submit" :disabled="!newScriptName.trim() || isCreating">
+          <button type="submit" :disabled="!newDocumentName.trim() || isCreating">
             {{ isCreating ? 'Creating...' : 'Create' }}
           </button>
         </div>
@@ -199,6 +264,17 @@ watch(() => selectionStore.scriptsVersion, fetchFiles)
   list-style: none;
   margin: 0;
   padding: 0;
+}
+.document-section h2 {
+  margin: 0;
+  padding: 12px 12px 4px;
+  color: #888888;
+  font-size: 11px;
+  font-weight: bold;
+}
+.loading {
+  padding: 8px 12px;
+  color: #888888;
 }
 .file-list li {
   padding: 6px 12px;
