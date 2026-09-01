@@ -20,6 +20,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/print-jobs/{id}/data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["downloadFile"];
+        put: operations["uploadFile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/print-jobs/init": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["initPrintJob"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/validate": {
         parameters: {
             query?: never;
@@ -196,6 +228,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/print-jobs/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listPrintJobs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documents/{id}": {
         parameters: {
             query?: never;
@@ -229,6 +277,16 @@ export interface components {
         RenderConfigurationPersistenceDto: {
             name?: string;
             renderConfigurationDto?: components["schemas"]["RenderConfigurationDto"];
+        };
+        DocumentId: {
+            id?: string;
+        };
+        PrintJobInitRequestDto: {
+            documentId?: components["schemas"]["DocumentId"];
+            name?: string;
+        };
+        PrintJobId: {
+            id?: string;
         };
         ValidationRequest: {
             script?: string;
@@ -318,6 +376,12 @@ export interface components {
             id?: string;
             name?: string;
         };
+        PrintJobSummary: {
+            printJobId?: components["schemas"]["PrintJobId"];
+            name?: string;
+            documentName?: string;
+            fileName?: string;
+        };
         DocumentSummaryResponse: {
             id?: string;
             name?: string;
@@ -368,6 +432,79 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    downloadFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+        };
+    };
+    uploadFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    initPrintJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrintJobInitRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PrintJobId"];
+                };
             };
         };
     };
@@ -683,6 +820,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["RenderConfigurationDto"];
+                };
+            };
+        };
+    };
+    listPrintJobs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PrintJobSummary"][];
                 };
             };
         };

@@ -4,6 +4,7 @@ import de.flogehring.peelserver.PrintJobController;
 import de.flogehring.peelserver.api.PrintJobId;
 import de.flogehring.peelserver.api.PrintJobInitRequestDto;
 import de.flogehring.peelserver.api.PrintJobSummary;
+import de.flogehring.peelserver.documents.PeelDocumentRepository;
 import de.flogehring.peelserver.filestorage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +21,9 @@ import java.util.UUID;
 @Slf4j
 public class PrintJobService implements PrintJobController {
 
+    public static final String BUCKET_NAME = "print-jobs";
     private final PrintJobRepository printJobRepository;
+    private final PeelDocumentRepository peelDocumentRepository;
     private final StorageService storageService;
 
     @Override
@@ -37,7 +40,7 @@ public class PrintJobService implements PrintJobController {
         PrintJobPersistence printJobPersistence = printJobRepository.findById(printJobId)
                 .orElseThrow(() -> new IllegalArgumentException("Print job not found: " + printJobId));
         storageService.uploadFile(
-                "PRINT_JOBS",
+                BUCKET_NAME,
                 printJobId,
                 multipartFile.getInputStream(),
                 multipartFile.getContentType()
@@ -52,7 +55,11 @@ public class PrintJobService implements PrintJobController {
                 .map(printJobPersistence -> new PrintJobSummary(
                         new PrintJobId(printJobPersistence.getId()),
                         printJobPersistence.getPrintJobPersistenceData().name(),
-                        printJobPersistence.getPrintJobPersistenceData().documentId()
+                        // TODO hier hat die KI verkackt, ich will die documentId zurückgeben, nicht den Namen des Dokuments. Ich muss das noch anpassen.
+                        peelDocumentRepository.findById(printJobPersistence.getPrintJobPersistenceData().documentId())
+                                .map(document -> document.getData().name())
+                                .orElse(null),
+                        printJobPersistence.getPrintJobPersistenceData().fileName()
                 ))
                 .toList();
     }
@@ -61,6 +68,6 @@ public class PrintJobService implements PrintJobController {
     public byte[] downloadFile(String printJobId) throws IOException {
         printJobRepository.findById(printJobId)
                 .orElseThrow(() -> new IllegalArgumentException("Print job not found: " + printJobId));
-        return storageService.downloadFile("PRINT_JOBS", printJobId);
+        return storageService.downloadFile(BUCKET_NAME, printJobId);
     }
 }

@@ -5,6 +5,7 @@ import jakarta.annotation.Nullable;
 public record PrintJobSummary(
         PrintJobId printJobId,
         String name,
-        @Nullable String documentName
+        @Nullable String documentName,
+        @Nullable String fileName
 ) {
 }

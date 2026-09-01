@@ -3,8 +3,10 @@ package de.flogehring.peelserver;
 import de.flogehring.peelserver.api.PrintJobId;
 import de.flogehring.peelserver.api.PrintJobInitRequestDto;
 import de.flogehring.peelserver.api.PrintJobSummary;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.service.annotation.GetExchange;
 import org.springframework.web.service.annotation.HttpExchange;
@@ -19,12 +21,12 @@ public interface PrintJobController {
     @PutExchange("/init")
     PrintJobId initPrintJob(@RequestBody PrintJobInitRequestDto initRequestDto);
 
-    @PutExchange("/{id:.+}/data")
-    void uploadFile(String printJobId, @RequestParam("file") MultipartFile multipartFile) throws IOException;
+    @PutExchange(value = "/{id:.+}/data", contentType = MediaType.MULTIPART_FORM_DATA_VALUE)
+    void uploadFile(@PathVariable("id") String printJobId, @RequestPart("file") MultipartFile multipartFile) throws IOException;
 
     @GetExchange("/list")
     List<PrintJobSummary> listPrintJobs();
 
     @GetExchange("/{id:.+}/data")
-    byte[] downloadFile(String printJobId) throws IOException;
+    byte[] downloadFile(@PathVariable("id") String printJobId) throws IOException;
 }
