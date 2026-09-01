@@ -1,3 +1,9 @@
 spring:
   application:
     name: peelserver
+
+minio:
+  url: ${MINIO_URL}
+  access:
+    name: ${MINIO_ACCESS_NAME}
+    secret: ${MINIO_ACCESS_SECRET}

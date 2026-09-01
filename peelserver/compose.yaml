@@ -7,3 +7,12 @@ services:
       - 'MONGO_INITDB_ROOT_USERNAME=root'
     ports:
       - '27017'
+  minio:
+    image: minio/minio:latest
+    ports:
+      - '9000'
+      - '9001'
+    env_file:
+      - test.env
+
+    command: server /data --console-address ":9001"

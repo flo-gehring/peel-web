@@ -4,92 +4,30 @@ import de.flogehring.peelserver.api.IdNameTuple;
 import de.flogehring.peelserver.api.RenderConfigurationCreateResponse;
 import de.flogehring.peelserver.api.RenderConfigurationDto;
 import de.flogehring.peelserver.api.RenderConfigurationPersistenceDto;
-import de.flogehring.peelserver.error.ResourceNotFoundException;
-import de.flogehring.peelserver.renderconfig.ExpressionRenderConfiguration;
-import de.flogehring.peelserver.renderconfig.RenderConfigurationPersistence;
-import de.flogehring.peelserver.renderconfig.RenderConfigurationRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.service.annotation.GetExchange;
+import org.springframework.web.service.annotation.HttpExchange;
+import org.springframework.web.service.annotation.PostExchange;
+import org.springframework.web.service.annotation.PutExchange;
 
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
-@RestController
-@RequiredArgsConstructor
-@Slf4j
-public class RenderConfigurationController implements RenderConfigurationService {
+@HttpExchange("api/render-config")
+public interface RenderConfigurationController {
 
-    private final RenderConfigurationRepository renderConfigurationRepository;
+    @PostExchange("save")
+    RenderConfigurationCreateResponse createRenderConfiguration(@RequestBody RenderConfigurationPersistenceDto renderConfigurationDto);
 
-    @Override
-    public RenderConfigurationCreateResponse createRenderConfiguration(RenderConfigurationPersistenceDto renderConfigurationDto) {
-        String id = UUID.randomUUID().toString();
-        renderConfigurationRepository.insert(
-                RenderConfigurationPersistence.valueOf(
-                        id,
-                        renderConfigurationDto.name(),
-                        toExpressionRenderConfig(renderConfigurationDto.renderConfigurationDto())
-                )
+    @PutExchange("update/{id}")
+    void updateRenderConfiguration(@PathVariable(value = "id") String id, @RequestBody RenderConfigurationPersistenceDto renderConfigurationDto);
 
-        );
-        return new RenderConfigurationCreateResponse(id);
-    }
+    @GetExchange("default")
+    RenderConfigurationDto getDefault();
 
-    @Override
-    public void updateRenderConfiguration(
-            String id,
-            RenderConfigurationPersistenceDto persistenceDto
-    ) {
-        log.info("Updating Render Config {}", id);
-        renderConfigurationRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Render configuration with id " + id + " not found"));
-        renderConfigurationRepository.save(
-                RenderConfigurationPersistence.valueOf(
-                        id,
-                        persistenceDto.name(),
-                        toExpressionRenderConfig(persistenceDto.renderConfigurationDto())
-                )
-        );
-    }
+    @GetExchange("{id}")
+    RenderConfigurationPersistenceDto getById(@PathVariable(value = "id") String id);
 
-    @Override
-    public RenderConfigurationDto getDefault() {
-        return toDto(ExpressionRenderConfiguration.defaultConfig());
-    }
-
-
-    public static RenderConfigurationDto toDto(ExpressionRenderConfiguration config) {
-        return new RenderConfigurationDto(
-                config.getDefaultTemplates().templates(),
-                config.getNamedOverrides().entrySet().stream().collect(
-                        java.util.stream.Collectors.toMap(Map.Entry::getKey, e -> e.getValue().templates())
-                ));
-    }
-
-    @Override
-    public RenderConfigurationPersistenceDto getById(String id) {
-        RenderConfigurationPersistence renderConfig = renderConfigurationRepository.findById(
-                id
-        ).orElseThrow(() -> new ResourceNotFoundException("Render configuration with id " + id + " not found"));
-        return new RenderConfigurationPersistenceDto(
-                renderConfig.getName(),
-                toDto(renderConfig.getExpressionRenderConfiguration())
-        );
-    }
-
-    @Override
-    public List<IdNameTuple> listAll() {
-        return renderConfigurationRepository.findAll().stream().map(
-                renderConfig -> new IdNameTuple(renderConfig.getId(), renderConfig.getName())
-        ).toList();
-    }
-
-    private static ExpressionRenderConfiguration toExpressionRenderConfig(RenderConfigurationDto renderConfigurationDto) {
-        return ExpressionRenderConfiguration.of(
-                renderConfigurationDto.renderConfigurations(),
-                renderConfigurationDto.namedOverrides()
-        );
-    }
+    @GetExchange("list-ids")
+    List<IdNameTuple> listAll();
 }
