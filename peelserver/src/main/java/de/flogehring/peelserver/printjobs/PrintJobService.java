@@ -55,7 +55,6 @@ public class PrintJobService implements PrintJobController {
                 .map(printJobPersistence -> new PrintJobSummary(
                         new PrintJobId(printJobPersistence.getId()),
                         printJobPersistence.getPrintJobPersistenceData().name(),
-                        // TODO hier hat die KI verkackt, ich will die documentId zurückgeben, nicht den Namen des Dokuments. Ich muss das noch anpassen.
                         peelDocumentRepository.findById(printJobPersistence.getPrintJobPersistenceData().documentId())
                                 .map(document -> document.getData().name())
                                 .orElse(null),
