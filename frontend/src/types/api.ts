@@ -116,6 +116,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/print-jobs/{id}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["runPrintJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documents": {
         parameters: {
             query?: never;
@@ -379,8 +395,10 @@ export interface components {
         PrintJobSummary: {
             printJobId?: components["schemas"]["PrintJobId"];
             name?: string;
-            documentName?: string;
+            documentId?: components["schemas"]["DocumentId"];
             fileName?: string;
+            /** @enum {string} */
+            status?: "CREATED" | "CALCULATING" | "PRINTING" | "COMPLETED" | "FAILED";
         };
         DocumentSummaryResponse: {
             id?: string;
@@ -620,6 +638,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["RenderConfigurationCreateResponse"];
+                };
+            };
+        };
+    };
+    runPrintJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": "CREATED" | "CALCULATING" | "PRINTING" | "COMPLETED" | "FAILED";
                 };
             };
         };

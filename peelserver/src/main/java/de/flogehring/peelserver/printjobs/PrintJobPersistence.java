@@ -1,6 +1,7 @@
 package de.flogehring.peelserver.printjobs;
 
 import de.flogehring.peelserver.api.PrintJobId;
+import de.flogehring.peelserver.api.PrintJobStatus;
 import de.flogehring.peelserver.documents.DocumentId;
 import lombok.Getter;
 import org.springframework.data.annotation.Id;
@@ -27,7 +28,8 @@ public class PrintJobPersistence {
                 new PrintJobPersistenceData(
                         name,
                         documentId.id(),
-                        null
+                        null,
+                        PrintJobStatus.CREATED
                 )
         );
     }
@@ -36,7 +38,17 @@ public class PrintJobPersistence {
         this.printJobPersistenceData = new PrintJobPersistenceData(
                 this.printJobPersistenceData.name(),
                 this.printJobPersistenceData.documentId(),
-                fileName
+                fileName,
+                this.printJobPersistenceData.status()
+        );
+    }
+
+    public void updateStatus(PrintJobStatus status) {
+        this.printJobPersistenceData = new PrintJobPersistenceData(
+                this.printJobPersistenceData.name(),
+                this.printJobPersistenceData.documentId(),
+                this.printJobPersistenceData.fileName(),
+                status
         );
     }
 }

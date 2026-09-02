@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
+import java.util.function.Consumer;
 
 @Service
 public class StorageService {
@@ -15,14 +16,21 @@ public class StorageService {
     @Autowired
     private MinioClient minioClient;
 
-    public void uploadFile(String bucketName, String objectName, InputStream inputStream, String contentType) {
+    public void uploadFile(
+            String bucketName,
+            String objectId,
+            InputStream inputStream,
+            String contentType
+    ) {
         try {
             ensureBucketExists(bucketName);
             minioClient.putObject(
                     PutObjectArgs.builder().bucket(bucketName)
-                            .object(objectName)
+                            .object(objectId)
                             .stream(
-                                    inputStream, inputStream.available(), -1)
+                                    inputStream,
+                                    inputStream.available(),
+                                    -1)
                             .contentType(contentType)
                             .build());
         } catch (Exception e) {
@@ -41,12 +49,25 @@ public class StorageService {
         }
     }
 
-    public byte[] downloadFile(String printJobs, String printJobId) {
-        ensureBucketExists(printJobs);
+    public void processFile(String bucketName, String objectId, Consumer<InputStream> fileProcessor) {
+        ensureBucketExists(bucketName);
         try (InputStream stream = minioClient.getObject(
                 io.minio.GetObjectArgs.builder()
-                        .bucket(printJobs)
-                        .object(printJobId)
+                        .bucket(bucketName)
+                        .object(objectId)
+                        .build())) {
+            fileProcessor.accept(stream);
+        } catch (Exception e) {
+            throw new RuntimeException("Error occurred: " + e.getMessage());
+        }
+    }
+
+    public byte[] downloadFile(String bucketName, String objectId) {
+        ensureBucketExists(bucketName);
+        try (InputStream stream = minioClient.getObject(
+                io.minio.GetObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(objectId)
                         .build())) {
             return stream.readAllBytes();
         } catch (Exception e) {

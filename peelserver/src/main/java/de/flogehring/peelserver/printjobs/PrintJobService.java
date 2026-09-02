@@ -3,8 +3,9 @@ package de.flogehring.peelserver.printjobs;
 import de.flogehring.peelserver.PrintJobController;
 import de.flogehring.peelserver.api.PrintJobId;
 import de.flogehring.peelserver.api.PrintJobInitRequestDto;
+import de.flogehring.peelserver.api.PrintJobStatus;
 import de.flogehring.peelserver.api.PrintJobSummary;
-import de.flogehring.peelserver.documents.PeelDocumentRepository;
+import de.flogehring.peelserver.documents.DocumentId;
 import de.flogehring.peelserver.filestorage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @RestController
@@ -23,20 +25,30 @@ public class PrintJobService implements PrintJobController {
 
     public static final String BUCKET_NAME = "print-jobs";
     private final PrintJobRepository printJobRepository;
-    private final PeelDocumentRepository peelDocumentRepository;
     private final StorageService storageService;
+    private final PrintJobRunner printJobRunner;
 
     @Override
     public PrintJobId initPrintJob(PrintJobInitRequestDto initRequestDto) {
         PrintJobId printJobIdResponse = new PrintJobId(UUID.randomUUID().toString());
-         printJobRepository.insert(
+        printJobRepository.insert(
                 PrintJobPersistence.init(printJobIdResponse, initRequestDto.documentId(), initRequestDto.name())
         );
-         return printJobIdResponse;
+        return printJobIdResponse;
     }
 
     @Override
-    public void uploadFile(@NonNull String printJobId, MultipartFile multipartFile) throws IOException {
+    public void uploadFile(
+            @NonNull String printJobId,
+            MultipartFile multipartFile
+    ) throws IOException {
+        String fileName = multipartFile.getOriginalFilename();
+        if (fileName == null || !fileName.toLowerCase(Locale.ROOT).endsWith(".csv")) {
+            throw new IllegalArgumentException("only CSV files can be uploaded");
+        }
+        if (!"text/csv".equals(multipartFile.getContentType())) {
+            throw new IllegalArgumentException("CSV uploads must use content type text/csv");
+        }
         PrintJobPersistence printJobPersistence = printJobRepository.findById(printJobId)
                 .orElseThrow(() -> new IllegalArgumentException("Print job not found: " + printJobId));
         storageService.uploadFile(
@@ -45,7 +57,7 @@ public class PrintJobService implements PrintJobController {
                 multipartFile.getInputStream(),
                 multipartFile.getContentType()
         );
-        printJobPersistence.updateFileName(multipartFile.getOriginalFilename());
+        printJobPersistence.updateFileName(fileName);
         printJobRepository.save(printJobPersistence);
     }
 
@@ -55,16 +67,32 @@ public class PrintJobService implements PrintJobController {
                 .map(printJobPersistence -> new PrintJobSummary(
                         new PrintJobId(printJobPersistence.getId()),
                         printJobPersistence.getPrintJobPersistenceData().name(),
-                        peelDocumentRepository.findById(printJobPersistence.getPrintJobPersistenceData().documentId())
-                                .map(document -> document.getData().name())
-                                .orElse(null),
-                        printJobPersistence.getPrintJobPersistenceData().fileName()
+                        new DocumentId(printJobPersistence.getPrintJobPersistenceData().documentId()),
+                        printJobPersistence.getPrintJobPersistenceData().fileName(),
+                        printJobPersistence.getPrintJobPersistenceData().status()
                 ))
                 .toList();
     }
 
     @Override
-    public byte[] downloadFile(String printJobId) throws IOException {
+    public PrintJobStatus runPrintJob(String printJobId) {
+        PrintJobPersistence printJobPersistence = printJobRepository.findById(printJobId)
+                .orElseThrow(() -> new IllegalArgumentException("Print job not found: " + printJobId));
+        PrintJobStatus status = printJobPersistence.getPrintJobPersistenceData().status();
+        return switch (status) {
+            case CREATED -> {
+                printJobRunner.run(printJobPersistence);
+                yield PrintJobStatus.CALCULATING;
+            }
+            case CALCULATING -> PrintJobStatus.CALCULATING;
+            case PRINTING -> PrintJobStatus.PRINTING;
+            case COMPLETED -> PrintJobStatus.COMPLETED;
+            case FAILED -> PrintJobStatus.FAILED;
+        };
+    }
+
+    @Override
+    public byte[] downloadFile(String printJobId) {
         printJobRepository.findById(printJobId)
                 .orElseThrow(() -> new IllegalArgumentException("Print job not found: " + printJobId));
         return storageService.downloadFile(BUCKET_NAME, printJobId);

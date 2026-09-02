@@ -17,18 +17,36 @@ const errorMessage = ref('')
 const name = ref('')
 const documentId = ref('')
 
+function documentName(documentId: string | undefined) {
+  return documents.value.find((document) => document.id === documentId)?.name ?? 'Dokument nicht verfügbar'
+}
+
+function statusLabel(status: PrintJobSummary['status']) {
+  return {
+    CREATED: 'Erstellt',
+    CALCULATING: 'Wird verarbeitet',
+    PRINTING: 'Wird gedruckt',
+    COMPLETED: 'Abgeschlossen',
+    FAILED: 'Fehlgeschlagen',
+  }[status ?? 'CREATED']
+}
+
 async function loadPrintJobs() {
   isLoading.value = true
   errorMessage.value = ''
-  const { data, error } = await api.GET('/print-jobs/list')
+  const [{ data: printJobData, error: printJobError }, { data: documentData, error: documentError }] = await Promise.all([
+    api.GET('/print-jobs/list'),
+    api.GET('/documents'),
+  ])
   isLoading.value = false
 
-  if (error) {
+  if (printJobError || documentError) {
     errorMessage.value = 'Druckaufträge konnten nicht geladen werden.'
     return
   }
 
-  printJobs.value = data ?? []
+  printJobs.value = printJobData ?? []
+  documents.value = documentData ?? []
 }
 
 async function openCreateDialog() {
@@ -97,9 +115,12 @@ onMounted(loadPrintJobs)
         @click="openPrintJob(printJob)"
       >
         <strong>{{ printJob.name || 'Unbenannter Druckauftrag' }}</strong>
-        <span>{{ printJob.documentName || 'Dokument nicht verfügbar' }}</span>
+        <span>{{ documentName(printJob.documentId?.id) }}</span>
         <span :class="printJob.fileName ? 'file-ready' : 'file-missing'">
           {{ printJob.fileName || 'Keine Datei hochgeladen' }}
+        </span>
+        <span class="status-badge" :class="`status-${printJob.status?.toLowerCase() ?? 'created'}`">
+          {{ statusLabel(printJob.status) }}
         </span>
       </button>
     </section>
@@ -142,10 +163,11 @@ button { cursor: pointer; }
 .primary-button { border: 1px solid #89c6ff; padding: 10px 15px; background: #89c6ff; color: #102231; font-weight: 700; }
 .primary-button:disabled { cursor: wait; opacity: 0.55; }
 .print-job-list { border-top: 1px solid #3a4049; }
-.print-job-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr; width: 100%; padding: 18px 12px; border: 0; border-bottom: 1px solid #3a4049; background: transparent; color: inherit; text-align: left; }
+.print-job-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr auto; width: 100%; padding: 18px 12px; border: 0; border-bottom: 1px solid #3a4049; background: transparent; color: inherit; text-align: left; }
 .print-job-row:hover, .print-job-row:focus-visible { background: #252a31; }
 .print-job-row span { color: #afb8c4; }
 .file-ready { color: #9ee3b1 !important; }.file-missing { color: #e7b76b !important; }
+.status-badge { width: fit-content; padding: 2px 7px; border: 1px solid #4d5865; color: #c9d1da !important; font-family: ui-monospace, monospace; font-size: 0.72rem; text-transform: uppercase; }.status-completed { border-color: #4f9d67; color: #9ee3b1 !important; }.status-failed { border-color: #c97777; color: #ffabab !important; }.status-calculating, .status-printing { border-color: #b5894c; color: #e7b76b !important; }
 .status-message, .error-message { padding: 22px; border: 1px solid #3a4049; color: #afb8c4; }.error-message { border-color: #c97777; color: #ffabab; }
 .dialog-backdrop { position: fixed; inset: 0; display: grid; padding: 24px; place-items: center; background: rgb(0 0 0 / 65%); }
 .dialog { display: grid; width: min(440px, 100%); gap: 18px; padding: 24px; border: 1px solid #4d5865; background: #22272e; }

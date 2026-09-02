@@ -26,6 +26,7 @@ dependencies {
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("io.minio:minio:8.5.3")
+	implementation("org.apache.commons:commons-csv:1.11.0")
 	compileOnly("org.projectlombok:lombok")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	developmentOnly("org.springframework.boot:spring-boot-docker-compose")
