@@ -37,4 +37,7 @@ public interface PrintJobController {
 
     @GetExchange("/{id:.+}/data")
     byte[] downloadFile(@PathVariable("id") String printJobId);
+
+    @GetExchange("/{id:.+}/file/{fileId:.+}")
+    byte[] downloadFile(@PathVariable("id") String printJobId, @PathVariable("fileId") String fileId);
 }

@@ -8,6 +8,8 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.List;
+
 @Document("printjobs")
 @Getter
 public class PrintJobPersistence {
@@ -29,7 +31,8 @@ public class PrintJobPersistence {
                         name,
                         documentId.id(),
                         null,
-                        PrintJobStatus.CREATED
+                        PrintJobStatus.CREATED,
+                        List.of()
                 )
         );
     }
@@ -39,7 +42,8 @@ public class PrintJobPersistence {
                 this.printJobPersistenceData.name(),
                 this.printJobPersistenceData.documentId(),
                 fileName,
-                this.printJobPersistenceData.status()
+                this.printJobPersistenceData.status(),
+                this.printJobPersistenceData.fileIds()
         );
     }
 
@@ -48,7 +52,18 @@ public class PrintJobPersistence {
                 this.printJobPersistenceData.name(),
                 this.printJobPersistenceData.documentId(),
                 this.printJobPersistenceData.fileName(),
-                status
+                status,
+                this.printJobPersistenceData.fileIds()
+        );
+    }
+
+    public void setDocumentIds(List<String> documentIds) {
+        this.printJobPersistenceData = new PrintJobPersistenceData(
+                this.printJobPersistenceData.name(),
+                this.printJobPersistenceData.documentId(),
+                this.printJobPersistenceData.fileName(),
+                this.printJobPersistenceData.status(),
+                documentIds
         );
     }
 }

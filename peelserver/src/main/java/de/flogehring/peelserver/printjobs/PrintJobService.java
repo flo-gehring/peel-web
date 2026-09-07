@@ -69,7 +69,8 @@ public class PrintJobService implements PrintJobController {
                         printJobPersistence.getPrintJobPersistenceData().name(),
                         new DocumentId(printJobPersistence.getPrintJobPersistenceData().documentId()),
                         printJobPersistence.getPrintJobPersistenceData().fileName(),
-                        printJobPersistence.getPrintJobPersistenceData().status()
+                        printJobPersistence.getPrintJobPersistenceData().status(),
+                        printJobPersistence.getPrintJobPersistenceData().fileIds() == null ? List.of() : printJobPersistence.getPrintJobPersistenceData().fileIds().stream().toList()
                 ))
                 .toList();
     }
@@ -96,5 +97,15 @@ public class PrintJobService implements PrintJobController {
         printJobRepository.findById(printJobId)
                 .orElseThrow(() -> new IllegalArgumentException("Print job not found: " + printJobId));
         return storageService.downloadFile(BUCKET_NAME, printJobId);
+    }
+
+    @Override
+    public byte[] downloadFile(String printJobId, String fileId) {
+        PrintJobPersistence printJobPersistence = printJobRepository.findById(printJobId)
+                .orElseThrow(() -> new IllegalArgumentException("Print job not found: " + printJobId));
+        if (!printJobPersistence.getPrintJobPersistenceData().fileIds().contains(fileId)) {
+            throw new IllegalArgumentException("File not found in print job: " + fileId);
+        }
+        return storageService.downloadFile(BUCKET_NAME, fileId);
     }
 }
