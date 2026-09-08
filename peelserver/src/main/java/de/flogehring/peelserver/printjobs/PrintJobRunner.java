@@ -21,6 +21,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static de.flogehring.peelserver.util.StreamUtil.transformMapValues;
@@ -33,6 +34,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 @Slf4j
 public class PrintJobRunner {
 
+    public static final Pattern INTEGER = Pattern.compile("^\\d+$");
+    public static final Pattern FLOAT = Pattern.compile("^\\d+\\.\\d+$");
     private final PrintJobRepository printJobRepository;
     private final StorageService storageService;
     private final PeelDocumentRepository documentRepository;
@@ -82,13 +85,14 @@ public class PrintJobRunner {
             // Process CSV records
             List<String> documentIds = new ArrayList<>();
             for (var record : csvParser) {
+                Map<String, Object> context = csvParser.getHeaderNames()
+                        .stream()
+                        .map(header -> Map.entry(header, tryInferData(record.get(header))))
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)
+                        );
                 String html = documentRenderService.render(
                         document,
-                        csvParser.getHeaderNames()
-                                .stream()
-                                .map(header -> Map.entry(header, record.get(header)))
-                                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)
-                                )
+                        context
                 );
                 try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
                     ITextRenderer renderer = new ITextRenderer();
@@ -113,6 +117,18 @@ public class PrintJobRunner {
             printJobPersistence.updateStatus(PrintJobStatus.FAILED);
         } finally {
             printJobRepository.save(printJobPersistence);
+        }
+    }
+
+    private Object tryInferData(String s) {
+        if(INTEGER.matcher(s).matches()) {
+            return Integer.parseInt(s);
+        } else if(FLOAT.matcher(s).matches()) {
+            return Double.parseDouble(s);
+        } else if(Pattern.compile("^(true|false)$", Pattern.CASE_INSENSITIVE).matcher(s).matches()) {
+            return Boolean.parseBoolean(s);
+        } else {
+            return s;
         }
     }
 
