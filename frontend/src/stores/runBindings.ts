@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
-type BindingsMap = Record<string, Record<string, never>>
+type BindingsMap = Record<string, unknown>
 
 export const useRunBindingsStore = defineStore('runBindings', () => {
   const rawJson = ref('{}')
