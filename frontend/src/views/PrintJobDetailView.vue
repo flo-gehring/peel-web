@@ -5,7 +5,7 @@ import { api } from '@/adapter/client'
 import type { components } from '@/types/api'
 
 type PrintJobSummary = components['schemas']['PrintJobSummary']
-type DocumentSummary = components['schemas']['DocumentSummaryResponse']
+type DocumentSummary = components['schemas']['DocumentTemplateSummaryResponse']
 
 const route = useRoute()
 const printJob = ref<PrintJobSummary>()
@@ -17,9 +17,14 @@ const errorMessage = ref('')
 const printJobId = computed(() => String(route.params.id))
 const documentName = computed(() => {
   const documentId = printJob.value?.documentId?.id
-  return documents.value.find((document) => document.id === documentId)?.name ?? 'Dokument nicht verfügbar'
+  return (
+    documents.value.find((document) => document.id === documentId)?.name ??
+    'Dokument nicht verfügbar'
+  )
 })
-const canStart = computed(() => printJob.value?.status === 'CREATED' && Boolean(printJob.value.fileName))
+const canStart = computed(
+  () => printJob.value?.status === 'CREATED' && Boolean(printJob.value.fileName),
+)
 
 function statusLabel(status: PrintJobSummary['status']) {
   return {
@@ -34,10 +39,10 @@ function statusLabel(status: PrintJobSummary['status']) {
 async function loadPrintJob() {
   isLoading.value = true
   errorMessage.value = ''
-  const [{ data: printJobData, error: printJobError }, { data: documentData, error: documentError }] = await Promise.all([
-    api.GET('/print-jobs/list'),
-    api.GET('/documents'),
-  ])
+  const [
+    { data: printJobData, error: printJobError },
+    { data: documentData, error: documentError },
+  ] = await Promise.all([api.GET('/print-jobs/list'), api.GET('/documents')])
   isLoading.value = false
   if (printJobError || documentError) {
     errorMessage.value = 'Druckauftrag konnte nicht geladen werden.'
@@ -114,7 +119,10 @@ async function download(
   const response =
     path === '/print-jobs/{id}/data'
       ? await api.GET(path, { params: { path: { id: printJobId.value } }, parseAs: 'blob' })
-      : await api.GET(path, { params: { path: { id: printJobId.value, fileId: fileId! } }, parseAs: 'blob' })
+      : await api.GET(path, {
+          params: { path: { id: printJobId.value, fileId: fileId! } },
+          parseAs: 'blob',
+        })
   const { data, error } = response
   if (error || !data) {
     errorMessage.value = 'Datei konnte nicht heruntergeladen werden.'
@@ -147,24 +155,39 @@ onMounted(loadPrintJob)
       <div class="file-area">
         <template v-if="printJob.fileName">
           <p>Datei</p>
-          <button class="file-link" type="button" @click="downloadFile">{{ printJob.fileName }}</button>
+          <button class="file-link" type="button" @click="downloadFile">
+            {{ printJob.fileName }}
+          </button>
         </template>
         <template v-else>
           <p>Noch keine Datei hochgeladen.</p>
           <label class="upload-button">
             {{ isUploading ? 'Wird hochgeladen...' : 'Datei hochladen' }}
-            <input type="file" accept=".csv,text/csv" :disabled="isUploading" @change="uploadFile" />
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              :disabled="isUploading"
+              @change="uploadFile"
+            />
           </label>
         </template>
       </div>
-      <button v-if="canStart" class="start-button" type="button" :disabled="isStarting" @click="startPrintJob">
+      <button
+        v-if="canStart"
+        class="start-button"
+        type="button"
+        :disabled="isStarting"
+        @click="startPrintJob"
+      >
         {{ isStarting ? 'Wird gestartet...' : 'Druckauftrag starten' }}
       </button>
       <details v-if="printJob.fileIds?.length" class="result-files">
         <summary>Erzeugte Dateien ({{ printJob.fileIds.length }})</summary>
         <ul>
           <li v-for="fileId in printJob.fileIds" :key="fileId">
-            <button class="file-link" type="button" @click="downloadResultFile(fileId)">{{ fileId }}</button>
+            <button class="file-link" type="button" @click="downloadResultFile(fileId)">
+              {{ fileId }}
+            </button>
           </li>
         </ul>
       </details>
@@ -173,5 +196,129 @@ onMounted(loadPrintJob)
 </template>
 
 <style scoped>
-.page { min-height: 100vh; padding: 40px max(24px, calc((100vw - 760px) / 2)); background: #17191d; color: #edf1f5; }.back-link, .file-link { color: #89c6ff; font-family: ui-monospace, monospace; font-size: 0.8rem; text-decoration: none; text-transform: uppercase; }.detail-card { margin-top: 52px; padding: 30px; border: 1px solid #3a4049; background: #20242a; }.eyebrow { color: #89c6ff; font-family: ui-monospace, monospace; font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; }h1 { margin: 5px 0 2px; font-size: clamp(2rem, 6vw, 3.6rem); letter-spacing: -0.055em; }.document-name { color: #afb8c4; }.status-badge { width: fit-content; margin-top: 16px; padding: 2px 7px; border: 1px solid #4d5865; color: #c9d1da; font-family: ui-monospace, monospace; font-size: 0.72rem; text-transform: uppercase; }.status-completed { border-color: #4f9d67; color: #9ee3b1; }.status-failed { border-color: #c97777; color: #ffabab; }.status-calculating, .status-printing { border-color: #b5894c; color: #e7b76b; }.file-area { display: grid; margin-top: 38px; gap: 10px; padding-top: 20px; border-top: 1px solid #3a4049; }.file-link { width: fit-content; border: 0; padding: 0; background: transparent; text-align: left; }.file-link:hover { text-decoration: underline; }.upload-button, .start-button { width: fit-content; border: 1px solid #89c6ff; padding: 10px 15px; background: #89c6ff; color: #102231; cursor: pointer; font-weight: 700; }.upload-button input { position: absolute; width: 1px; height: 1px; opacity: 0; }.start-button { margin-top: 22px; }.start-button:disabled { cursor: wait; opacity: 0.55; }.result-files { margin-top: 30px; padding-top: 20px; border-top: 1px solid #3a4049; }.result-files summary { cursor: pointer; color: #c9d1da; }.result-files ul { display: grid; gap: 8px; margin: 14px 0 0; padding: 0; list-style: none; }.status-message, .error-message { margin-top: 50px; padding: 22px; border: 1px solid #3a4049; color: #afb8c4; }.error-message { border-color: #c97777; color: #ffabab; }
+.page {
+  min-height: 100vh;
+  padding: 40px max(24px, calc((100vw - 760px) / 2));
+  background: #17191d;
+  color: #edf1f5;
+}
+.back-link,
+.file-link {
+  color: #89c6ff;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+.detail-card {
+  margin-top: 52px;
+  padding: 30px;
+  border: 1px solid #3a4049;
+  background: #20242a;
+}
+.eyebrow {
+  color: #89c6ff;
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+h1 {
+  margin: 5px 0 2px;
+  font-size: clamp(2rem, 6vw, 3.6rem);
+  letter-spacing: -0.055em;
+}
+.document-name {
+  color: #afb8c4;
+}
+.status-badge {
+  width: fit-content;
+  margin-top: 16px;
+  padding: 2px 7px;
+  border: 1px solid #4d5865;
+  color: #c9d1da;
+  font-family: ui-monospace, monospace;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+.status-completed {
+  border-color: #4f9d67;
+  color: #9ee3b1;
+}
+.status-failed {
+  border-color: #c97777;
+  color: #ffabab;
+}
+.status-calculating,
+.status-printing {
+  border-color: #b5894c;
+  color: #e7b76b;
+}
+.file-area {
+  display: grid;
+  margin-top: 38px;
+  gap: 10px;
+  padding-top: 20px;
+  border-top: 1px solid #3a4049;
+}
+.file-link {
+  width: fit-content;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  text-align: left;
+}
+.file-link:hover {
+  text-decoration: underline;
+}
+.upload-button,
+.start-button {
+  width: fit-content;
+  border: 1px solid #89c6ff;
+  padding: 10px 15px;
+  background: #89c6ff;
+  color: #102231;
+  cursor: pointer;
+  font-weight: 700;
+}
+.upload-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.start-button {
+  margin-top: 22px;
+}
+.start-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+.result-files {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #3a4049;
+}
+.result-files summary {
+  cursor: pointer;
+  color: #c9d1da;
+}
+.result-files ul {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.status-message,
+.error-message {
+  margin-top: 50px;
+  padding: 22px;
+  border: 1px solid #3a4049;
+  color: #afb8c4;
+}
+.error-message {
+  border-color: #c97777;
+  color: #ffabab;
+}
 </style>
