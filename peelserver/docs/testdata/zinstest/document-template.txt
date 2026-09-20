@@ -1,0 +1,18 @@
+Eingabe:
+Laufzeit: {{  calc.statements[0] | renderTraceExpression}}
+Zins: {{  calc.statements[1] | renderTraceExpression }}
+
+Berechnung:
+
+{% for loop in calc.statements[4].iterations %}
+{%if loop.condition.value.value   %}
+Jahr {{ loop.condition.lhs.lhs | nurWert}}  {% for statement in loop.body.content %} {{ statement | berechnungUndWert }} {% endfor %}
+{% else %}
+{%endif %}
+{% else %}
+Keine Jahre angegeben
+{% endfor %}
+
+Ergebnis
+Zu zahlender Betrag: {{ calc.statements[5] |  renderTraceExpression}}
+Davon Zinsen: {{ calc.statements[6] |  nurWert }}

@@ -1,13 +1,13 @@
 package de.flogehring.peelserver;
 
+import de.flogehring.peelserver.config.PeelModuleTest;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+@PeelModuleTest
 class PeelserverApplicationTests {
 
-	@Test
-	void contextLoads() {
-	}
+    @Test
+    void contextLoads() {
+    }
 
 }

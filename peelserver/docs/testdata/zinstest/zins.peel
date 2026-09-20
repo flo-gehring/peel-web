@@ -1,0 +1,10 @@
+laufzeit;
+zins;
+var zinstraeger = betrag;
+var jahr = 0;
+while (jahr - laufzeit != 0 ) {
+  jahr = jahr +1;
+  zinstraeger = zinstraeger * (1 + zins);
+}
+zinstraeger;
+var zinsen = zinstraeger - betrag;

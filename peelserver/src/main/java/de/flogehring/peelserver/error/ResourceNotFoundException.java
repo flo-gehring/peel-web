@@ -1,8 +1,0 @@
-package de.flogehring.peelserver.error;
-
-public class ResourceNotFoundException extends RuntimeException {
-
-    public ResourceNotFoundException(String message) {
-        super(message);
-    }
-}
