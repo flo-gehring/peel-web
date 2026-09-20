@@ -75,16 +75,6 @@ const onReady = (event: DockviewReadyEvent) => {
   })
 
   dockApi.addPanel({
-    id: 'editor-App.java',
-    component: 'editor',
-    title: 'App.java',
-    params: { filename: 'App.java' },
-    position: {
-      referenceGroup: editorGroup,
-    },
-  })
-
-  dockApi.addPanel({
     id: 'bindings-json',
     component: 'bindings',
     title: 'Bindings',
@@ -184,17 +174,19 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
     if (file.kind === 'document') {
       let draft = documentDraftStore.getDraft(file.id)
       if (!draft) {
-        const [{ data: document, error: documentError }, { data: renderConfigurations }] = await Promise.all([
-          api.GET('/api/documents/{id}', { params: { path: { id: file.id } } }),
-          api.GET('/api/render-config/list-ids'),
-        ])
+        const [{ data: document, error: documentError }, { data: renderConfigurations }] =
+          await Promise.all([
+            api.GET('/api/documents/{id}', { params: { path: { id: file.id } } }),
+            api.GET('/api/render-config/list-ids'),
+          ])
         if (documentError || !document) {
           console.error('Failed to load document for editor tab:', documentError)
           return
         }
         draft = {
           name: document.name ?? file.name,
-          editorStateJson: document.editorStateJson ?? '{"type":"doc","content":[{"type":"paragraph"}]}',
+          editorStateJson:
+            document.editorStateJson ?? '{"type":"doc","content":[{"type":"paragraph"}]}',
           templateHtml: document.templateHtml ?? '<p></p>',
           scriptNameTags: document.scriptNameTags ?? {},
           renderConfigurationId: document.renderConfigurationId ?? '',
@@ -207,7 +199,9 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
         documentDraftStore.setDraft(file.id, draft)
       }
 
-      const editorGroup = dockviewApi.value?.groups.find((group) => group.id === editorGroupId.value)
+      const editorGroup = dockviewApi.value?.groups.find(
+        (group) => group.id === editorGroupId.value,
+      )
       const targetGroup =
         editorGroup || dockviewApi.value?.activeGroup || dockviewApi.value?.groups[0]
       dockviewApi.value?.addPanel({
