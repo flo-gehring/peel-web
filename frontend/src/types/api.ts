@@ -36,22 +36,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/print-jobs/init": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: operations["initPrintJob"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/validate": {
         parameters: {
             query?: never;
@@ -126,6 +110,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["runPrintJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/print-jobs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["initPrintJob"];
         delete?: never;
         options?: never;
         head?: never;
@@ -310,16 +310,6 @@ export interface components {
             name?: string;
             renderConfigurationDto?: components["schemas"]["RenderConfigurationDto"];
         };
-        DocumentId: {
-            id?: string;
-        };
-        PrintJobInitRequestDto: {
-            documentId?: components["schemas"]["DocumentId"];
-            name?: string;
-        };
-        PrintJobId: {
-            id?: string;
-        };
         ValidationRequest: {
             script?: string;
         };
@@ -365,7 +355,17 @@ export interface components {
         RenderConfigurationCreateResponse: {
             id?: string;
         };
-        DocumentSaveRequest: {
+        DocumentId: {
+            id?: string;
+        };
+        PrintJobInitRequestDto: {
+            documentId?: components["schemas"]["DocumentId"];
+            name?: string;
+        };
+        PrintJobId: {
+            id?: string;
+        };
+        DocumentTemplateSaveRequest: {
             id?: string;
             name?: string;
             scriptNameTags?: {
@@ -375,7 +375,7 @@ export interface components {
             editorStateJson?: string;
             renderConfigurationId?: string;
         };
-        DocumentSaveResponse: {
+        DocumentTemplateSaveResponse: {
             id?: string;
             /** Format: date-time */
             createdAt?: string;
@@ -398,7 +398,8 @@ export interface components {
             id?: string;
         };
         DocumentPreviewResponse: {
-            html?: string;
+            /** Format: byte */
+            pdfData?: string;
         };
         ScriptSummaryResponse: {
             id?: string;
@@ -417,13 +418,13 @@ export interface components {
             status?: "CREATED" | "CALCULATING" | "PRINTING" | "COMPLETED" | "FAILED";
             fileIds?: string[];
         };
-        DocumentSummaryResponse: {
+        DocumentTemplateSummaryResponse: {
             id?: string;
             name?: string;
             /** Format: date-time */
             updatedAt?: string;
         };
-        DocumentContent: {
+        DocumentTemplate: {
             id?: string;
             name?: string;
             scriptNameTags?: {
@@ -516,30 +517,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-        };
-    };
-    initPrintJob: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PrintJobInitRequestDto"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PrintJobId"];
-                };
             };
         };
     };
@@ -681,6 +658,30 @@ export interface operations {
             };
         };
     };
+    initPrintJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrintJobInitRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PrintJobId"];
+                };
+            };
+        };
+    };
     listDocuments: {
         parameters: {
             query?: never;
@@ -696,7 +697,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["DocumentSummaryResponse"][];
+                    "*/*": components["schemas"]["DocumentTemplateSummaryResponse"][];
                 };
             };
         };
@@ -710,7 +711,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DocumentSaveRequest"];
+                "application/json": components["schemas"]["DocumentTemplateSaveRequest"];
             };
         };
         responses: {
@@ -720,7 +721,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["DocumentSaveResponse"];
+                    "*/*": components["schemas"]["DocumentTemplateSaveResponse"];
                 };
             };
         };
@@ -941,7 +942,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["DocumentContent"];
+                    "*/*": components["schemas"]["DocumentTemplate"];
                 };
             };
         };

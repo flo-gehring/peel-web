@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
 export const useDocumentPreviewStore = defineStore('documentPreview', () => {
-  const html = ref<string | null>(null)
+  const pdfUrl = ref<string | null>(null)
   const error = ref<string | null>(null)
   const isLoading = ref(false)
   const previewVersion = ref(0)
@@ -12,8 +12,11 @@ export const useDocumentPreviewStore = defineStore('documentPreview', () => {
     error.value = null
   }
 
-  function setPreview(value: string): void {
-    html.value = value
+  function setPreview(pdfData: string): void {
+    if (pdfUrl.value) URL.revokeObjectURL(pdfUrl.value)
+    const binary = atob(pdfData)
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0))
+    pdfUrl.value = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }))
     error.value = null
     isLoading.value = false
   }
@@ -27,5 +30,5 @@ export const useDocumentPreviewStore = defineStore('documentPreview', () => {
     previewVersion.value += 1
   }
 
-  return { html, error, isLoading, previewVersion, start, setPreview, setError, requestOpen }
+  return { pdfUrl, error, isLoading, previewVersion, start, setPreview, setError, requestOpen }
 })

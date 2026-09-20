@@ -1,8 +1,8 @@
 package de.flogehring.peelserver.impl.documenttemplates;
 
-import de.flogehring.peelserver.api.services.DocumentTemplateController;
 import de.flogehring.peelserver.api.data.template.*;
 import de.flogehring.peelserver.api.error.ResourceNotFoundException;
+import de.flogehring.peelserver.api.services.DocumentTemplateController;
 import de.flogehring.peelserver.impl.renderconfig.RenderConfigurationId;
 import de.flogehring.peelserver.impl.renderconfig.RenderConfigurationRepository;
 import de.flogehring.peelserver.impl.scripts.PeelScript;
@@ -11,6 +11,7 @@ import de.flogehring.peelserver.impl.scripts.PeelScriptRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.ByteArrayOutputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -97,8 +98,7 @@ public class DocumentTemplateService implements DocumentTemplateController {
                         .orElseThrow(() -> new ResourceNotFoundException("Render configuration not found: " + request.renderConfigId()))
                         .getExpressionRenderConfiguration()
         );
-        String html = documentRenderService.render(document, request.bindings());
-        return new DocumentPreviewResponse(html);
+        return new DocumentPreviewResponse(documentRenderService.renderPdf(document, request.bindings(), ByteArrayOutputStream::toByteArray));
     }
 
     @Override
@@ -112,8 +112,8 @@ public class DocumentTemplateService implements DocumentTemplateController {
                 documentPersistence.getData().templateHtml(),
                 renderConfigurationRepository.findById(data.renderConfigurationId().id()).orElseThrow(() -> new ResourceNotFoundException("Render configuration not found: " + data.renderConfigurationId().id())).getExpressionRenderConfiguration()
         );
-        String html = documentRenderService.render(document, bindings);
-        return new DocumentPreviewResponse(html);
+
+        return new DocumentPreviewResponse(documentRenderService.renderPdf(document, bindings, ByteArrayOutputStream::toByteArray));
     }
 
     private PeelScript getPeelScript(PeelScriptId scriptId) {

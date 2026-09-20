@@ -158,7 +158,11 @@ async function previewDocument(): Promise<void> {
     if (error) {
       previewStore.setError('The document could not be rendered. Check script links and template content.')
     } else {
-      previewStore.setPreview(data?.html ?? '')
+      if (!data?.pdfData) {
+        previewStore.setError('The document preview did not contain a PDF.')
+      } else {
+        previewStore.setPreview(data.pdfData)
+      }
     }
   } catch {
     previewStore.setError('An unexpected error occurred while rendering the document.')

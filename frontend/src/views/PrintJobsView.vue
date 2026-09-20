@@ -68,7 +68,7 @@ async function createPrintJob() {
 
   isCreating.value = true
   errorMessage.value = ''
-  const { data, error } = await api.PUT('/print-jobs/init', {
+  const { data, error } = await api.POST('/print-jobs/', {
     body: {
       name: name.value.trim(),
       documentId: { id: documentId.value },

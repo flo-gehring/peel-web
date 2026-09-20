@@ -10,13 +10,12 @@ const previewStore = useDocumentPreviewStore()
     <p v-if="previewStore.isLoading" class="preview-message">Rendering document...</p>
     <p v-else-if="previewStore.error" class="preview-message preview-error">{{ previewStore.error }}</p>
     <iframe
-      v-else-if="previewStore.html !== null"
+      v-else-if="previewStore.pdfUrl !== null"
       class="preview-frame"
       title="Rendered document preview"
-      sandbox
-      :srcdoc="previewStore.html"
+      :src="previewStore.pdfUrl"
     ></iframe>
-    <p v-else class="preview-message">Preview a document to see its rendered HTML.</p>
+    <p v-else class="preview-message">Preview a document to see its rendered PDF.</p>
   </div>
 </template>
 

@@ -20,7 +20,7 @@ import java.util.List;
 @HttpExchange("/api/print-jobs")
 public interface PrintJobController {
 
-    @PutExchange("/init")
+    @PostExchange("/")
     PrintJobId initPrintJob(@RequestBody PrintJobInitRequestDto initRequestDto);
 
     @PutExchange(value = "/{id:.+}/data", contentType = MediaType.MULTIPART_FORM_DATA_VALUE)

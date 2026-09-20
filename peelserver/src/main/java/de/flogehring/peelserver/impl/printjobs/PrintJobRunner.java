@@ -1,11 +1,11 @@
 package de.flogehring.peelserver.impl.printjobs;
 
 import de.flogehring.peelserver.api.data.print.jobs.PrintJobStatus;
+import de.flogehring.peelserver.api.error.ResourceNotFoundException;
 import de.flogehring.peelserver.impl.documenttemplates.Document;
 import de.flogehring.peelserver.impl.documenttemplates.DocumentPersistenceData;
 import de.flogehring.peelserver.impl.documenttemplates.DocumentRenderService;
 import de.flogehring.peelserver.impl.documenttemplates.PeelDocumentRepository;
-import de.flogehring.peelserver.api.error.ResourceNotFoundException;
 import de.flogehring.peelserver.impl.filestorage.StorageService;
 import de.flogehring.peelserver.impl.renderconfig.RenderConfigurationRepository;
 import de.flogehring.peelserver.impl.scripts.PeelScript;
@@ -16,11 +16,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.jspecify.annotations.NonNull;
-import org.openpdf.pdf.ITextRenderer;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -93,25 +93,21 @@ public class PrintJobRunner {
                         .map(header -> Map.entry(header, tryInferData(record.get(header))))
                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)
                         );
-                String html = documentRenderService.render(
+                documentRenderService.renderPdf(
                         document,
-                        context
+                        context,
+                        outputStream -> {
+                            String objectId = printJobPersistence.getId() + "_" + record.getRecordNumber() + ".pdf";
+                            documentIds.add(objectId);
+                            storageService.uploadFile(
+                                    PrintJobService.BUCKET_NAME,
+                                    objectId,
+                                    new ByteArrayInputStream(outputStream.toByteArray()),
+                                    "application/pdf"
+                            );
+                            return (Void) null;
+                        }
                 );
-                try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-                    ITextRenderer renderer = new ITextRenderer();
-                    renderer.setDocumentFromString(html);
-                    renderer.layout();
-                    renderer.createPDF(outputStream);
-                    outputStream.flush();
-                    String objectId = printJobPersistence.getId() + "_" + record.getRecordNumber() + ".pdf";
-                    documentIds.add(objectId);
-                    storageService.uploadFile(
-                            PrintJobService.BUCKET_NAME,
-                            objectId,
-                            new ByteArrayInputStream(outputStream.toByteArray()),
-                            "application/pdf"
-                    );
-                }
             }
             printJobPersistence.setDocumentIds(documentIds);
             printJobPersistence.updateStatus(PrintJobStatus.COMPLETED);
@@ -140,5 +136,4 @@ public class PrintJobRunner {
                 .orElseThrow(() -> new ResourceNotFoundException("Script not found: " + scriptNameTag))
                 .getPeelScript();
     }
-
 }

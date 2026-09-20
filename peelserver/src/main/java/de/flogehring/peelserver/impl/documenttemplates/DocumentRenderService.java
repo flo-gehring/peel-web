@@ -7,11 +7,14 @@ import de.flogehring.peelserver.impl.run.PeelExecutionService;
 import de.flogehring.peelserver.impl.run.render.TraceRenderingPebbleExtension;
 import io.pebbletemplates.pebble.PebbleEngine;
 import lombok.RequiredArgsConstructor;
+import org.openpdf.pdf.ITextRenderer;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayOutputStream;
 import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static de.flogehring.peelserver.impl.util.StreamUtil.transformMapValues;
@@ -48,6 +51,24 @@ public class DocumentRenderService {
             return writer.toString();
         } catch (Exception ex) {
             throw new IllegalArgumentException("Template rendering failed: " + ex.getMessage(), ex);
+        }
+    }
+
+    public <T> T renderPdf(
+            Document document,
+            Map<String, Object> bindings,
+            Function<ByteArrayOutputStream, T> processor
+    ) {
+        String html = render(document, bindings);
+        try(ByteArrayOutputStream outputStream = new ByteArrayOutputStream()){
+            ITextRenderer renderer = new ITextRenderer();
+            renderer.setDocumentFromString(html);
+            renderer.layout();
+            renderer.createPDF(outputStream);
+            outputStream.flush();
+            return processor.apply(outputStream);
+        } catch (Exception e) {
+            throw new RuntimeException();
         }
     }
 }
