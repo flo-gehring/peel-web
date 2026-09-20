@@ -36,6 +36,8 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-data-mongodb-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-mongodb-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+	testImplementation("org.testcontainers:testcontainers-minio:2.0.1")
+	testImplementation("org.testcontainers:testcontainers-mongodb:2.0.1")
 	testCompileOnly("org.projectlombok:lombok")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	testAnnotationProcessor("org.projectlombok:lombok")

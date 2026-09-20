@@ -1,7 +1,6 @@
 spring:
   application:
     name: peelserver
-
 minio:
   url: ${MINIO_URL}
   access:
