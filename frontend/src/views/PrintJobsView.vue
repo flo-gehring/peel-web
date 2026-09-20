@@ -40,7 +40,7 @@ async function loadPrintJobs() {
   const [
     { data: printJobData, error: printJobError },
     { data: documentData, error: documentError },
-  ] = await Promise.all([api.GET('/print-jobs/list'), api.GET('/documents')])
+  ] = await Promise.all([api.GET('/api/print-jobs/list'), api.GET('/api/documents')])
   isLoading.value = false
 
   if (printJobError || documentError) {
@@ -54,7 +54,7 @@ async function loadPrintJobs() {
 
 async function openCreateDialog() {
   errorMessage.value = ''
-  const { data, error } = await api.GET('/documents')
+  const { data, error } = await api.GET('/api/documents')
   if (error) {
     errorMessage.value = 'Dokumente konnten nicht geladen werden.'
     return
@@ -71,7 +71,7 @@ async function createPrintJob() {
 
   isCreating.value = true
   errorMessage.value = ''
-  const { data, error } = await api.POST('/print-jobs/', {
+  const { data, error } = await api.POST('/api/print-jobs', {
     body: {
       name: name.value.trim(),
       documentId: { id: documentId.value },

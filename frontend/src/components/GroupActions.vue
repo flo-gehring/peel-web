@@ -104,7 +104,7 @@ async function handleSave() {
         return
       }
 
-      const { error } = await api.PUT('/render-config/update/{id}', {
+      const { error } = await api.PUT('/api/render-config/update/{id}', {
         params: { path: { id: context.documentId } },
         body: {
           name: context.name,
@@ -120,7 +120,7 @@ async function handleSave() {
       return
     }
 
-    const { data, error } = await api.POST('/scripts', {
+    const { data, error } = await api.POST('/api/scripts', {
       body: { id: context.documentId, name: context.name, script: content },
     })
     if (error) {
@@ -168,7 +168,7 @@ async function handleRun() {
   isRunning.value = true
   runOutputStore.startRun({ panelId: context.panelId, name: context.name, script, bindings })
   try {
-    const { data, error } = await api.POST('/run', { body: { script, bindings } })
+    const { data, error } = await api.PUT('/api/scripts/run', { body: { script, bindings } })
     if (error) {
       runOutputStore.setRunError((error as { message?: string }).message || 'Run request failed.')
       return

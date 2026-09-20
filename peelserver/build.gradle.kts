@@ -23,6 +23,7 @@ dependencies {
 	implementation("io.pebbletemplates:pebble:3.2.4")
 	implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
 	implementation("org.springframework.boot:spring-boot-starter-mongodb")
+	implementation("org.jspecify:jspecify:1.0.1")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("io.minio:minio:8.6.0")

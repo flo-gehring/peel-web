@@ -185,8 +185,8 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
       let draft = documentDraftStore.getDraft(file.id)
       if (!draft) {
         const [{ data: document, error: documentError }, { data: renderConfigurations }] = await Promise.all([
-          api.GET('/documents/{id}', { params: { path: { id: file.id } } }),
-          api.GET('/render-config/list-ids'),
+          api.GET('/api/documents/{id}', { params: { path: { id: file.id } } }),
+          api.GET('/api/render-config/list-ids'),
         ])
         if (documentError || !document) {
           console.error('Failed to load document for editor tab:', documentError)
@@ -224,7 +224,7 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
 
     if (content === undefined) {
       if (file.kind === 'peel') {
-        const { data, error } = await api.GET('/scripts/{id}', {
+        const { data, error } = await api.GET('/api/scripts/{id}', {
           params: { path: { id: file.id } },
         })
         if (error) {
@@ -234,7 +234,7 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
           content = data?.script ?? ''
         }
       } else {
-        const { data, error } = await api.GET('/render-config/{id}', {
+        const { data, error } = await api.GET('/api/render-config/{id}', {
           params: { path: { id: file.id } },
         })
         if (error) {

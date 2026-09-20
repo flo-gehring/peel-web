@@ -1,34 +1,39 @@
 package de.flogehring.peelserver.api.services;
 
 import de.flogehring.peelserver.api.data.template.*;
+import io.swagger.v3.oas.annotations.media.Schema;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.service.annotation.DeleteExchange;
-import org.springframework.web.service.annotation.GetExchange;
-import org.springframework.web.service.annotation.HttpExchange;
-import org.springframework.web.service.annotation.PostExchange;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.util.List;
 import java.util.Map;
 
-@HttpExchange("/api/documents")
+@RequestMapping(path = "/api/documents", produces = MediaType.APPLICATION_JSON_VALUE)
 public interface DocumentTemplateController {
 
-    @PostExchange
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     DocumentTemplateSaveResponse saveDocument(@RequestBody DocumentTemplateSaveRequest request);
 
-    @GetExchange
+    @GetMapping
     List<DocumentTemplateSummaryResponse> listDocuments();
 
-    @GetExchange("/{id}")
+    @GetMapping("/{id}")
     DocumentTemplate getDocument(@PathVariable String id);
 
-    @DeleteExchange("/{id}")
+    @DeleteMapping("/{id}")
     void deleteDocument(@PathVariable String id);
 
-    @PostExchange("/preview")
+    @PostMapping(path = "/preview", consumes = MediaType.APPLICATION_JSON_VALUE)
     DocumentPreviewResponse previewDocument(@RequestBody DocumentPreviewRequest request);
 
-    @PostExchange("/preview-stored/{id}")
-    DocumentPreviewResponse previewDocument(@PathVariable String id, @RequestBody Map<String, Object> bindings);
+    @PostMapping(path = "/preview-stored/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    DocumentPreviewResponse previewDocument(
+            @PathVariable String id,
+            @RequestBody @Schema(type = "object", additionalProperties = Schema.AdditionalPropertiesValue.TRUE) Map<String, Object> bindings
+    );
 }

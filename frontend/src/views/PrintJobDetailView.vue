@@ -42,7 +42,7 @@ async function loadPrintJob() {
   const [
     { data: printJobData, error: printJobError },
     { data: documentData, error: documentError },
-  ] = await Promise.all([api.GET('/print-jobs/list'), api.GET('/documents')])
+  ] = await Promise.all([api.GET('/api/print-jobs/list'), api.GET('/api/documents')])
   isLoading.value = false
   if (printJobError || documentError) {
     errorMessage.value = 'Druckauftrag konnte nicht geladen werden.'
@@ -57,7 +57,7 @@ async function loadPrintJob() {
 async function startPrintJob() {
   isStarting.value = true
   errorMessage.value = ''
-  const { data, error } = await api.POST('/print-jobs/{id}/run', {
+  const { data, error } = await api.POST('/api/print-jobs/{id}/run', {
     params: { path: { id: printJobId.value } },
   })
   isStarting.value = false
@@ -81,7 +81,7 @@ async function uploadFile(event: Event) {
   isUploading.value = true
   errorMessage.value = ''
   const csvFile = new File([file], file.name, { type: 'text/csv' })
-  const { error } = await api.PUT('/print-jobs/{id}/data', {
+  const { error } = await api.PUT('/api/print-jobs/{id}/data', {
     params: { path: { id: printJobId.value } },
     body: { file: csvFile as unknown as string },
     bodySerializer: (body) => {
@@ -103,21 +103,21 @@ async function uploadFile(event: Event) {
 async function downloadFile() {
   if (!printJob.value?.fileName) return
 
-  await download('/print-jobs/{id}/data', printJob.value.fileName)
+  await download('/api/print-jobs/{id}/data', printJob.value.fileName)
 }
 
 async function downloadResultFile(fileId: string) {
-  await download('/print-jobs/{id}/file/{fileId}', fileId, fileId)
+  await download('/api/print-jobs/{id}/file/{fileId}', fileId, fileId)
 }
 
 async function download(
-  path: '/print-jobs/{id}/data' | '/print-jobs/{id}/file/{fileId}',
+  path: '/api/print-jobs/{id}/data' | '/api/print-jobs/{id}/file/{fileId}',
   fileName: string,
   fileId?: string,
 ) {
   errorMessage.value = ''
   const response =
-    path === '/print-jobs/{id}/data'
+    path === '/api/print-jobs/{id}/data'
       ? await api.GET(path, { params: { path: { id: printJobId.value } }, parseAs: 'blob' })
       : await api.GET(path, {
           params: { path: { id: printJobId.value, fileId: fileId! } },

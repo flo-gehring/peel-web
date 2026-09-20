@@ -105,7 +105,7 @@ async function saveDocument(): Promise<void> {
   isSaving.value = true
   saveError.value = null
   try {
-    const { error } = await api.POST('/documents', {
+    const { error } = await api.POST('/api/documents', {
       body: {
         id: documentId,
         name: current.name,
@@ -145,7 +145,7 @@ async function previewDocument(): Promise<void> {
   saveError.value = null
   previewStore.start()
   try {
-    const { data, error } = await api.POST('/documents/preview', {
+    const { data, error } = await api.POST('/api/documents/preview', {
       body: {
         scriptTags: Object.fromEntries(
           Object.entries(current.scriptNameTags).map(([tag, id]) => [tag, { id }]),

@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/api/scripts/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["run"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/render-config/update/{id}": {
         parameters: {
             query?: never;
@@ -36,22 +52,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/validate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["validate"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/scripts": {
         parameters: {
             query?: never;
@@ -59,25 +59,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listScripts"];
-        put?: never;
-        post: operations["saveScript"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/run": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
         get?: never;
         put?: never;
-        post: operations["run"];
+        post: operations["saveScript"];
         delete?: never;
         options?: never;
         head?: never;
@@ -100,6 +84,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/print-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["initPrintJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/print-jobs/{id}/run": {
         parameters: {
             query?: never;
@@ -110,22 +110,6 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["runPrintJob"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/print-jobs/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["initPrintJob"];
         delete?: never;
         options?: never;
         head?: never;
@@ -196,6 +180,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/scripts/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["validate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scripts/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listScripts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/render-config/{id}": {
         parameters: {
             query?: never;
@@ -206,7 +222,7 @@ export interface paths {
         get: operations["getById"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["deleteById"];
         options?: never;
         head?: never;
         patch?: never;
@@ -296,6 +312,20 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        RunRequest: {
+            script?: string;
+            bindings?: {
+                [key: string]: unknown;
+            };
+        };
+        RunResponse: {
+            trace?: {
+                [key: string]: unknown;
+            };
+            result?: {
+                [key: string]: unknown;
+            };
+        };
         RenderConfigurationDto: {
             renderConfigurations?: {
                 [key: string]: string;
@@ -310,24 +340,6 @@ export interface components {
             name?: string;
             renderConfigurationDto?: components["schemas"]["RenderConfigurationDto"];
         };
-        ValidationRequest: {
-            script?: string;
-        };
-        ValidationDiagnostic: {
-            /** Format: int32 */
-            line?: number;
-            /** Format: int32 */
-            column?: number;
-            /** Format: int32 */
-            endLine?: number;
-            /** Format: int32 */
-            endColumn?: number;
-            severity?: string;
-            message?: string;
-        };
-        ValidationResponse: {
-            diagnostics?: components["schemas"]["ValidationDiagnostic"][];
-        };
         ScriptSaveRequest: {
             id?: string;
             name?: string;
@@ -337,20 +349,6 @@ export interface components {
             id?: string;
             name?: string;
             script?: string;
-        };
-        RunRequest: {
-            script?: string;
-            bindings?: {
-                [key: string]: Record<string, never>;
-            };
-        };
-        RunResponse: {
-            trace?: {
-                [key: string]: Record<string, never>;
-            };
-            result?: {
-                [key: string]: Record<string, never>;
-            };
         };
         RenderConfigurationCreateResponse: {
             id?: string;
@@ -389,7 +387,7 @@ export interface components {
                 [key: string]: components["schemas"]["PeelScriptId"];
             };
             bindings?: {
-                [key: string]: Record<string, never>;
+                [key: string]: unknown;
             };
             renderConfigId?: string;
             template?: string;
@@ -400,6 +398,24 @@ export interface components {
         DocumentPreviewResponse: {
             /** Format: byte */
             pdfData?: string;
+        };
+        ValidationRequest: {
+            script?: string;
+        };
+        ValidationDiagnostic: {
+            /** Format: int32 */
+            line?: number;
+            /** Format: int32 */
+            column?: number;
+            /** Format: int32 */
+            endLine?: number;
+            /** Format: int32 */
+            endColumn?: number;
+            severity?: string;
+            message?: string;
+        };
+        ValidationResponse: {
+            diagnostics?: components["schemas"]["ValidationDiagnostic"][];
         };
         ScriptSummaryResponse: {
             id?: string;
@@ -447,6 +463,30 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunResponse"];
+                };
+            };
+        };
+    };
     updateRenderConfiguration: {
         parameters: {
             query?: never;
@@ -488,7 +528,8 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": string;
+                    "text/csv": string;
+                    "application/json": string;
                 };
             };
         };
@@ -520,50 +561,6 @@ export interface operations {
             };
         };
     };
-    validate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ValidationRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ValidationResponse"];
-                };
-            };
-        };
-    };
-    listScripts: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ScriptSummaryResponse"][];
-                };
-            };
-        };
-    };
     saveScript: {
         parameters: {
             query?: never;
@@ -583,31 +580,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ScriptDtoResponse"];
-                };
-            };
-        };
-    };
-    run: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RunRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["RunResponse"];
+                    "application/json": components["schemas"]["ScriptDtoResponse"];
                 };
             };
         };
@@ -631,29 +604,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["RenderConfigurationCreateResponse"];
-                };
-            };
-        };
-    };
-    runPrintJob: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": "CREATED" | "CALCULATING" | "PRINTING" | "COMPLETED" | "FAILED";
+                    "application/json": components["schemas"]["RenderConfigurationCreateResponse"];
                 };
             };
         };
@@ -677,7 +628,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PrintJobId"];
+                    "application/json": components["schemas"]["PrintJobId"];
+                };
+            };
+        };
+    };
+    runPrintJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": "CREATED" | "CALCULATING" | "PRINTING" | "COMPLETED" | "FAILED";
                 };
             };
         };
@@ -697,7 +670,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["DocumentTemplateSummaryResponse"][];
+                    "application/json": components["schemas"]["DocumentTemplateSummaryResponse"][];
                 };
             };
         };
@@ -721,7 +694,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["DocumentTemplateSaveResponse"];
+                    "application/json": components["schemas"]["DocumentTemplateSaveResponse"];
                 };
             };
         };
@@ -745,7 +718,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["DocumentPreviewResponse"];
+                    "application/json": components["schemas"]["DocumentPreviewResponse"];
                 };
             };
         };
@@ -762,7 +735,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    [key: string]: Record<string, never>;
+                    [key: string]: unknown;
                 };
             };
         };
@@ -773,7 +746,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["DocumentPreviewResponse"];
+                    "application/json": components["schemas"]["DocumentPreviewResponse"];
                 };
             };
         };
@@ -795,7 +768,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ScriptDtoResponse"];
+                    "application/json": components["schemas"]["ScriptDtoResponse"];
                 };
             };
         };
@@ -820,6 +793,50 @@ export interface operations {
             };
         };
     };
+    validate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationResponse"];
+                };
+            };
+        };
+    };
+    listScripts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScriptSummaryResponse"][];
+                };
+            };
+        };
+    };
     getById: {
         parameters: {
             query?: never;
@@ -837,8 +854,28 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["RenderConfigurationPersistenceDto"];
+                    "application/json": components["schemas"]["RenderConfigurationPersistenceDto"];
                 };
+            };
+        };
+    };
+    deleteById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -857,7 +894,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["IdNameTuple"][];
+                    "application/json": components["schemas"]["IdNameTuple"][];
                 };
             };
         };
@@ -877,7 +914,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["RenderConfigurationDto"];
+                    "application/json": components["schemas"]["RenderConfigurationDto"];
                 };
             };
         };
@@ -900,7 +937,8 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": string;
+                    "application/pdf": string;
+                    "application/json": string;
                 };
             };
         };
@@ -920,7 +958,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PrintJobSummary"][];
+                    "application/json": components["schemas"]["PrintJobSummary"][];
                 };
             };
         };
@@ -942,7 +980,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["DocumentTemplate"];
+                    "application/json": components["schemas"]["DocumentTemplate"];
                 };
             };
         };

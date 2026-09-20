@@ -77,6 +77,11 @@ public class RenderConfigurationService implements RenderConfigurationController
     }
 
     @Override
+    public void deleteById(String id) {
+        renderConfigurationRepository.deleteById(id);
+    }
+
+    @Override
     public List<IdNameTuple> listAll() {
         return renderConfigurationRepository.findAll().stream().map(
                 renderConfig -> new IdNameTuple(renderConfig.getId(), renderConfig.getName())

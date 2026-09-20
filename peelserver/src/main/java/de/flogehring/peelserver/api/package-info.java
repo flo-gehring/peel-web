@@ -1,6 +1,5 @@
-@NonNullApi
-@NonNullFields
+
+@NullMarked
 package de.flogehring.peelserver.api;
 
-import com.mongodb.lang.NonNullApi;
-import org.springframework.lang.NonNullFields;
+import org.jspecify.annotations.NullMarked;

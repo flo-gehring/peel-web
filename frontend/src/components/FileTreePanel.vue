@@ -26,6 +26,7 @@ const newDocumentKind = ref<CreatableDocumentKind>('peel')
 const newDocumentRenderConfigurationId = ref('')
 const isCreating = ref(false)
 const deletingScriptId = ref<string | null>(null)
+const deletingRenderConfigId = ref<string | null>(null)
 const deletingDocumentId = ref<string | null>(null)
 const copiedId = ref<string | null>(null)
 
@@ -33,9 +34,9 @@ async function fetchFiles() {
   isLoading.value = true
   try {
     const [scriptsResponse, renderConfigsResponse, documentsResponse] = await Promise.all([
-      api.GET('/scripts'),
-      api.GET('/render-config/list-ids'),
-      api.GET('/documents'),
+      api.GET('/api/scripts/list'),
+      api.GET('/api/render-config/list-ids'),
+      api.GET('/api/documents'),
     ])
 
     if (scriptsResponse.error) {
@@ -99,7 +100,7 @@ async function createDocument() {
 
   try {
     if (newDocumentKind.value === 'peel') {
-      const { data, error } = await api.POST('/scripts', {
+      const { data, error } = await api.POST('/api/scripts', {
         body: { name, script: '' },
       })
 
@@ -125,7 +126,7 @@ async function createDocument() {
         console.error('A render configuration is required to create a document.')
         return
       }
-      const { data, error } = await api.POST('/documents', {
+      const { data, error } = await api.POST('/api/documents', {
         body: {
           name,
           scriptNameTags: {},
@@ -145,13 +146,13 @@ async function createDocument() {
       return
     }
 
-    const { data: defaultConfig, error: defaultError } = await api.GET('/render-config/default')
+    const { data: defaultConfig, error: defaultError } = await api.GET('/api/render-config/default')
     if (defaultError || !defaultConfig) {
       console.error('Failed to load default render configuration:', defaultError)
       return
     }
 
-    const { data, error } = await api.POST('/render-config/save', {
+    const { data, error } = await api.POST('/api/render-config/save', {
       body: {
         name,
         renderConfigurationDto: defaultConfig,
@@ -198,7 +199,7 @@ async function deletePeelScript(file: PeelScriptDocument) {
   deletingScriptId.value = file.id
 
   try {
-    const { error } = await api.DELETE('/scripts/{id}', {
+    const { error } = await api.DELETE('/api/scripts/{id}', {
       params: {
         path: { id: file.id },
       },
@@ -218,6 +219,29 @@ async function deletePeelScript(file: PeelScriptDocument) {
   }
 }
 
+async function deleteRenderConfig(file: RenderConfigDocument) {
+  if (deletingRenderConfigId.value || !window.confirm(`Delete "${file.name}"?`)) {
+    return
+  }
+
+  deletingRenderConfigId.value = file.id
+  try {
+    const { error } = await api.DELETE('/api/render-config/{id}', {
+      params: { path: { id: file.id } },
+    })
+    if (error) {
+      console.error('Failed to delete render configuration:', error)
+      return
+    }
+    renderConfigs.value = renderConfigs.value.filter((item) => item.id !== file.id)
+    selectionStore.deleteDocument(file)
+  } catch (error) {
+    console.error('Unexpected render configuration deletion error:', error)
+  } finally {
+    deletingRenderConfigId.value = null
+  }
+}
+
 async function deleteDocument(file: DocumentWorkspaceItem) {
   if (deletingDocumentId.value || !window.confirm(`Delete "${file.name}"?`)) {
     return
@@ -225,7 +249,7 @@ async function deleteDocument(file: DocumentWorkspaceItem) {
 
   deletingDocumentId.value = file.id
   try {
-    const { error } = await api.DELETE('/documents/{id}', { params: { path: { id: file.id } } })
+    const { error } = await api.DELETE('/api/documents/{id}', { params: { path: { id: file.id } } })
     if (error) {
       console.error('Failed to delete document:', error)
       return
@@ -286,11 +310,11 @@ onMounted(() => fetchFiles())
           <span class="file-name">{{ file.name }}</span>
           <button
             class="delete-button"
-            :disabled="deletingDocumentId === file.id"
+            :disabled="deletingRenderConfigId === file.id"
             :title="`Delete ${file.name}`"
-            @click.stop="deleteDocument(file)"
+            @click.stop="deleteRenderConfig(file)"
           >
-            {{ deletingDocumentId === file.id ? '...' : '×' }}
+            {{ deletingRenderConfigId === file.id ? '...' : '×' }}
           </button>
           <button class="copy-id-button" :title="`Copy ${file.name} ID`" @click.stop="copyId(file)">
             {{ copiedId === `renderConfig-${file.id}` ? 'Copied' : 'Copy ID' }}

@@ -1,29 +1,35 @@
 package de.flogehring.peelserver.api.services;
 
-import de.flogehring.peelserver.api.data.scripts.ScriptDtoResponse;
-import de.flogehring.peelserver.api.data.scripts.ScriptSaveRequest;
-import de.flogehring.peelserver.api.data.scripts.ScriptSummaryResponse;
+import de.flogehring.peelserver.api.data.scripts.*;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.service.annotation.DeleteExchange;
-import org.springframework.web.service.annotation.GetExchange;
-import org.springframework.web.service.annotation.HttpExchange;
-import org.springframework.web.service.annotation.PostExchange;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.util.List;
 
-@HttpExchange("/api/scripts")
+@RequestMapping(path = "/api/scripts", produces = MediaType.APPLICATION_JSON_VALUE)
 public interface PeelScriptController {
 
-    @PostExchange
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     ScriptDtoResponse saveScript(@RequestBody ScriptSaveRequest request);
 
-    @GetExchange
+    @GetMapping("/list")
     List<ScriptSummaryResponse> listScripts();
 
-    @GetExchange("/{id}")
+    @GetMapping("/{id}")
     ScriptDtoResponse getScript(@PathVariable String id);
 
-    @DeleteExchange("/{id}")
+    @DeleteMapping("/{id}")
     void deleteScript(@PathVariable String id);
+
+    @PutMapping(path = "/run", consumes = MediaType.APPLICATION_JSON_VALUE)
+    RunResponse run(@RequestBody RunRequest request);
+
+    @GetMapping("/validate")
+    ValidationResponse validate(@RequestBody ValidationRequest request);
 }
