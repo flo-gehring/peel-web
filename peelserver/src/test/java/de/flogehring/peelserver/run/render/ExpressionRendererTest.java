@@ -4,7 +4,9 @@ import de.flogehring.peel.convenience.output.TraceMapOutput;
 import de.flogehring.peel.core.trace.TraceExpression;
 import de.flogehring.peel.core.trace.TraceExpressionKind;
 import de.flogehring.peel.core.trace.TraceValue;
-import de.flogehring.peelserver.renderconfig.ExpressionRenderConfiguration;
+import de.flogehring.peelserver.impl.renderconfig.ExpressionRenderConfiguration;
+import de.flogehring.peelserver.impl.run.render.ExpressionRenderer;
+import de.flogehring.peelserver.impl.run.render.TraceRenderingPebbleExtension;
 import io.pebbletemplates.pebble.PebbleEngine;
 import org.junit.jupiter.api.Test;
 
