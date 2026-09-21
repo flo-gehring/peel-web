@@ -1,4 +1,11 @@
 package de.flogehring.peelserver.api.data.scripts;
 
-public record ScriptSaveRequest(String id, String name, String script) {
+import de.flogehring.peelserver.api.data.ProjectIdApi;
+
+public record ScriptSaveRequest(
+        ProjectIdApi projectIdApi,
+        String id,
+        String name,
+        String script
+) {
 }

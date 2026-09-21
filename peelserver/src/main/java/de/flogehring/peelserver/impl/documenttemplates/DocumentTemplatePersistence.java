@@ -1,5 +1,6 @@
 package de.flogehring.peelserver.impl.documenttemplates;
 
+import de.flogehring.peelserver.impl.project.ProjectId;
 import de.flogehring.peelserver.impl.renderconfig.RenderConfigurationId;
 import de.flogehring.peelserver.impl.scripts.PeelScriptId;
 import lombok.Getter;
@@ -11,9 +12,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.Instant;
 import java.util.Map;
 
-@Document("documents")
+@Document("document-templates")
 @Getter
-public class DocumentPersistence {
+public class DocumentTemplatePersistence {
 
     @Id
     @Indexed(unique = true)
@@ -21,9 +22,12 @@ public class DocumentPersistence {
     private final DocumentPersistenceData data;
     private final Instant createdAt;
     private final Instant updatedAt;
+    @Indexed
+    private ProjectId projectId;
+
 
     @PersistenceCreator
-    private DocumentPersistence(
+    private DocumentTemplatePersistence(
             String id,
             DocumentPersistenceData data,
             Instant createdAt,
@@ -35,7 +39,7 @@ public class DocumentPersistence {
         this.updatedAt = updatedAt;
     }
 
-    public static DocumentPersistence newDocument(
+    public static DocumentTemplatePersistence newDocument(
             String id,
             String name,
             Map<String, PeelScriptId> scriptNameTags,
@@ -44,7 +48,7 @@ public class DocumentPersistence {
             RenderConfigurationId renderConfigurationId
     ) {
         Instant now = Instant.now();
-        return new DocumentPersistence(
+        return new DocumentTemplatePersistence(
                 id,
                 new DocumentPersistenceData(
                         name,
@@ -58,14 +62,14 @@ public class DocumentPersistence {
         );
     }
 
-    public DocumentPersistence update(
+    public DocumentTemplatePersistence update(
             String name,
             Map<String, PeelScriptId> scriptNameTags,
             String templateHtml,
             String editorStateJson,
             RenderConfigurationId renderConfigurationId
     ) {
-        return new DocumentPersistence(
+        return new DocumentTemplatePersistence(
                 id,
                 new DocumentPersistenceData(
                         name,

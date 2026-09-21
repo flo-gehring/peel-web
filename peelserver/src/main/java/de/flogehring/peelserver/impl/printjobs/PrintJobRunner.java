@@ -4,7 +4,7 @@ import de.flogehring.peelserver.api.data.print.jobs.PrintJobStatus;
 import de.flogehring.peelserver.api.error.ResourceNotFoundException;
 import de.flogehring.peelserver.impl.documenttemplates.Document;
 import de.flogehring.peelserver.impl.documenttemplates.DocumentPersistenceData;
-import de.flogehring.peelserver.impl.documenttemplates.DocumentRenderService;
+import de.flogehring.peelserver.impl.documenttemplates.DocumentTemplateRenderService;
 import de.flogehring.peelserver.impl.documenttemplates.PeelDocumentRepository;
 import de.flogehring.peelserver.impl.filestorage.StorageService;
 import de.flogehring.peelserver.impl.renderconfig.RenderConfigurationRepository;
@@ -42,7 +42,7 @@ public class PrintJobRunner {
     private final PrintJobRepository printJobRepository;
     private final StorageService storageService;
     private final PeelDocumentRepository documentRepository;
-    private final DocumentRenderService documentRenderService;
+    private final DocumentTemplateRenderService documentTemplateRenderService;
     private final RenderConfigurationRepository renderConfigurationRepository;
     private final PeelScriptRepository scriptRepository;
 
@@ -93,7 +93,7 @@ public class PrintJobRunner {
                         .map(header -> Map.entry(header, tryInferData(record.get(header))))
                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)
                         );
-                documentRenderService.renderPdf(
+                documentTemplateRenderService.renderPdf(
                         document,
                         context,
                         outputStream -> {

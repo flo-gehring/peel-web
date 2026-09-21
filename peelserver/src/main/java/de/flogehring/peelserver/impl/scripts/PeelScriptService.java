@@ -3,13 +3,11 @@ package de.flogehring.peelserver.impl.scripts;
 import de.flogehring.peelserver.api.data.scripts.*;
 import de.flogehring.peelserver.api.services.PeelScriptController;
 import de.flogehring.peelserver.api.error.ResourceNotFoundException;
+import de.flogehring.peelserver.impl.project.ProjectId;
 import de.flogehring.peelserver.impl.run.RunService;
 import de.flogehring.peelserver.impl.run.ValidationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Comparator;
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -33,24 +31,19 @@ public class PeelScriptService implements PeelScriptController {
     @Override
     public ScriptDtoResponse saveScript(ScriptSaveRequest request) {
         String scriptContent = request.script();
+        ProjectId projectId = new ProjectId(request.projectIdApi().id());
         if (request.id() != null && !request.id().isBlank()) {
             PeelScriptPersistence existing = peelScriptRepository.findById(request.id())
-                    .orElseGet(() -> PeelScriptPersistence.newScript(request.id(), request.name(), request.script()));
+                    .orElseGet(() -> PeelScriptPersistence.newScript(projectId, request.id(), request.name(), request.script()));
             PeelScriptPersistence updated = existing.update(request.name(), scriptContent);
             PeelScriptPersistence saved = peelScriptRepository.save(updated);
             return toResponse(saved);
         }
-        PeelScriptPersistence created = PeelScriptPersistence.newScript(request.name(), scriptContent);
+        PeelScriptPersistence created = PeelScriptPersistence.newScript(
+                projectId,request.name(), scriptContent
+        );
         PeelScriptPersistence saved = peelScriptRepository.save(created);
         return toResponse(saved);
-    }
-
-    @Override
-    public List<ScriptSummaryResponse> listScripts() {
-        return peelScriptRepository.findAll().stream()
-                .map(this::toSummary)
-                .sorted(Comparator.comparing(ScriptSummaryResponse::name, String.CASE_INSENSITIVE_ORDER))
-                .toList();
     }
 
     @Override

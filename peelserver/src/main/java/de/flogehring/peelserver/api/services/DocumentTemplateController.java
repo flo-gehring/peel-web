@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-import java.util.List;
 import java.util.Map;
 
 @RequestMapping(path = "/api/documents", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -19,11 +18,8 @@ public interface DocumentTemplateController {
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     DocumentTemplateSaveResponse saveDocument(@RequestBody DocumentTemplateSaveRequest request);
 
-    @GetMapping
-    List<DocumentTemplateSummaryResponse> listDocuments();
-
     @GetMapping("/{id}")
-    DocumentTemplate getDocument(@PathVariable String id);
+    DocumentTemplateDto getDocument(@PathVariable String id);
 
     @DeleteMapping("/{id}")
     void deleteDocument(@PathVariable String id);
@@ -34,6 +30,7 @@ public interface DocumentTemplateController {
     @PostMapping(path = "/preview-stored/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     DocumentPreviewResponse previewDocument(
             @PathVariable String id,
-            @RequestBody @Schema(type = "object", additionalProperties = Schema.AdditionalPropertiesValue.TRUE) Map<String, Object> bindings
+            @RequestBody @Schema(type = "object", additionalProperties = Schema.AdditionalPropertiesValue.TRUE)
+            Map<String, Object> bindings
     );
 }

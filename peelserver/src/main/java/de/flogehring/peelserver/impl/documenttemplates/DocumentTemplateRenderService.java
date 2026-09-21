@@ -21,7 +21,7 @@ import static de.flogehring.peelserver.impl.util.StreamUtil.transformMapValues;
 
 @Service
 @RequiredArgsConstructor
-public class DocumentRenderService {
+public class DocumentTemplateRenderService {
 
     private final PeelExecutionService peelExecutionService;
 

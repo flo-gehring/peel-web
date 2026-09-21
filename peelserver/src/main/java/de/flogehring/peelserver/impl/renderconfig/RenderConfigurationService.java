@@ -1,16 +1,16 @@
 package de.flogehring.peelserver.impl.renderconfig;
 
+import de.flogehring.peelserver.api.data.ProjectIdApi;
 import de.flogehring.peelserver.api.services.RenderConfigurationController;
-import de.flogehring.peelserver.api.data.renderconfig.IdNameTuple;
 import de.flogehring.peelserver.api.data.renderconfig.RenderConfigurationCreateResponse;
 import de.flogehring.peelserver.api.data.renderconfig.RenderConfigurationDto;
 import de.flogehring.peelserver.api.data.renderconfig.RenderConfigurationPersistenceDto;
 import de.flogehring.peelserver.api.error.ResourceNotFoundException;
+import de.flogehring.peelserver.impl.project.ProjectId;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -28,9 +28,9 @@ public class RenderConfigurationService implements RenderConfigurationController
                 RenderConfigurationPersistence.valueOf(
                         id,
                         renderConfigurationDto.name(),
-                        toExpressionRenderConfig(renderConfigurationDto.renderConfigurationDto())
+                        toExpressionRenderConfig(renderConfigurationDto.renderConfigurationDto()),
+                        new ProjectId(renderConfigurationDto.projectIdApi().id())
                 )
-
         );
         return new RenderConfigurationCreateResponse(id);
     }
@@ -47,7 +47,8 @@ public class RenderConfigurationService implements RenderConfigurationController
                 RenderConfigurationPersistence.valueOf(
                         id,
                         persistenceDto.name(),
-                        toExpressionRenderConfig(persistenceDto.renderConfigurationDto())
+                        toExpressionRenderConfig(persistenceDto.renderConfigurationDto()),
+                        new ProjectId(persistenceDto.projectIdApi().id())
                 )
         );
     }
@@ -72,6 +73,7 @@ public class RenderConfigurationService implements RenderConfigurationController
         ).orElseThrow(() -> new ResourceNotFoundException("Render configuration with id " + id + " not found"));
         return new RenderConfigurationPersistenceDto(
                 renderConfig.getName(),
+                new ProjectIdApi(renderConfig.getProjectId().id()),
                 toDto(renderConfig.getExpressionRenderConfiguration())
         );
     }
@@ -79,13 +81,6 @@ public class RenderConfigurationService implements RenderConfigurationController
     @Override
     public void deleteById(String id) {
         renderConfigurationRepository.deleteById(id);
-    }
-
-    @Override
-    public List<IdNameTuple> listAll() {
-        return renderConfigurationRepository.findAll().stream().map(
-                renderConfig -> new IdNameTuple(renderConfig.getId(), renderConfig.getName())
-        ).toList();
     }
 
     private static ExpressionRenderConfiguration toExpressionRenderConfig(RenderConfigurationDto renderConfigurationDto) {

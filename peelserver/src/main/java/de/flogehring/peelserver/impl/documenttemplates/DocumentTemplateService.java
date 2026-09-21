@@ -24,14 +24,14 @@ public class DocumentTemplateService implements DocumentTemplateController {
     private final PeelDocumentRepository peelDocumentRepository;
     private final PeelScriptRepository peelScriptRepository;
     private final RenderConfigurationRepository renderConfigurationRepository;
-    private final DocumentRenderService documentRenderService;
+    private final DocumentTemplateRenderService documentTemplateRenderService;
 
     @Override
     public DocumentTemplateSaveResponse saveDocument(DocumentTemplateSaveRequest request) {
         String templateHtml = requireTemplate(request.templateHtml());
         if (request.id() != null && !request.id().isBlank()) {
-            Optional<DocumentPersistence> existing = peelDocumentRepository.findById(request.id());
-            DocumentPersistence document = existing.orElseGet(() -> DocumentPersistence.newDocument(
+            Optional<DocumentTemplatePersistence> existing = peelDocumentRepository.findById(request.id());
+            DocumentTemplatePersistence document = existing.orElseGet(() -> DocumentTemplatePersistence.newDocument(
                     request.id(),
                     request.name(),
                     transformMapValues(request.scriptNameTags(), PeelScriptId::new),
@@ -39,7 +39,7 @@ public class DocumentTemplateService implements DocumentTemplateController {
                     request.editorStateJson(),
                     new RenderConfigurationId(request.renderConfigurationId())
             ));
-            DocumentPersistence saved = peelDocumentRepository.save(
+            DocumentTemplatePersistence saved = peelDocumentRepository.save(
                     document.update(
                             request.name(),
                             transformMapValues(request.scriptNameTags(), PeelScriptId::new),
@@ -49,7 +49,7 @@ public class DocumentTemplateService implements DocumentTemplateController {
                     ));
             return getSaveResponse(saved, existing.isPresent() ? DocumentTemplateSaveResponse.SaveType.UPDATED : DocumentTemplateSaveResponse.SaveType.CREATED);
         }
-        DocumentPersistence created = DocumentPersistence.newDocument(
+        DocumentTemplatePersistence created = DocumentTemplatePersistence.newDocument(
                 UUID.randomUUID().toString(),
                 request.name(),
                 transformMapValues(request.scriptNameTags(), PeelScriptId::new),
@@ -57,19 +57,11 @@ public class DocumentTemplateService implements DocumentTemplateController {
                 request.editorStateJson(),
                 new RenderConfigurationId(request.renderConfigurationId())
         );
-        DocumentPersistence saved = peelDocumentRepository.save(created);
+        DocumentTemplatePersistence saved = peelDocumentRepository.save(created);
         return getSaveResponse(saved, DocumentTemplateSaveResponse.SaveType.CREATED);
     }
 
-    @Override
-    public List<DocumentTemplateSummaryResponse> listDocuments() {
-        return peelDocumentRepository.findAll().stream()
-                .map(this::toSummary)
-                .sorted(Comparator.comparing(DocumentTemplateSummaryResponse::updatedAt).reversed())
-                .toList();
-    }
-
-    private static DocumentTemplateSaveResponse getSaveResponse(DocumentPersistence saved, DocumentTemplateSaveResponse.SaveType saveType) {
+    private static DocumentTemplateSaveResponse getSaveResponse(DocumentTemplatePersistence saved, DocumentTemplateSaveResponse.SaveType saveType) {
         return new DocumentTemplateSaveResponse(
                 saved.getId(),
                 saved.getCreatedAt(),
@@ -79,8 +71,8 @@ public class DocumentTemplateService implements DocumentTemplateController {
     }
 
     @Override
-    public DocumentTemplate getDocument(String id) {
-        DocumentPersistence document = peelDocumentRepository.findById(id)
+    public DocumentTemplateDto getDocument(String id) {
+        DocumentTemplatePersistence document = peelDocumentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document not found: " + id));
         return toContent(document);
     }
@@ -98,22 +90,22 @@ public class DocumentTemplateService implements DocumentTemplateController {
                         .orElseThrow(() -> new ResourceNotFoundException("Render configuration not found: " + request.renderConfigId()))
                         .getExpressionRenderConfiguration()
         );
-        return new DocumentPreviewResponse(documentRenderService.renderPdf(document, request.bindings(), ByteArrayOutputStream::toByteArray));
+        return new DocumentPreviewResponse(documentTemplateRenderService.renderPdf(document, request.bindings(), ByteArrayOutputStream::toByteArray));
     }
 
     @Override
     public DocumentPreviewResponse previewDocument(String id, Map<String, Object> bindings) {
-        DocumentPersistence documentPersistence = peelDocumentRepository.findById(id)
+        DocumentTemplatePersistence documentTemplatePersistence = peelDocumentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document not found: " + id));
-        DocumentPersistenceData data = documentPersistence.getData();
+        DocumentPersistenceData data = documentTemplatePersistence.getData();
         Document document = new Document(
                 data.name(),
                 transformMapValues(data.scriptNameTags(), this::getPeelScript),
-                documentPersistence.getData().templateHtml(),
+                documentTemplatePersistence.getData().templateHtml(),
                 renderConfigurationRepository.findById(data.renderConfigurationId().id()).orElseThrow(() -> new ResourceNotFoundException("Render configuration not found: " + data.renderConfigurationId().id())).getExpressionRenderConfiguration()
         );
 
-        return new DocumentPreviewResponse(documentRenderService.renderPdf(document, bindings, ByteArrayOutputStream::toByteArray));
+        return new DocumentPreviewResponse(documentTemplateRenderService.renderPdf(document, bindings, ByteArrayOutputStream::toByteArray));
     }
 
     private PeelScript getPeelScript(PeelScriptId scriptId) {
@@ -121,8 +113,8 @@ public class DocumentTemplateService implements DocumentTemplateController {
                 .orElseThrow(() -> new ResourceNotFoundException("Did not find Script with Id" + scriptId)).getPeelScript();
     }
 
-    private DocumentTemplate toContent(DocumentPersistence document) {
-        return new DocumentTemplate(
+    private DocumentTemplateDto toContent(DocumentTemplatePersistence document) {
+        return new DocumentTemplateDto(
                 document.getId(),
                 document.getData().name(),
                 transformMapValues(document.getData().scriptNameTags(), PeelScriptId::id),
@@ -139,7 +131,7 @@ public class DocumentTemplateService implements DocumentTemplateController {
         peelDocumentRepository.deleteById(id);
     }
 
-    private DocumentTemplateSummaryResponse toSummary(DocumentPersistence document) {
+    private DocumentTemplateSummaryResponse toSummary(DocumentTemplatePersistence document) {
         return new DocumentTemplateSummaryResponse(
                 document.getId(),
                 document.getData().name(),

@@ -10,16 +10,11 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-import java.util.List;
-
 @RequestMapping(path = "/api/scripts", produces = MediaType.APPLICATION_JSON_VALUE)
 public interface PeelScriptController {
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     ScriptDtoResponse saveScript(@RequestBody ScriptSaveRequest request);
-
-    @GetMapping("/list")
-    List<ScriptSummaryResponse> listScripts();
 
     @GetMapping("/{id}")
     ScriptDtoResponse getScript(@PathVariable String id);
