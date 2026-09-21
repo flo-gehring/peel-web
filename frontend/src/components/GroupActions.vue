@@ -104,7 +104,7 @@ async function handleSave() {
         return
       }
 
-      const { error } = await api.PUT('/api/render-config/update/{id}', {
+      const { error } = await api.PUT('/api/render-config/{id}', {
         params: { path: { id: context.documentId } },
         body: {
           name: context.name,
@@ -120,8 +120,14 @@ async function handleSave() {
       return
     }
 
-    const { data, error } = await api.POST('/api/scripts', {
-      body: { id: context.documentId, name: context.name, script: content },
+    if (!context.documentId) {
+      showSaveError('This script has no document ID and cannot be saved.')
+      return
+    }
+
+    const { data, error } = await api.PUT('/api/scripts/{id}', {
+      params: { path: { id: context.documentId } },
+      body: { name: context.name, scriptContent: content },
     })
     if (error) {
       showSaveError('The script could not be saved. Please try again.')

@@ -31,12 +31,14 @@ public class DocumentTemplatePersistence {
             String id,
             DocumentPersistenceData data,
             Instant createdAt,
-            Instant updatedAt
+            Instant updatedAt,
+            ProjectId projectId
     ) {
         this.id = id;
         this.data = data;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.projectId = projectId;
     }
 
     public static DocumentTemplatePersistence newDocument(
@@ -45,7 +47,8 @@ public class DocumentTemplatePersistence {
             Map<String, PeelScriptId> scriptNameTags,
             String templateHtml,
             String editorStateJson,
-            RenderConfigurationId renderConfigurationId
+            RenderConfigurationId renderConfigurationId,
+            ProjectId projectId
     ) {
         Instant now = Instant.now();
         return new DocumentTemplatePersistence(
@@ -58,7 +61,8 @@ public class DocumentTemplatePersistence {
                         renderConfigurationId
                 ),
                 now,
-                now
+                now,
+                projectId
         );
     }
 
@@ -79,7 +83,8 @@ public class DocumentTemplatePersistence {
                         renderConfigurationId
                 ),
                 createdAt,
-                Instant.now()
+                Instant.now(),
+                projectId
         );
     }
 }

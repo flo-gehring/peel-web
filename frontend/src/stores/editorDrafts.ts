@@ -95,6 +95,11 @@ export const useEditorDraftStore = defineStore('editorDrafts', () => {
     }
   }
 
+  function clear(): void {
+    draftsById.value = {}
+    panelToDocumentId.value = {}
+  }
+
   return {
     draftsById,
     panelToDocumentId,
@@ -109,5 +114,6 @@ export const useEditorDraftStore = defineStore('editorDrafts', () => {
     getDraftByReference,
     markSavedByReference,
     removeDocument,
+    clear,
   }
 })

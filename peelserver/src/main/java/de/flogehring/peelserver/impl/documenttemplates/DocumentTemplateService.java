@@ -3,6 +3,7 @@ package de.flogehring.peelserver.impl.documenttemplates;
 import de.flogehring.peelserver.api.data.template.*;
 import de.flogehring.peelserver.api.error.ResourceNotFoundException;
 import de.flogehring.peelserver.api.services.DocumentTemplateController;
+import de.flogehring.peelserver.impl.project.ProjectId;
 import de.flogehring.peelserver.impl.renderconfig.RenderConfigurationId;
 import de.flogehring.peelserver.impl.renderconfig.RenderConfigurationRepository;
 import de.flogehring.peelserver.impl.scripts.PeelScript;
@@ -29,36 +30,35 @@ public class DocumentTemplateService implements DocumentTemplateController {
     @Override
     public DocumentTemplateSaveResponse saveDocument(DocumentTemplateSaveRequest request) {
         String templateHtml = requireTemplate(request.templateHtml());
-        if (request.id() != null && !request.id().isBlank()) {
-            Optional<DocumentTemplatePersistence> existing = peelDocumentRepository.findById(request.id());
-            DocumentTemplatePersistence document = existing.orElseGet(() -> DocumentTemplatePersistence.newDocument(
-                    request.id(),
-                    request.name(),
-                    transformMapValues(request.scriptNameTags(), PeelScriptId::new),
-                    templateHtml,
-                    request.editorStateJson(),
-                    new RenderConfigurationId(request.renderConfigurationId())
-            ));
-            DocumentTemplatePersistence saved = peelDocumentRepository.save(
-                    document.update(
-                            request.name(),
-                            transformMapValues(request.scriptNameTags(), PeelScriptId::new),
-                            templateHtml,
-                            request.editorStateJson(),
-                            new RenderConfigurationId(request.renderConfigurationId())
-                    ));
-            return getSaveResponse(saved, existing.isPresent() ? DocumentTemplateSaveResponse.SaveType.UPDATED : DocumentTemplateSaveResponse.SaveType.CREATED);
-        }
+
         DocumentTemplatePersistence created = DocumentTemplatePersistence.newDocument(
                 UUID.randomUUID().toString(),
                 request.name(),
                 transformMapValues(request.scriptNameTags(), PeelScriptId::new),
                 templateHtml,
                 request.editorStateJson(),
-                new RenderConfigurationId(request.renderConfigurationId())
+                new RenderConfigurationId(request.renderConfigurationId()),
+                new ProjectId(request.projectId().id())
         );
         DocumentTemplatePersistence saved = peelDocumentRepository.save(created);
         return getSaveResponse(saved, DocumentTemplateSaveResponse.SaveType.CREATED);
+    }
+
+    @Override
+    public DocumentTemplateSaveResponse updateDocument(String id, DocumentTemplateUpdateRequest request) {
+
+        DocumentTemplatePersistence document = peelDocumentRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Document not found: " + id
+                ));
+        DocumentTemplatePersistence saved = peelDocumentRepository.save(
+                document.update(
+                        request.name(),
+                        transformMapValues(request.scriptNameTags(), PeelScriptId::new),
+                        request.templateHtml(),
+                        request.editorStateJson(),
+                        new RenderConfigurationId(request.renderConfigurationId())
+                ));
+        return getSaveResponse(saved, DocumentTemplateSaveResponse.SaveType.UPDATED);
     }
 
     private static DocumentTemplateSaveResponse getSaveResponse(DocumentTemplatePersistence saved, DocumentTemplateSaveResponse.SaveType saveType) {

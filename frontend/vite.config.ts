@@ -13,6 +13,14 @@ export default defineConfig({
         target: 'http://host.docker.internal:8080',
         changeOrigin: true,
       },
+      '/login': {
+        target: 'http://host.docker.internal:8080',
+        changeOrigin: true,
+      },
+      '/ott/generate': {
+        target: 'http://host.docker.internal:8080',
+        changeOrigin: true,
+      },
     },
   },
   preview: {

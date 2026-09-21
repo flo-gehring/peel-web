@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import FileTreePanel from './FileTreePanel.vue'
 import { api } from '@/adapter/client'
 import { useWorkspaceSelectionStore } from '@/stores/workspaceSelection'
+import { useProjectStore } from '@/stores/projects'
 
 vi.mock('@/adapter/client', () => ({
   api: {
@@ -21,13 +22,18 @@ describe('FileTreePanel', () => {
     setActivePinia(createPinia())
     vi.stubGlobal('confirm', vi.fn(() => true))
     mockApi.GET.mockImplementation((path) => {
-      if (path === '/api/scripts/list') {
-        return Promise.resolve({ data: [{ id: 'script-1', name: 'Script' }], error: undefined })
+      if (path === '/api/projects/{projectId}') {
+        return Promise.resolve({
+          data: {
+            projectIdApi: { id: 'project-1' },
+            scripts: [{ id: 'script-1', name: 'Script' }],
+            renderConfigurations: [{ id: 'config-1', name: 'Config' }],
+            documentTemplates: [{ id: 'document-1', name: 'Document' }],
+          },
+          error: undefined,
+        })
       }
-      if (path === '/api/render-config/list-ids') {
-        return Promise.resolve({ data: [{ id: 'config-1', name: 'Config' }], error: undefined })
-      }
-      return Promise.resolve({ data: [{ id: 'document-1', name: 'Document' }], error: undefined })
+      return Promise.resolve({ data: undefined, error: undefined })
     })
     mockApi.DELETE.mockResolvedValue({ data: undefined, error: undefined })
   })
@@ -37,17 +43,21 @@ describe('FileTreePanel', () => {
     vi.clearAllMocks()
   })
 
-  it('loads all workspace collections through generated API paths', async () => {
+  it('loads workspace collections through the active project', async () => {
+    const projectStore = useProjectStore()
+    projectStore.activeProject = { projectIdApi: { id: 'project-1' } }
     mount(FileTreePanel)
     await flushPromises()
 
-    expect(mockApi.GET).toHaveBeenCalledWith('/api/scripts/list')
-    expect(mockApi.GET).toHaveBeenCalledWith('/api/render-config/list-ids')
-    expect(mockApi.GET).toHaveBeenCalledWith('/api/documents')
+    expect(mockApi.GET).toHaveBeenCalledWith('/api/projects/{projectId}', {
+      params: { path: { projectId: 'project-1' } },
+    })
   })
 
   it('deletes a render config using only its endpoint and publishes the deletion', async () => {
     const selectionStore = useWorkspaceSelectionStore()
+    const projectStore = useProjectStore()
+    projectStore.activeProject = { projectIdApi: { id: 'project-1' } }
     const deletionSpy = vi.spyOn(selectionStore, 'deleteDocument')
     const wrapper = mount(FileTreePanel)
     await flushPromises()
@@ -66,6 +76,8 @@ describe('FileTreePanel', () => {
 
   it('does not call any endpoint when render-config deletion is cancelled', async () => {
     vi.stubGlobal('confirm', vi.fn(() => false))
+    const projectStore = useProjectStore()
+    projectStore.activeProject = { projectIdApi: { id: 'project-1' } }
     const wrapper = mount(FileTreePanel)
     await flushPromises()
 

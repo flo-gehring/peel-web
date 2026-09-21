@@ -20,17 +20,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/render-config/update/{id}": {
+    "/api/scripts/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["getScript"];
+        put: operations["updateScript"];
+        post?: never;
+        delete: operations["deleteScript"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/render-config/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getById"];
         put: operations["updateRenderConfiguration"];
         post?: never;
-        delete?: never;
+        delete: operations["deleteById"];
         options?: never;
         head?: never;
         patch?: never;
@@ -52,6 +68,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documents/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getDocument"];
+        put: operations["updateDocument"];
+        post?: never;
+        delete: operations["deleteDocument"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/scripts": {
         parameters: {
             query?: never;
@@ -68,7 +100,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/render-config/save": {
+    "/api/render-config/": {
         parameters: {
             query?: never;
             header?: never;
@@ -78,6 +110,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["createRenderConfiguration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{projectId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getProject"];
+        put?: never;
+        post: operations["createProject"];
         delete?: never;
         options?: never;
         head?: never;
@@ -123,7 +171,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listDocuments"];
+        get?: never;
         put?: never;
         post: operations["saveDocument"];
         delete?: never;
@@ -164,17 +212,17 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/scripts/{id}": {
+    "/ott/sent": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["getScript"];
+        get: operations["ottSent"];
         put?: never;
         post?: never;
-        delete: operations["deleteScript"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -196,54 +244,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/scripts/list": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["listScripts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/render-config/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["getById"];
-        put?: never;
-        post?: never;
-        delete: operations["deleteById"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/render-config/list-ids": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["listAll"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/render-config/default": {
         parameters: {
             query?: never;
@@ -252,6 +252,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getDefault"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listProjects"];
         put?: never;
         post?: never;
         delete?: never;
@@ -292,22 +308,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/documents/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["getDocument"];
-        put?: never;
-        post?: never;
-        delete: operations["deleteDocument"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -326,6 +326,15 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        ScriptUpdateRequest: {
+            name?: string;
+            scriptContent?: string;
+        };
+        ScriptDtoResponse: {
+            id?: string;
+            name?: string;
+            script?: string;
+        };
         RenderConfigurationDto: {
             renderConfigurations?: {
                 [key: string]: string;
@@ -336,35 +345,11 @@ export interface components {
                 };
             };
         };
-        RenderConfigurationPersistenceDto: {
+        RenderConfigurationUpdateRequest: {
             name?: string;
             renderConfigurationDto?: components["schemas"]["RenderConfigurationDto"];
         };
-        ScriptSaveRequest: {
-            id?: string;
-            name?: string;
-            script?: string;
-        };
-        ScriptDtoResponse: {
-            id?: string;
-            name?: string;
-            script?: string;
-        };
-        RenderConfigurationCreateResponse: {
-            id?: string;
-        };
-        DocumentId: {
-            id?: string;
-        };
-        PrintJobInitRequestDto: {
-            documentId?: components["schemas"]["DocumentId"];
-            name?: string;
-        };
-        PrintJobId: {
-            id?: string;
-        };
-        DocumentTemplateSaveRequest: {
-            id?: string;
+        DocumentTemplateUpdateRequest: {
             name?: string;
             scriptNameTags?: {
                 [key: string]: string;
@@ -381,6 +366,46 @@ export interface components {
             updatedAt?: string;
             /** @enum {string} */
             type?: "CREATED" | "UPDATED";
+        };
+        CreateScriptRequest: {
+            projectIdApi?: components["schemas"]["ProjectIdApi"];
+            name?: string;
+            script?: string;
+        };
+        ProjectIdApi: {
+            id?: string;
+        };
+        RenderConfigurationPersistenceDto: {
+            name?: string;
+            projectIdApi?: components["schemas"]["ProjectIdApi"];
+            renderConfigurationDto?: components["schemas"]["RenderConfigurationDto"];
+        };
+        RenderConfigurationCreateResponse: {
+            id?: string;
+        };
+        ProjectSummary: {
+            projectIdApi?: components["schemas"]["ProjectIdApi"];
+            name?: string;
+        };
+        DocumentId: {
+            id?: string;
+        };
+        PrintJobInitRequestDto: {
+            documentId?: components["schemas"]["DocumentId"];
+            name?: string;
+        };
+        PrintJobId: {
+            id?: string;
+        };
+        DocumentTemplateSaveRequest: {
+            projectId?: components["schemas"]["ProjectIdApi"];
+            name?: string;
+            scriptNameTags?: {
+                [key: string]: string;
+            };
+            templateHtml?: string;
+            editorStateJson?: string;
+            renderConfigurationId?: string;
         };
         DocumentPreviewRequest: {
             scriptTags?: {
@@ -417,11 +442,24 @@ export interface components {
         ValidationResponse: {
             diagnostics?: components["schemas"]["ValidationDiagnostic"][];
         };
-        ScriptSummaryResponse: {
+        DocumentTemplateSummaryResponse: {
+            id?: string;
+            name?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ProjectData: {
+            projectIdApi?: components["schemas"]["ProjectIdApi"];
+            name?: string;
+            scripts?: components["schemas"]["ScriptSummaryResponse"][];
+            documentTemplates?: components["schemas"]["DocumentTemplateSummaryResponse"][];
+            renderConfigurations?: components["schemas"]["RenderConfigurationSummaryResponse"][];
+        };
+        RenderConfigurationSummaryResponse: {
             id?: string;
             name?: string;
         };
-        IdNameTuple: {
+        ScriptSummaryResponse: {
             id?: string;
             name?: string;
         };
@@ -434,13 +472,7 @@ export interface components {
             status?: "CREATED" | "CALCULATING" | "PRINTING" | "COMPLETED" | "FAILED";
             fileIds?: string[];
         };
-        DocumentTemplateSummaryResponse: {
-            id?: string;
-            name?: string;
-            /** Format: date-time */
-            updatedAt?: string;
-        };
-        DocumentTemplate: {
+        DocumentTemplateDto: {
             id?: string;
             name?: string;
             scriptNameTags?: {
@@ -487,6 +519,54 @@ export interface operations {
             };
         };
     };
+    updateScript: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScriptUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScriptDtoResponse"];
+                };
+            };
+        };
+    };
+    getById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RenderConfigurationPersistenceDto"];
+                };
+            };
+        };
+    };
     updateRenderConfiguration: {
         parameters: {
             query?: never;
@@ -498,9 +578,29 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RenderConfigurationPersistenceDto"];
+                "application/json": components["schemas"]["RenderConfigurationUpdateRequest"];
             };
         };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {
@@ -561,6 +661,74 @@ export interface operations {
             };
         };
     };
+    getDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentTemplateDto"];
+                };
+            };
+        };
+    };
+    updateDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentTemplateUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentTemplateSaveResponse"];
+                };
+            };
+        };
+    };
+    deleteDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     saveScript: {
         parameters: {
             query?: never;
@@ -570,7 +738,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ScriptSaveRequest"];
+                "application/json": components["schemas"]["CreateScriptRequest"];
             };
         };
         responses: {
@@ -605,6 +773,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RenderConfigurationCreateResponse"];
+                };
+            };
+        };
+    };
+    getProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectData"];
+                };
+            };
+        };
+    };
+    createProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectSummary"];
                 };
             };
         };
@@ -651,26 +863,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": "CREATED" | "CALCULATING" | "PRINTING" | "COMPLETED" | "FAILED";
-                };
-            };
-        };
-    };
-    listDocuments: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DocumentTemplateSummaryResponse"][];
                 };
             };
         };
@@ -751,6 +943,26 @@ export interface operations {
             };
         };
     };
+    ottSent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
     getScript: {
         parameters: {
             query?: never;
@@ -817,88 +1029,6 @@ export interface operations {
             };
         };
     };
-    listScripts: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScriptSummaryResponse"][];
-                };
-            };
-        };
-    };
-    getById: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RenderConfigurationPersistenceDto"];
-                };
-            };
-        };
-    };
-    deleteById: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    listAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["IdNameTuple"][];
-                };
-            };
-        };
-    };
     getDefault: {
         parameters: {
             query?: never;
@@ -915,6 +1045,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RenderConfigurationDto"];
+                };
+            };
+        };
+    };
+    listProjects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectSummary"][];
                 };
             };
         };
@@ -960,48 +1110,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PrintJobSummary"][];
                 };
-            };
-        };
-    };
-    getDocument: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DocumentTemplate"];
-                };
-            };
-        };
-    };
-    deleteDocument: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

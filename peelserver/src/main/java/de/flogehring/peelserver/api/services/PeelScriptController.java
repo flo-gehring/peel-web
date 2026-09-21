@@ -14,7 +14,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 public interface PeelScriptController {
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    ScriptDtoResponse saveScript(@RequestBody ScriptSaveRequest request);
+    ScriptDtoResponse saveScript(@RequestBody CreateScriptRequest request);
+
+    @PutMapping("/{id}")
+    ScriptDtoResponse updateScript(@PathVariable String id, @RequestBody ScriptUpdateRequest request);
 
     @GetMapping("/{id}")
     ScriptDtoResponse getScript(@PathVariable String id);

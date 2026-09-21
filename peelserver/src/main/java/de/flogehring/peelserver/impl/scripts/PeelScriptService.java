@@ -29,20 +29,25 @@ public class PeelScriptService implements PeelScriptController {
     }
 
     @Override
-    public ScriptDtoResponse saveScript(ScriptSaveRequest request) {
+    public ScriptDtoResponse saveScript(CreateScriptRequest request) {
         String scriptContent = request.script();
         ProjectId projectId = new ProjectId(request.projectIdApi().id());
-        if (request.id() != null && !request.id().isBlank()) {
-            PeelScriptPersistence existing = peelScriptRepository.findById(request.id())
-                    .orElseGet(() -> PeelScriptPersistence.newScript(projectId, request.id(), request.name(), request.script()));
-            PeelScriptPersistence updated = existing.update(request.name(), scriptContent);
-            PeelScriptPersistence saved = peelScriptRepository.save(updated);
-            return toResponse(saved);
-        }
         PeelScriptPersistence created = PeelScriptPersistence.newScript(
                 projectId,request.name(), scriptContent
         );
         PeelScriptPersistence saved = peelScriptRepository.save(created);
+        return toResponse(saved);
+    }
+
+    @Override
+    public ScriptDtoResponse updateScript(String id, ScriptUpdateRequest request) {
+        PeelScriptPersistence existing = peelScriptRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Script not found: " + id));
+        PeelScriptPersistence updated = existing.update(
+                request.name(),
+                requireScript(request.scriptContent())
+        );
+        PeelScriptPersistence saved = peelScriptRepository.save(updated);
         return toResponse(saved);
     }
 
@@ -71,11 +76,5 @@ public class PeelScriptService implements PeelScriptController {
                 peelScript.getPeelScript().description(),
                 peelScript.getPeelScript().script()
         );
-    }
-
-    private ScriptSummaryResponse toSummary(
-            PeelScriptPersistence peelScript
-    ) {
-        return new ScriptSummaryResponse(peelScript.getId(), peelScript.getPeelScript().description());
     }
 }

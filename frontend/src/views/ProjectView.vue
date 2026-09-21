@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { shallowRef, watch, type DefineComponent } from 'vue'
 import {
+  onBeforeRouteLeave,
+  onBeforeRouteUpdate,
+  useRoute,
+  useRouter,
+  type RouteLocationNormalized,
+} from 'vue-router'
+import {
   DockviewVue,
   type DockviewReadyEvent,
   type DockviewApi,
@@ -12,6 +19,7 @@ import { useEditorDraftStore } from '@/stores/editorDrafts'
 import { useDocumentDraftStore, type DocumentDraft } from '@/stores/documentDrafts'
 import { useDocumentPreviewStore } from '@/stores/documentPreview'
 import { useWorkspaceSelectionStore } from '@/stores/workspaceSelection'
+import { useProjectStore } from '@/stores/projects'
 
 // Mandatory CSS theme import for Dockview
 import 'dockview-vue/dist/styles/dockview.css'
@@ -48,7 +56,127 @@ const draftStore = useEditorDraftStore()
 const documentDraftStore = useDocumentDraftStore()
 const documentPreviewStore = useDocumentPreviewStore()
 const selectionStore = useWorkspaceSelectionStore()
+const projectStore = useProjectStore()
+const route = useRoute()
+const router = useRouter()
 const pendingOpenById = new Map<string, Promise<void>>()
+const pendingProjectRoute = shallowRef<RouteLocationNormalized | null>(null)
+const skipProjectSwitchGuard = shallowRef(false)
+
+watch(
+  () => route.params.projectId,
+  async (projectId) => {
+    if (typeof projectId !== 'string') return
+    try {
+      await projectStore.loadProject(projectId)
+    } catch {
+      await router.replace('/login')
+    }
+  },
+  { immediate: true },
+)
+
+function hasDirtyDrafts(): boolean {
+  return (
+    Object.values(draftStore.draftsById).some((draft) => draft.dirty) ||
+    Object.values(documentDraftStore.draftsById).some((draft) => draft.dirty)
+  )
+}
+
+function discardDrafts(): void {
+  draftStore.clear()
+  documentDraftStore.clear()
+  selectionStore.clear()
+  if (!dockviewApi.value) return
+  for (const panelId of Object.keys(dockviewApi.value.toJSON().panels)) {
+    if (panelId.startsWith('editor-')) dockviewApi.value.getPanel(panelId)?.api.close()
+  }
+}
+
+async function continueProjectSwitch(): Promise<void> {
+  const target = pendingProjectRoute.value
+  pendingProjectRoute.value = null
+  if (!target) return
+  skipProjectSwitchGuard.value = true
+  await router.push(target)
+  skipProjectSwitchGuard.value = false
+}
+
+async function discardAndSwitch(): Promise<void> {
+  discardDrafts()
+  await continueProjectSwitch()
+}
+
+async function saveAndSwitch(): Promise<void> {
+  const project = projectStore.activeProject
+  if (!project) return
+
+  try {
+    for (const [id, draft] of Object.entries(draftStore.draftsById)) {
+      if (!draft.dirty) continue
+      const script = project.scripts?.find((item) => item.id === id)
+      if (script) {
+        const { error } = await api.PUT('/api/scripts/{id}', {
+          params: { path: { id } },
+          body: { name: script.name, scriptContent: draft.content },
+        })
+        if (error) throw error
+        draftStore.markSaved(id)
+        continue
+      }
+      const renderConfig = project.renderConfigurations?.find((item) => item.id === id)
+      if (renderConfig) {
+        const renderConfigurationDto = JSON.parse(draft.content)
+        const { error } = await api.PUT('/api/render-config/{id}', {
+          params: { path: { id } },
+          body: { name: renderConfig.name, renderConfigurationDto },
+        })
+        if (error) throw error
+        draftStore.markSaved(id)
+      }
+    }
+
+    for (const [id, draft] of Object.entries(documentDraftStore.draftsById)) {
+      if (!draft.dirty) continue
+      const { error } = await api.PUT('/api/documents/{id}', {
+        params: { path: { id } },
+        body: {
+          name: draft.name,
+          scriptNameTags: draft.scriptNameTags,
+          templateHtml: draft.templateHtml,
+          editorStateJson: draft.editorStateJson,
+          renderConfigurationId: draft.renderConfigurationId,
+        },
+      })
+      if (error) throw error
+      documentDraftStore.markSaved(id)
+    }
+  } catch (error) {
+    console.error('Failed to save drafts before switching projects:', error)
+    return
+  }
+
+  await continueProjectSwitch()
+}
+
+onBeforeRouteLeave((to) => {
+  if (skipProjectSwitchGuard.value || !hasDirtyDrafts()) {
+    discardDrafts()
+    return true
+  }
+  pendingProjectRoute.value = to
+  return false
+})
+
+onBeforeRouteUpdate((to) => {
+  if (to.params.projectId === route.params.projectId) return true
+  if (skipProjectSwitchGuard.value || !hasDirtyDrafts()) {
+    discardDrafts()
+    return true
+  }
+  pendingProjectRoute.value = to
+  return false
+})
 
 // 2. Layout Initialization Callback
 const onReady = (event: DockviewReadyEvent) => {
@@ -174,11 +302,9 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
     if (file.kind === 'document') {
       let draft = documentDraftStore.getDraft(file.id)
       if (!draft) {
-        const [{ data: document, error: documentError }, { data: renderConfigurations }] =
-          await Promise.all([
-            api.GET('/api/documents/{id}', { params: { path: { id: file.id } } }),
-            api.GET('/api/render-config/list-ids'),
-          ])
+        const { data: document, error: documentError } = await api.GET('/api/documents/{id}', {
+          params: { path: { id: file.id } },
+        })
         if (documentError || !document) {
           console.error('Failed to load document for editor tab:', documentError)
           return
@@ -190,7 +316,7 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
           templateHtml: document.templateHtml ?? '<p></p>',
           scriptNameTags: document.scriptNameTags ?? {},
           renderConfigurationId: document.renderConfigurationId ?? '',
-          renderConfigurations: (renderConfigurations ?? []).map((config) => ({
+          renderConfigurations: (projectStore.activeProject?.renderConfigurations ?? []).map((config) => ({
             id: config.id ?? '',
             name: config.name ?? '',
           })),
@@ -284,6 +410,17 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
       :rightHeaderActionsComponent="rightHeaderActionsComponent"
       @ready="onReady"
     />
+    <div v-if="pendingProjectRoute" class="switch-dialog-backdrop">
+      <section class="switch-dialog" role="alertdialog" aria-modal="true" aria-labelledby="switch-project-title">
+        <h2 id="switch-project-title">Unsaved changes</h2>
+        <p>Save your changes before switching projects?</p>
+        <div>
+          <button @click="saveAndSwitch">Save and switch</button>
+          <button @click="discardAndSwitch">Discard and switch</button>
+          <button @click="pendingProjectRoute = null">Cancel</button>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -311,4 +448,10 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
   --dv-activegroup-visiblepanel-tab-background-color: #1e1e1e;
   --dv-separator-border: #2b2b2b;
 }
+
+.switch-dialog-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: rgba(0, 0, 0, .5); }
+.switch-dialog { width: min(420px, calc(100vw - 32px)); padding: 18px; border: 1px solid #3c3c3c; background: #252526; color: #f1f1f1; }
+.switch-dialog h2, .switch-dialog p { margin: 0 0 12px; }
+.switch-dialog div { display: flex; gap: 8px; justify-content: flex-end; }
+.switch-dialog button { padding: 6px 10px; border: 1px solid #3c3c3c; background: #333; color: inherit; cursor: pointer; }
 </style>

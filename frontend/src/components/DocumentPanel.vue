@@ -105,9 +105,9 @@ async function saveDocument(): Promise<void> {
   isSaving.value = true
   saveError.value = null
   try {
-    const { error } = await api.POST('/api/documents', {
+    const { error } = await api.PUT('/api/documents/{id}', {
+      params: { path: { id: documentId } },
       body: {
-        id: documentId,
         name: current.name,
         scriptNameTags: current.scriptNameTags,
         templateHtml: current.templateHtml,

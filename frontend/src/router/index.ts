@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import LoginView from '../views/LoginView.vue'
+import OneTimeLinkSentView from '../views/OneTimeLinkSentView.vue'
 import ProjectView from '../views/ProjectView.vue'
 
 const router = createRouter({
@@ -11,7 +13,21 @@ const router = createRouter({
       component: HomeView,
     },
     {
+      path: '/login',
+      name: 'login',
+      component: LoginView,
+    },
+    {
+      path: '/ott/sent',
+      name: 'one-time-link-sent',
+      component: OneTimeLinkSentView,
+    },
+    {
       path: '/project',
+      redirect: '/',
+    },
+    {
+      path: '/projects/:projectId',
       name: 'project',
       component: ProjectView,
     },

@@ -25,6 +25,11 @@ export const useWorkspaceSelectionStore = defineStore('workspaceSelection', () =
     deletionVersion.value += 1
   }
 
+  function clear(): void {
+    selectedDocument.value = null
+    deletedDocument.value = null
+  }
+
   return {
     selectedDocument,
     selectionVersion,
@@ -33,5 +38,6 @@ export const useWorkspaceSelectionStore = defineStore('workspaceSelection', () =
     selectDocument,
     clearSelection,
     deleteDocument,
+    clear,
   }
 })

@@ -1,6 +1,7 @@
 package de.flogehring.peelserver.impl.renderconfig;
 
 import de.flogehring.peelserver.api.data.ProjectIdApi;
+import de.flogehring.peelserver.api.data.renderconfig.RenderConfigurationUpdateRequest;
 import de.flogehring.peelserver.api.services.RenderConfigurationController;
 import de.flogehring.peelserver.api.data.renderconfig.RenderConfigurationCreateResponse;
 import de.flogehring.peelserver.api.data.renderconfig.RenderConfigurationDto;
@@ -38,17 +39,17 @@ public class RenderConfigurationService implements RenderConfigurationController
     @Override
     public void updateRenderConfiguration(
             String id,
-            RenderConfigurationPersistenceDto persistenceDto
+            RenderConfigurationUpdateRequest updateRequest
     ) {
         log.info("Updating Render Config {}", id);
-        renderConfigurationRepository.findById(id)
+        RenderConfigurationPersistence renderConfigurationPersistence = renderConfigurationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Render configuration with id " + id + " not found"));
         renderConfigurationRepository.save(
                 RenderConfigurationPersistence.valueOf(
                         id,
-                        persistenceDto.name(),
-                        toExpressionRenderConfig(persistenceDto.renderConfigurationDto()),
-                        new ProjectId(persistenceDto.projectIdApi().id())
+                        updateRequest.name(),
+                        toExpressionRenderConfig(updateRequest.renderConfigurationDto()),
+                        renderConfigurationPersistence.getProjectId()
                 )
         );
     }

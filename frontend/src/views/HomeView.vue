@@ -1,18 +1,57 @@
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useProjectStore } from '@/stores/projects'
+
+const router = useRouter()
+const projectStore = useProjectStore()
+const newProjectName = ref('')
+const error = ref<string | null>(null)
+
+async function loadProjects(): Promise<void> {
+  try {
+    await projectStore.loadProjects()
+  } catch {
+    await router.replace('/login')
+  }
+}
+
+async function createProject(): Promise<void> {
+  const name = newProjectName.value.trim()
+  if (!name) return
+  error.value = null
+  try {
+    const project = await projectStore.createProject(name)
+    const id = project.projectIdApi?.id
+    if (id) await router.push({ name: 'project', params: { projectId: id } })
+  } catch {
+    error.value = 'The project could not be created.'
+  }
+}
+
+onMounted(loadProjects)
+</script>
+
 <template>
   <main class="home-view">
     <section>
       <p class="eyebrow">Peel</p>
-      <h1>Arbeitsbereiche</h1>
-      <nav aria-label="Arbeitsbereiche">
-        <RouterLink class="workspace-card" to="/project">
-          <span class="card-number">01</span>
-          <strong>Project</strong>
-          <span>Dokumente, Skripte und Vorschauen bearbeiten</span>
-        </RouterLink>
-        <RouterLink class="workspace-card" to="/print-jobs">
-          <span class="card-number">02</span>
-          <strong>Druckaufträge</strong>
-          <span>Druckdateien zu Dokumenten verwalten</span>
+      <h1>Projects</h1>
+      <form class="create-project" @submit.prevent="createProject">
+        <input v-model="newProjectName" aria-label="New project name" placeholder="New project name" />
+        <button type="submit">Create project</button>
+      </form>
+      <p v-if="error" class="error">{{ error }}</p>
+      <nav aria-label="Projects">
+        <RouterLink
+          v-for="project in projectStore.projects"
+          :key="project.projectIdApi?.id"
+          class="workspace-card"
+          :to="{ name: 'project', params: { projectId: project.projectIdApi?.id } }"
+        >
+          <span class="card-number">Project</span>
+          <strong>{{ project.name }}</strong>
+          <span>Documents, scripts, and render configurations</span>
         </RouterLink>
       </nav>
     </section>
@@ -53,6 +92,11 @@ nav {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
+
+.create-project { display: flex; gap: 8px; margin: -18px 0 24px; }
+.create-project input, .create-project button { padding: 9px 10px; border: 1px solid #3a4049; background: #20242a; color: inherit; }
+.create-project button { cursor: pointer; }
+.error { color: #f48771; }
 
 .workspace-card {
   display: grid;

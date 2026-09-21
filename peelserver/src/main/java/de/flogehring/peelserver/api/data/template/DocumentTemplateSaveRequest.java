@@ -6,7 +6,6 @@ import java.util.Map;
 
 public record DocumentTemplateSaveRequest(
         ProjectIdApi projectId,
-        String id,
         String name,
         Map<String, String> scriptNameTags,
         String templateHtml,

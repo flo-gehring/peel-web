@@ -39,5 +39,9 @@ export const useDocumentDraftStore = defineStore('documentDrafts', () => {
     delete draftsById.value[id]
   }
 
-  return { getDraft, setDraft, updateDraft, markSaved, removeDocument }
+  function clear(): void {
+    draftsById.value = {}
+  }
+
+  return { draftsById, getDraft, setDraft, updateDraft, markSaved, removeDocument, clear }
 })

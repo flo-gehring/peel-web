@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { api } from '@/adapter/client'
 import type { PeelWorkspaceDocument } from '@/adapter/ClientTypeDefinition'
 import { useWorkspaceSelectionStore } from '@/stores/workspaceSelection'
+import { useProjectStore } from '@/stores/projects'
 
 type PeelScriptDocument = Extract<PeelWorkspaceDocument, { kind: 'peel' }>
 type RenderConfigDocument = Extract<PeelWorkspaceDocument, { kind: 'renderConfig' }>
@@ -17,6 +18,8 @@ const scripts = ref<PeelScriptDocument[]>([])
 const renderConfigs = ref<RenderConfigDocument[]>([])
 const documents = ref<DocumentWorkspaceItem[]>([])
 const selectionStore = useWorkspaceSelectionStore()
+const projectStore = useProjectStore()
+const projectId = computed(() => projectStore.activeProject?.projectIdApi?.id ?? '')
 
 const isLoading = ref(false)
 const activeFileId = ref<string | null>(null)
@@ -33,44 +36,26 @@ const copiedId = ref<string | null>(null)
 async function fetchFiles() {
   isLoading.value = true
   try {
-    const [scriptsResponse, renderConfigsResponse, documentsResponse] = await Promise.all([
-      api.GET('/api/scripts/list'),
-      api.GET('/api/render-config/list-ids'),
-      api.GET('/api/documents'),
-    ])
-
-    if (scriptsResponse.error) {
-      console.error('Error fetching scripts:', scriptsResponse.error)
-    } else {
-      scripts.value = (scriptsResponse.data ?? []).map((script) => ({
+    if (!projectId.value) return
+    const project = await projectStore.loadProject(projectId.value)
+    scripts.value = (project.scripts ?? []).map((script) => ({
         kind: 'peel',
         id: script.id ?? '',
         name: script.name ?? '',
         icon: '🍌',
       }))
-    }
-
-    if (documentsResponse.error) {
-      console.error('Error fetching documents:', documentsResponse.error)
-    } else {
-      documents.value = (documentsResponse.data ?? []).map((document) => ({
+    documents.value = (project.documentTemplates ?? []).map((document) => ({
         kind: 'document',
         id: document.id ?? '',
         name: document.name ?? '',
         icon: 'DOC',
       }))
-    }
-
-    if (renderConfigsResponse.error) {
-      console.error('Error fetching render configurations:', renderConfigsResponse.error)
-    } else {
-      renderConfigs.value = (renderConfigsResponse.data ?? []).map((renderConfig) => ({
+    renderConfigs.value = (project.renderConfigurations ?? []).map((renderConfig) => ({
         kind: 'renderConfig',
         id: renderConfig.id ?? '',
         name: renderConfig.name ?? '',
         icon: '{}',
       }))
-    }
   } catch (error) {
     console.error('Unexpected workspace item fetch error:', error)
   } finally {
@@ -101,7 +86,7 @@ async function createDocument() {
   try {
     if (newDocumentKind.value === 'peel') {
       const { data, error } = await api.POST('/api/scripts', {
-        body: { name, script: '' },
+        body: { projectIdApi: { id: projectId.value }, name, script: '' },
       })
 
       if (error || !data?.id) {
@@ -128,6 +113,7 @@ async function createDocument() {
       }
       const { data, error } = await api.POST('/api/documents', {
         body: {
+          projectId: { id: projectId.value },
           name,
           scriptNameTags: {},
           templateHtml: '<p></p>',
@@ -152,9 +138,10 @@ async function createDocument() {
       return
     }
 
-    const { data, error } = await api.POST('/api/render-config/save', {
+    const { data, error } = await api.POST('/api/render-config/', {
       body: {
         name,
+        projectIdApi: { id: projectId.value },
         renderConfigurationDto: defaultConfig,
       },
     })
@@ -263,7 +250,7 @@ async function deleteDocument(file: DocumentWorkspaceItem) {
   }
 }
 
-onMounted(() => fetchFiles())
+watch(projectId, () => void fetchFiles(), { immediate: true })
 </script>
 <template>
   <div class="file-tree-container">
