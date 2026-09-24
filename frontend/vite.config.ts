@@ -11,15 +11,12 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: 'http://host.docker.internal:8080',
-        changeOrigin: true,
       },
       '/login': {
         target: 'http://host.docker.internal:8080',
-        changeOrigin: true,
       },
-      '/ott/generate': {
+      '/ott': {
         target: 'http://host.docker.internal:8080',
-        changeOrigin: true,
       },
     },
   },

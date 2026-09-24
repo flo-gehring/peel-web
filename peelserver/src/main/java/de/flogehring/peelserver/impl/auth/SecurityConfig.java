@@ -16,9 +16,15 @@ public class SecurityConfig {
             HttpSecurity http,
             MagicLinkOneTimeTokenGenerationSuccessHandler magicLinkHandler
     ) throws Exception {
-        http.formLogin(Customizer.withDefaults())
+        http.csrf(csrf -> csrf.ignoringRequestMatchers("/api/**", "/ott/generate", "/login/ott"))
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers("/api/whoami", "/ott/**", "/login/**").permitAll()
+                        .requestMatchers("/api/**").authenticated()
+                        .anyRequest().permitAll())
+                .formLogin(Customizer.withDefaults())
                 .oneTimeTokenLogin(oneTimeTokenLogin -> oneTimeTokenLogin
-                        .tokenGenerationSuccessHandler(magicLinkHandler));
+                        .tokenGenerationSuccessHandler(magicLinkHandler)
+                        .defaultSuccessUrl("/"));
         return http.build();
     }
 }

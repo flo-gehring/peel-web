@@ -100,7 +100,7 @@ async function createDocument() {
         name: data.name ?? name,
         icon: '🍌',
       }
-      scripts.value.push(file)
+      await fetchFiles()
       isCreateDialogOpen.value = false
       selectDocument(file)
       return
@@ -126,7 +126,7 @@ async function createDocument() {
         return
       }
       const file: DocumentWorkspaceItem = { kind: 'document', id: data.id, name, icon: 'DOC' }
-      documents.value.push(file)
+      await fetchFiles()
       isCreateDialogOpen.value = false
       selectDocument(file)
       return
@@ -156,7 +156,7 @@ async function createDocument() {
       name,
       icon: '{}',
     }
-    renderConfigs.value.push(file)
+    await fetchFiles()
     isCreateDialogOpen.value = false
     selectDocument(file)
   } catch (error) {

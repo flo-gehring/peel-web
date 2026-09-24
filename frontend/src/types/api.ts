@@ -4,22 +4,6 @@
  */
 
 export interface paths {
-    "/api/scripts/run": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: operations["run"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/scripts/{id}": {
         parameters: {
             query?: never;
@@ -31,6 +15,22 @@ export interface paths {
         put: operations["updateScript"];
         post?: never;
         delete: operations["deleteScript"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scripts/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["run"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -212,6 +212,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ott/whoami": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["whoAmI"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ott/sent": {
         parameters: {
             query?: never;
@@ -312,6 +328,15 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ScriptUpdateRequest: {
+            name?: string;
+            scriptContent?: string;
+        };
+        ScriptDtoResponse: {
+            id?: string;
+            name?: string;
+            script?: string;
+        };
         RunRequest: {
             script?: string;
             bindings?: {
@@ -325,15 +350,6 @@ export interface components {
             result?: {
                 [key: string]: unknown;
             };
-        };
-        ScriptUpdateRequest: {
-            name?: string;
-            scriptContent?: string;
-        };
-        ScriptDtoResponse: {
-            id?: string;
-            name?: string;
-            script?: string;
         };
         RenderConfigurationDto: {
             renderConfigurations?: {
@@ -424,6 +440,11 @@ export interface components {
             /** Format: byte */
             pdfData?: string;
         };
+        WhoAmIResponse: {
+            authenticated?: boolean;
+            userId?: string;
+            email?: string;
+        };
         ValidationRequest: {
             script?: string;
         };
@@ -495,18 +516,16 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    run: {
+    getScript: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                id: string;
+            };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RunRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {
@@ -514,7 +533,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RunResponse"];
+                    "application/json": components["schemas"]["ScriptDtoResponse"];
                 };
             };
         };
@@ -541,6 +560,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScriptDtoResponse"];
+                };
+            };
+        };
+    };
+    deleteScript: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunResponse"];
                 };
             };
         };
@@ -943,6 +1006,26 @@ export interface operations {
             };
         };
     };
+    whoAmI: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhoAmIResponse"];
+                };
+            };
+        };
+    };
     ottSent: {
         parameters: {
             query?: never;
@@ -960,48 +1043,6 @@ export interface operations {
                 content: {
                     "application/json": string;
                 };
-            };
-        };
-    };
-    getScript: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScriptDtoResponse"];
-                };
-            };
-        };
-    };
-    deleteScript: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

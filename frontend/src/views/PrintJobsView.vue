@@ -3,11 +3,13 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/adapter/client'
 import type { components } from '@/types/api'
+import { useProjectStore } from '@/stores/projects'
 
 type PrintJobSummary = components['schemas']['PrintJobSummary']
 type DocumentSummary = components['schemas']['DocumentTemplateSummaryResponse']
 
 const router = useRouter()
+const projectStore = useProjectStore()
 const printJobs = ref<PrintJobSummary[]>([])
 const documents = ref<DocumentSummary[]>([])
 const isLoading = ref(true)
@@ -37,30 +39,29 @@ function statusLabel(status: PrintJobSummary['status']) {
 async function loadPrintJobs() {
   isLoading.value = true
   errorMessage.value = ''
-  const [
-    { data: printJobData, error: printJobError },
-    { data: documentData, error: documentError },
-  ] = await Promise.all([api.GET('/api/print-jobs/list'), api.GET('/api/documents')])
-  isLoading.value = false
-
-  if (printJobError || documentError) {
+  try {
+    const [{ data: printJobData, error: printJobError }, documentData] = await Promise.all([
+      api.GET('/api/print-jobs/list'),
+      projectStore.loadDocuments(),
+    ])
+    if (printJobError) throw printJobError
+    printJobs.value = printJobData ?? []
+    documents.value = documentData
+  } catch {
     errorMessage.value = 'Druckaufträge konnten nicht geladen werden.'
-    return
+  } finally {
+    isLoading.value = false
   }
-
-  printJobs.value = printJobData ?? []
-  documents.value = documentData ?? []
 }
 
 async function openCreateDialog() {
   errorMessage.value = ''
-  const { data, error } = await api.GET('/api/documents')
-  if (error) {
+  try {
+    documents.value = await projectStore.loadDocuments()
+  } catch {
     errorMessage.value = 'Dokumente konnten nicht geladen werden.'
     return
   }
-
-  documents.value = data ?? []
   name.value = ''
   documentId.value = ''
   isDialogOpen.value = true

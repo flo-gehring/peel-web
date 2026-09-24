@@ -3,11 +3,13 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '@/adapter/client'
 import type { components } from '@/types/api'
+import { useProjectStore } from '@/stores/projects'
 
 type PrintJobSummary = components['schemas']['PrintJobSummary']
 type DocumentSummary = components['schemas']['DocumentTemplateSummaryResponse']
 
 const route = useRoute()
+const projectStore = useProjectStore()
 const printJob = ref<PrintJobSummary>()
 const documents = ref<DocumentSummary[]>([])
 const isLoading = ref(true)
@@ -39,19 +41,20 @@ function statusLabel(status: PrintJobSummary['status']) {
 async function loadPrintJob() {
   isLoading.value = true
   errorMessage.value = ''
-  const [
-    { data: printJobData, error: printJobError },
-    { data: documentData, error: documentError },
-  ] = await Promise.all([api.GET('/api/print-jobs/list'), api.GET('/api/documents')])
-  isLoading.value = false
-  if (printJobError || documentError) {
+  try {
+    const [{ data: printJobData, error: printJobError }, documentData] = await Promise.all([
+      api.GET('/api/print-jobs/list'),
+      projectStore.loadDocuments(),
+    ])
+    if (printJobError) throw printJobError
+    documents.value = documentData
+    printJob.value = printJobData?.find((job) => job.printJobId?.id === printJobId.value)
+    if (!printJob.value) errorMessage.value = 'Druckauftrag wurde nicht gefunden.'
+  } catch {
     errorMessage.value = 'Druckauftrag konnte nicht geladen werden.'
-    return
+  } finally {
+    isLoading.value = false
   }
-
-  documents.value = documentData ?? []
-  printJob.value = printJobData?.find((job) => job.printJobId?.id === printJobId.value)
-  if (!printJob.value) errorMessage.value = 'Druckauftrag wurde nicht gefunden.'
 }
 
 async function startPrintJob() {

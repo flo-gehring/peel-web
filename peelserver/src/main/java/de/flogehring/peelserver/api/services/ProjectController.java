@@ -18,7 +18,7 @@ public interface ProjectController {
     @GetMapping("/list")
     List<ProjectSummary> listProjects(@AuthenticationPrincipal SpringUserDetails springUserDetails);
 
-    @PostMapping(path = "/{projectId:.+}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(path = "/{projectId:.+}")
     ProjectSummary createProject(@PathVariable("projectId") String name, @AuthenticationPrincipal SpringUserDetails springUserDetails);
 
     @GetMapping("/{projectId:.+}")
