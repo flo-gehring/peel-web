@@ -62,6 +62,12 @@ export const useProjectStore = defineStore('projects', () => {
     activeProject.value = null
   }
 
+  function clear(): void {
+    projects.value = []
+    activeProject.value = null
+    isLoading.value = false
+  }
+
   return {
     projects,
     activeProject,
@@ -71,5 +77,6 @@ export const useProjectStore = defineStore('projects', () => {
     createProject,
     loadDocuments,
     clearActiveProject,
+    clear,
   }
 })

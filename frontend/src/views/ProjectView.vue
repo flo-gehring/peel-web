@@ -69,8 +69,8 @@ watch(
     if (typeof projectId !== 'string') return
     try {
       await projectStore.loadProject(projectId)
-    } catch {
-      await router.replace('/login')
+    } catch (error) {
+      console.error('Failed to load project:', error)
     }
   },
   { immediate: true },

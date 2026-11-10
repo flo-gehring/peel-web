@@ -30,5 +30,22 @@ export const useDocumentPreviewStore = defineStore('documentPreview', () => {
     previewVersion.value += 1
   }
 
-  return { pdfUrl, error, isLoading, previewVersion, start, setPreview, setError, requestOpen }
+  function clear(): void {
+    if (pdfUrl.value) URL.revokeObjectURL(pdfUrl.value)
+    pdfUrl.value = null
+    error.value = null
+    isLoading.value = false
+  }
+
+  return {
+    pdfUrl,
+    error,
+    isLoading,
+    previewVersion,
+    start,
+    setPreview,
+    setError,
+    requestOpen,
+    clear,
+  }
 })

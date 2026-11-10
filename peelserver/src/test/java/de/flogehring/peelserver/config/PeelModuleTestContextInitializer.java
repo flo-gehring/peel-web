@@ -23,7 +23,8 @@ class PeelModuleTestContextInitializer implements ApplicationContextInitializer<
         context.getEnvironment().getPropertySources().addFirst(new MapPropertySource(
                 "peelModuleTestContainerProperties",
                 Map.of(
-                        "spring.data.mongodb.uri", MONGODB.getConnectionString(),
+                        "spring.mongodb.uri", MONGODB.getConnectionString(),
+                        "spring.mongodb.database", "peel_test",
                         "minio.url", MINIO.getS3URL(),
                         "minio.access.name", MINIO.getUserName(),
                         "minio.access.secret", MINIO.getPassword()

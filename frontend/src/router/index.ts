@@ -3,6 +3,8 @@ import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
 import OneTimeLinkSentView from '../views/OneTimeLinkSentView.vue'
 import ProjectView from '../views/ProjectView.vue'
+import ConfirmLoginView from '../views/ConfirmLoginView.vue'
+import { safeAuthRedirect } from '@/adapter/authRedirect'
 import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
@@ -20,9 +22,14 @@ const router = createRouter({
       component: LoginView,
     },
     {
-      path: '/one-time-link-sent',
+      path: '/login/sent',
       name: 'one-time-link-sent',
       component: OneTimeLinkSentView,
+    },
+    {
+      path: '/login/confirm',
+      name: 'confirm-login',
+      component: ConfirmLoginView,
     },
     {
       path: '/project',
@@ -52,10 +59,14 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const authStore = useAuthStore()
   if (!authStore.isLoaded) await authStore.refresh()
+  if (to.meta.requiresAuth && !authStore.isLoaded)
+    return { name: 'login', query: { redirect: to.fullPath } }
+  if (to.meta.requiresAuth && authStore.sessionExpired) return false
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
-  if (to.name === 'login' && authStore.isAuthenticated) return { name: 'home' }
+  if ((to.name === 'login' || to.name === 'one-time-link-sent') && authStore.isAuthenticated)
+    return safeAuthRedirect(to.query.redirect)
 })
 
 export default router

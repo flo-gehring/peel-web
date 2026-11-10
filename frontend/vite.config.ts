@@ -12,12 +12,6 @@ export default defineConfig({
       '/api': {
         target: 'http://host.docker.internal:8080',
       },
-      '/login': {
-        target: 'http://host.docker.internal:8080',
-      },
-      '/ott': {
-        target: 'http://host.docker.internal:8080',
-      },
     },
   },
   preview: {

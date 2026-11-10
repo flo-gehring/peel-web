@@ -1,0 +1,16 @@
+spring:
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:11025}
+    properties:
+      "[mail.smtp.auth]": false
+      "[mail.smtp.starttls.enable]": false
+server:
+  servlet:
+    session:
+      cookie:
+        secure: ${SESSION_COOKIE_SECURE:false}
+peel:
+  auth:
+    public-base-url: ${PEEL_PUBLIC_BASE_URL:http://localhost:5173}
+    mail-from: ${PEEL_MAIL_FROM:noreply@peel.test}

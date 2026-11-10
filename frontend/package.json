@@ -15,7 +15,8 @@
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
     "format": "prettier --write --experimental-cli src/",
-    "gen:openapi": "npx openapi-typescript http://host.docker.internal:8080/v3/api-docs -o ./src/types/api.ts "
+    "gen:openapi": "npx openapi-typescript http://host.docker.internal:8080/v3/api-docs -o ./src/types/api.ts ",
+    "gen:auth-api": "npx --yes openapi-typescript@7.13.0 ../peelserver/build/auth-openapi.json -o ./src/types/auth-api.ts"
   },
   "dependencies": {
     "@tiptap/starter-kit": "^3.20.0",

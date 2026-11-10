@@ -11,6 +11,18 @@ import java.util.Map;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleUnreadableRequest() {
+        return ResponseEntity.badRequest().body(ApiErrorResponse.of("bad_request", "Invalid request body"));
+    }
+
+    @ExceptionHandler(de.flogehring.peelserver.impl.auth.AuthRequestException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuth(de.flogehring.peelserver.impl.auth.AuthRequestException ex) {
+        var response = ResponseEntity.status(ex.status());
+        if (ex.retryAfter() > 0) response.header("Retry-After", Long.toString(ex.retryAfter()));
+        return response.body(ApiErrorResponse.of(ex.code(), ex.getMessage()));
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleNotFound(ResourceNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)

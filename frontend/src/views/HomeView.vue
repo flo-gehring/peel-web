@@ -12,7 +12,7 @@ async function loadProjects(): Promise<void> {
   try {
     await projectStore.loadProjects()
   } catch {
-    await router.replace('/login')
+    error.value = 'Projects could not be loaded. Check your connection and try again.'
   }
 }
 

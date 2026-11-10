@@ -1,6 +1,26 @@
 spring:
   application:
     name: peelserver
+  mail:
+    properties:
+      "[mail.smtp.connectiontimeout]": 5000
+      "[mail.smtp.timeout]": 5000
+      "[mail.smtp.writetimeout]": 5000
+server:
+  servlet:
+    session:
+      timeout: 60m
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: ${SESSION_COOKIE_SECURE:true}
+peel:
+  auth:
+    public-base-url: ${PEEL_PUBLIC_BASE_URL}
+    mail-from: ${PEEL_MAIL_FROM}
+    token-validity: 15m
+    resend-interval: 60s
+    requests-per-ip-per-hour: 20
 minio:
   url: ${MINIO_URL}
   access:

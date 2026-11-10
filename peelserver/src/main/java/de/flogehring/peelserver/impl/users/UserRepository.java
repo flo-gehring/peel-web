@@ -5,6 +5,6 @@ import org.springframework.data.mongodb.repository.Query;
 
 public interface UserRepository extends MongoRepository<UserPersistence, String> {
 
-    @Query("'userPersistenceData.eMail' : ?0")
+    @Query("{ 'userPersistenceData.eMail': ?0 }")
     UserPersistence findByUsername(String username);
 }
