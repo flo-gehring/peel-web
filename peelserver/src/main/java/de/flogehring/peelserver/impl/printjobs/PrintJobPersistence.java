@@ -3,6 +3,7 @@ package de.flogehring.peelserver.impl.printjobs;
 import de.flogehring.peelserver.api.data.print.jobs.PrintJobId;
 import de.flogehring.peelserver.api.data.print.jobs.PrintJobStatus;
 import de.flogehring.peelserver.impl.documenttemplates.DocumentId;
+import de.flogehring.peelserver.impl.project.ProjectId;
 import lombok.Getter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
@@ -17,16 +18,19 @@ public class PrintJobPersistence {
     @Id
     @Indexed(unique = true)
     private final String id;
+    private final ProjectId projectId;
     private PrintJobPersistenceData printJobPersistenceData;
 
-    private PrintJobPersistence(String id, PrintJobPersistenceData printJobPersistenceData) {
+    private PrintJobPersistence(String id, ProjectId projectId, PrintJobPersistenceData printJobPersistenceData) {
         this.id = id;
+        this.projectId = projectId;
         this.printJobPersistenceData = printJobPersistenceData;
     }
 
-    public static PrintJobPersistence init(PrintJobId printJobId, DocumentId documentId, String name) {
+    public static PrintJobPersistence init(PrintJobId printJobId, DocumentId documentId, ProjectId projectId, String name) {
         return new PrintJobPersistence(
                 printJobId.id(),
+                projectId,
                 new PrintJobPersistenceData(
                         name,
                         documentId.id(),

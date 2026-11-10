@@ -11,7 +11,6 @@ import de.flogehring.peelserver.impl.documenttemplates.PeelDocumentRepository;
 import de.flogehring.peelserver.impl.renderconfig.RenderConfigurationRepository;
 import de.flogehring.peelserver.impl.scripts.PeelScriptRepository;
 import de.flogehring.peelserver.impl.users.SpringUserDetails;
-import de.flogehring.peelserver.impl.users.UserId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,13 +24,13 @@ public class ProjectService implements ProjectController {
     private final ProjectRepository projectRepository;
     private final RenderConfigurationRepository renderConfigurationRepository;
     private final PeelDocumentRepository peelDocumentRepository;
+    private final ProjectAccessService projectAccess;
 
 
     @Override
     public List<ProjectSummary> listProjects(SpringUserDetails springUserDetails) {
-        return projectRepository.findAll()
+        return projectRepository.findAccessibleByUser(springUserDetails.getUserId())
                 .stream()
-                .filter(project -> canReadProject(project, springUserDetails.getUserId()))
                 .map(project -> new ProjectSummary(
                         new ProjectIdApi(project.getId()),
                         project.getPersistenceData().projectName()
@@ -51,9 +50,7 @@ public class ProjectService implements ProjectController {
 
     @Override
     public ProjectData getProject(String projectId, SpringUserDetails springUserDetails) {
-        ProjectPersistence projectPersistence = projectRepository.findById(projectId)
-                .filter(project -> canReadProject(project, springUserDetails.getUserId()))
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
+        ProjectPersistence projectPersistence = projectAccess.requireProjectAccess(new ProjectId(projectId), springUserDetails.getUserId());
         ProjectId projectIdDomainValue = new ProjectId(projectPersistence.getId());
         return new ProjectData(
                 new ProjectIdApi(projectPersistence.getId()),
@@ -80,7 +77,4 @@ public class ProjectService implements ProjectController {
         );
     }
 
-    private static boolean canReadProject(ProjectPersistence project, UserId userId) {
-        return project.getPersistenceData().ownerId().equals(userId) || project.getPersistenceData().members().contains(userId);
-    }
 }

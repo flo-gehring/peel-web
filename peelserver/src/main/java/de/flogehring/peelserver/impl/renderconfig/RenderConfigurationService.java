@@ -6,8 +6,9 @@ import de.flogehring.peelserver.api.services.RenderConfigurationController;
 import de.flogehring.peelserver.api.data.renderconfig.RenderConfigurationCreateResponse;
 import de.flogehring.peelserver.api.data.renderconfig.RenderConfigurationDto;
 import de.flogehring.peelserver.api.data.renderconfig.RenderConfigurationPersistenceDto;
-import de.flogehring.peelserver.api.error.ResourceNotFoundException;
 import de.flogehring.peelserver.impl.project.ProjectId;
+import de.flogehring.peelserver.impl.project.ProjectAccessService;
+import de.flogehring.peelserver.impl.users.SpringUserDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,16 +22,19 @@ import java.util.UUID;
 public class RenderConfigurationService implements RenderConfigurationController {
 
     private final RenderConfigurationRepository renderConfigurationRepository;
+    private final ProjectAccessService projectAccess;
 
     @Override
-    public RenderConfigurationCreateResponse createRenderConfiguration(RenderConfigurationPersistenceDto renderConfigurationDto) {
+    public RenderConfigurationCreateResponse createRenderConfiguration(RenderConfigurationPersistenceDto renderConfigurationDto, SpringUserDetails user) {
+        ProjectId projectId = new ProjectId(renderConfigurationDto.projectIdApi().id());
+        projectAccess.requireProjectAccess(projectId, user.getUserId());
         String id = UUID.randomUUID().toString();
         renderConfigurationRepository.insert(
                 RenderConfigurationPersistence.valueOf(
                         id,
                         renderConfigurationDto.name(),
                         toExpressionRenderConfig(renderConfigurationDto.renderConfigurationDto()),
-                        new ProjectId(renderConfigurationDto.projectIdApi().id())
+                        projectId
                 )
         );
         return new RenderConfigurationCreateResponse(id);
@@ -39,11 +43,11 @@ public class RenderConfigurationService implements RenderConfigurationController
     @Override
     public void updateRenderConfiguration(
             String id,
-            RenderConfigurationUpdateRequest updateRequest
+            RenderConfigurationUpdateRequest updateRequest,
+            SpringUserDetails user
     ) {
         log.info("Updating Render Config {}", id);
-        RenderConfigurationPersistence renderConfigurationPersistence = renderConfigurationRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Render configuration with id " + id + " not found"));
+        RenderConfigurationPersistence renderConfigurationPersistence = requireConfigAccess(id, user);
         renderConfigurationRepository.save(
                 RenderConfigurationPersistence.valueOf(
                         id,
@@ -68,10 +72,8 @@ public class RenderConfigurationService implements RenderConfigurationController
     }
 
     @Override
-    public RenderConfigurationPersistenceDto getById(String id) {
-        RenderConfigurationPersistence renderConfig = renderConfigurationRepository.findById(
-                id
-        ).orElseThrow(() -> new ResourceNotFoundException("Render configuration with id " + id + " not found"));
+    public RenderConfigurationPersistenceDto getById(String id, SpringUserDetails user) {
+        RenderConfigurationPersistence renderConfig = requireConfigAccess(id, user);
         return new RenderConfigurationPersistenceDto(
                 renderConfig.getName(),
                 new ProjectIdApi(renderConfig.getProjectId().id()),
@@ -80,8 +82,15 @@ public class RenderConfigurationService implements RenderConfigurationController
     }
 
     @Override
-    public void deleteById(String id) {
+    public void deleteById(String id, SpringUserDetails user) {
+        requireConfigAccess(id, user);
         renderConfigurationRepository.deleteById(id);
+    }
+
+    private RenderConfigurationPersistence requireConfigAccess(String id, SpringUserDetails user) {
+        var config = renderConfigurationRepository.findById(id).orElseThrow(ProjectAccessService::notFound);
+        projectAccess.requireProjectAccess(config.getProjectId(), user.getUserId());
+        return config;
     }
 
     private static ExpressionRenderConfiguration toExpressionRenderConfig(RenderConfigurationDto renderConfigurationDto) {

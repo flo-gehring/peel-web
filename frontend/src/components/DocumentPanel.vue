@@ -8,6 +8,7 @@ import type { DocumentDraft } from '@/stores/documentDrafts'
 import { useDocumentDraftStore } from '@/stores/documentDrafts'
 import { useDocumentPreviewStore } from '@/stores/documentPreview'
 import { useRunBindingsStore } from '@/stores/runBindings'
+import { useProjectStore } from '@/stores/projects'
 
 const props = defineProps<{
   params?: {
@@ -24,6 +25,7 @@ const initialDraft = props.params?.params?.draft
 const draftStore = useDocumentDraftStore()
 const previewStore = useDocumentPreviewStore()
 const bindingsStore = useRunBindingsStore()
+const projectStore = useProjectStore()
 const draft = computed(() => draftStore.getDraft(documentId) ?? initialDraft)
 const isSaving = ref(false)
 const saveError = ref<string | null>(null)
@@ -131,6 +133,12 @@ async function previewDocument(): Promise<void> {
   const current = draft.value
   if (!current || isPreviewing.value) return
 
+  const projectId = projectStore.activeProject?.projectIdApi?.id
+  if (!projectId) {
+    saveError.value = 'Open a project before previewing a document.'
+    return
+  }
+
   const bindings = bindingsStore.parseBindings()
   if (!bindings) {
     saveError.value = bindingsStore.parseError || 'Invalid bindings JSON.'
@@ -147,6 +155,7 @@ async function previewDocument(): Promise<void> {
   try {
     const { data, error } = await api.POST('/api/documents/preview', {
       body: {
+        projectId: { id: projectId },
         scriptTags: Object.fromEntries(
           Object.entries(current.scriptNameTags).map(([tag, id]) => [tag, { id }]),
         ),

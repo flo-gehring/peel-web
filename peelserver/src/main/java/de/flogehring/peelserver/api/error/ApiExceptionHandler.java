@@ -11,6 +11,11 @@ import java.util.Map;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidRequest() {
+        return ResponseEntity.badRequest().body(ApiErrorResponse.of("bad_request", "Invalid request fields"));
+    }
+
     @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
     public ResponseEntity<ApiErrorResponse> handleUnreadableRequest() {
         return ResponseEntity.badRequest().body(ApiErrorResponse.of("bad_request", "Invalid request body"));

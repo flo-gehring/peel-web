@@ -5,6 +5,9 @@ import de.flogehring.peelserver.api.data.print.jobs.PrintJobInitRequestDto;
 import de.flogehring.peelserver.api.data.print.jobs.PrintJobStatus;
 import de.flogehring.peelserver.api.data.print.jobs.PrintJobSummary;
 import org.springframework.http.MediaType;
+import de.flogehring.peelserver.impl.users.SpringUserDetails;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,23 +24,24 @@ import java.util.List;
 public interface PrintJobController {
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    PrintJobId initPrintJob(@RequestBody PrintJobInitRequestDto initRequestDto);
+    PrintJobId initPrintJob(@Valid @RequestBody PrintJobInitRequestDto initRequestDto, @AuthenticationPrincipal SpringUserDetails user);
 
     @PutMapping(path = "/{id:.+}/data", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     void uploadFile(
             @PathVariable("id") String printJobId,
-            @RequestPart("file") MultipartFile multipartFile
+            @RequestPart("file") MultipartFile multipartFile,
+            @AuthenticationPrincipal SpringUserDetails user
     ) throws IOException;
 
     @GetMapping("/list")
-    List<PrintJobSummary> listPrintJobs();
+    List<PrintJobSummary> listPrintJobs(@AuthenticationPrincipal SpringUserDetails user);
 
     @PostMapping("/{id:.+}/run")
-    PrintJobStatus runPrintJob(@PathVariable("id") String printJobId);
+    PrintJobStatus runPrintJob(@PathVariable("id") String printJobId, @AuthenticationPrincipal SpringUserDetails user);
 
     @GetMapping(path = "/{id:.+}/data", produces = "text/csv")
-    byte[] downloadFile(@PathVariable("id") String printJobId);
+    byte[] downloadFile(@PathVariable("id") String printJobId, @AuthenticationPrincipal SpringUserDetails user);
 
     @GetMapping(path = "/{id:.+}/file/{fileId:.+}", produces = MediaType.APPLICATION_PDF_VALUE)
-    byte[] downloadFile(@PathVariable("id") String printJobId, @PathVariable("fileId") String fileId);
+    byte[] downloadFile(@PathVariable("id") String printJobId, @PathVariable("fileId") String fileId, @AuthenticationPrincipal SpringUserDetails user);
 }

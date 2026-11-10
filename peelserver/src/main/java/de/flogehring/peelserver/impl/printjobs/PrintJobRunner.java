@@ -1,21 +1,13 @@
 package de.flogehring.peelserver.impl.printjobs;
 
 import de.flogehring.peelserver.api.data.print.jobs.PrintJobStatus;
-import de.flogehring.peelserver.api.error.ResourceNotFoundException;
 import de.flogehring.peelserver.impl.documenttemplates.Document;
-import de.flogehring.peelserver.impl.documenttemplates.DocumentPersistenceData;
 import de.flogehring.peelserver.impl.documenttemplates.DocumentTemplateRenderService;
-import de.flogehring.peelserver.impl.documenttemplates.PeelDocumentRepository;
 import de.flogehring.peelserver.impl.filestorage.StorageService;
-import de.flogehring.peelserver.impl.renderconfig.RenderConfigurationRepository;
-import de.flogehring.peelserver.impl.scripts.PeelScript;
-import de.flogehring.peelserver.impl.scripts.PeelScriptId;
-import de.flogehring.peelserver.impl.scripts.PeelScriptRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
-import org.jspecify.annotations.NonNull;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -27,7 +19,6 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static de.flogehring.peelserver.impl.util.StreamUtil.transformMapValues;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 
@@ -41,12 +32,9 @@ public class PrintJobRunner {
     public static final Pattern FLOAT = Pattern.compile("^\\d+\\.\\d+$");
     private final PrintJobRepository printJobRepository;
     private final StorageService storageService;
-    private final PeelDocumentRepository documentRepository;
     private final DocumentTemplateRenderService documentTemplateRenderService;
-    private final RenderConfigurationRepository renderConfigurationRepository;
-    private final PeelScriptRepository scriptRepository;
 
-    void run(PrintJobPersistence printJob) {
+    public void run(PrintJobPersistence printJob, Document document) {
         PrintJobStatus status = printJob.getPrintJobPersistenceData().status();
         if (status != PrintJobStatus.CREATED) {
             log.warn("Print job {} is not in CREATED state, current state: {}", printJob.getId(), status);
@@ -56,10 +44,10 @@ public class PrintJobRunner {
         }
         printJob.updateStatus(PrintJobStatus.CALCULATING);
         printJobRepository.save(printJob);
-        runJob(printJob);
+        runJob(printJob, document);
     }
 
-    private void runJob(PrintJobPersistence printJobPersistence) {
+    private void runJob(PrintJobPersistence printJobPersistence, Document document) {
         String fileName = printJobPersistence.getPrintJobPersistenceData().fileName();
         if (fileName == null) {
             log.warn("Print job {} has no file uploaded, cannot run", printJobPersistence.getId());
@@ -70,20 +58,11 @@ public class PrintJobRunner {
         storageService.processFile(
                 PrintJobService.BUCKET_NAME,
                 printJobPersistence.getId(),
-                resource -> processCsv(resource, printJobPersistence)
+                resource -> processCsv(resource, printJobPersistence, document)
         );
     }
 
-    private void processCsv(InputStream resource, PrintJobPersistence printJobPersistence) {
-        DocumentPersistenceData data = documentRepository.findById(printJobPersistence.getPrintJobPersistenceData().documentId())
-                .orElseThrow(() -> new ResourceNotFoundException("Document not found: " + printJobPersistence.getPrintJobPersistenceData().documentId())).getData();
-
-        Document document = new Document(
-                data.name(),
-                transformMapValues(data.scriptNameTags(), this::getPeelScript),
-                data.templateHtml(),
-                renderConfigurationRepository.findById(data.renderConfigurationId().id()).orElseThrow(() -> new ResourceNotFoundException("Render configuration not found: " + data.renderConfigurationId().id())).getExpressionRenderConfiguration()
-        );
+    private void processCsv(InputStream resource, PrintJobPersistence printJobPersistence, Document document) {
         try (CSVParser csvParser = CSVParser.parse(resource, UTF_8, CSVFormat.Builder.create().setHeader().setSkipHeaderRecord(true).build())) {
             // Process CSV records
             List<String> documentIds = new ArrayList<>();
@@ -131,9 +110,4 @@ public class PrintJobRunner {
         }
     }
 
-    private @NonNull PeelScript getPeelScript(PeelScriptId scriptNameTag) {
-        return scriptRepository.findById(scriptNameTag.id())
-                .orElseThrow(() -> new ResourceNotFoundException("Script not found: " + scriptNameTag))
-                .getPeelScript();
-    }
 }

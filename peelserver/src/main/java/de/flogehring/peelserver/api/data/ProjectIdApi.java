@@ -1,4 +1,6 @@
 package de.flogehring.peelserver.api.data;
 
-public record ProjectIdApi(String id) {
+import jakarta.validation.constraints.NotBlank;
+
+public record ProjectIdApi(@NotBlank String id) {
 }

@@ -4,6 +4,86 @@
  */
 
 export interface paths {
+    "/api/whoami": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["whoAmI"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/csrf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["csrf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["sendLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/scripts/{id}": {
         parameters: {
             query?: never;
@@ -212,38 +292,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/ott/whoami": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["whoAmI"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/ott/sent": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ottSent"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/scripts/validate": {
         parameters: {
             query?: never;
@@ -328,6 +376,29 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AuthLinkRequest: {
+            email?: string;
+            redirect?: string;
+        };
+        CsrfResponse: {
+            token?: string;
+            headerName?: string;
+        };
+        WhoAmIResponse: {
+            authenticated?: boolean;
+            userId?: string;
+            email?: string;
+        };
+        ApiError: {
+            code?: string;
+            message?: string;
+            details?: {
+                [key: string]: Record<string, never>;
+            };
+        };
+        ApiErrorResponse: {
+            error?: components["schemas"]["ApiError"];
+        };
         ScriptUpdateRequest: {
             name?: string;
             scriptContent?: string;
@@ -367,7 +438,7 @@ export interface components {
         };
         DocumentTemplateUpdateRequest: {
             name?: string;
-            scriptNameTags?: {
+            scriptNameTags: {
                 [key: string]: string;
             };
             templateHtml?: string;
@@ -384,16 +455,16 @@ export interface components {
             type?: "CREATED" | "UPDATED";
         };
         CreateScriptRequest: {
-            projectIdApi?: components["schemas"]["ProjectIdApi"];
+            projectIdApi: components["schemas"]["ProjectIdApi"];
             name?: string;
             script?: string;
         };
         ProjectIdApi: {
-            id?: string;
+            id: string;
         };
         RenderConfigurationPersistenceDto: {
             name?: string;
-            projectIdApi?: components["schemas"]["ProjectIdApi"];
+            projectIdApi: components["schemas"]["ProjectIdApi"];
             renderConfigurationDto?: components["schemas"]["RenderConfigurationDto"];
         };
         RenderConfigurationCreateResponse: {
@@ -404,19 +475,19 @@ export interface components {
             name?: string;
         };
         DocumentId: {
-            id?: string;
+            id: string;
         };
         PrintJobInitRequestDto: {
-            documentId?: components["schemas"]["DocumentId"];
+            documentId: components["schemas"]["DocumentId"];
             name?: string;
         };
         PrintJobId: {
             id?: string;
         };
         DocumentTemplateSaveRequest: {
-            projectId?: components["schemas"]["ProjectIdApi"];
+            projectId: components["schemas"]["ProjectIdApi"];
             name?: string;
-            scriptNameTags?: {
+            scriptNameTags: {
                 [key: string]: string;
             };
             templateHtml?: string;
@@ -424,7 +495,8 @@ export interface components {
             renderConfigurationId?: string;
         };
         DocumentPreviewRequest: {
-            scriptTags?: {
+            projectId: components["schemas"]["ProjectIdApi"];
+            scriptTags: {
                 [key: string]: components["schemas"]["PeelScriptId"];
             };
             bindings?: {
@@ -434,16 +506,11 @@ export interface components {
             template?: string;
         };
         PeelScriptId: {
-            id?: string;
+            id: string;
         };
         DocumentPreviewResponse: {
             /** Format: byte */
             pdfData?: string;
-        };
-        WhoAmIResponse: {
-            authenticated?: boolean;
-            userId?: string;
-            email?: string;
         };
         ValidationRequest: {
             script?: string;
@@ -486,6 +553,7 @@ export interface components {
         };
         PrintJobSummary: {
             printJobId?: components["schemas"]["PrintJobId"];
+            projectId?: components["schemas"]["ProjectIdApi"];
             name?: string;
             documentId?: components["schemas"]["DocumentId"];
             fileName?: string;
@@ -516,6 +584,272 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    whoAmI: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhoAmIResponse"];
+                };
+            };
+        };
+    };
+    csrf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CsrfResponse"];
+                };
+            };
+        };
+    };
+    sendLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    token: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
     getScript: {
         parameters: {
             query?: never;
@@ -1002,46 +1336,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentPreviewResponse"];
-                };
-            };
-        };
-    };
-    whoAmI: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WhoAmIResponse"];
-                };
-            };
-        };
-    };
-    ottSent: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": string;
                 };
             };
         };

@@ -1,4 +1,6 @@
 package de.flogehring.peelserver.api.data.scripts;
 
-public record PeelScriptId(String id) {
+import jakarta.validation.constraints.NotBlank;
+
+public record PeelScriptId(@NotBlank String id) {
 }

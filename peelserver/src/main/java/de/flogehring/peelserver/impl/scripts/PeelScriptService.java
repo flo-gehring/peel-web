@@ -2,8 +2,9 @@ package de.flogehring.peelserver.impl.scripts;
 
 import de.flogehring.peelserver.api.data.scripts.*;
 import de.flogehring.peelserver.api.services.PeelScriptController;
-import de.flogehring.peelserver.api.error.ResourceNotFoundException;
 import de.flogehring.peelserver.impl.project.ProjectId;
+import de.flogehring.peelserver.impl.project.ProjectAccessService;
+import de.flogehring.peelserver.impl.users.SpringUserDetails;
 import de.flogehring.peelserver.impl.run.RunService;
 import de.flogehring.peelserver.impl.run.ValidationService;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PeelScriptService implements PeelScriptController {
 
     private final PeelScriptRepository peelScriptRepository;
+    private final ProjectAccessService projectAccess;
 
     private final RunService runService;
     private final ValidationService validationService;
@@ -29,9 +31,10 @@ public class PeelScriptService implements PeelScriptController {
     }
 
     @Override
-    public ScriptDtoResponse saveScript(CreateScriptRequest request) {
+    public ScriptDtoResponse saveScript(CreateScriptRequest request, SpringUserDetails user) {
         String scriptContent = request.script();
         ProjectId projectId = new ProjectId(request.projectIdApi().id());
+        projectAccess.requireProjectAccess(projectId, user.getUserId());
         PeelScriptPersistence created = PeelScriptPersistence.newScript(
                 projectId,request.name(), scriptContent
         );
@@ -40,9 +43,8 @@ public class PeelScriptService implements PeelScriptController {
     }
 
     @Override
-    public ScriptDtoResponse updateScript(String id, ScriptUpdateRequest request) {
-        PeelScriptPersistence existing = peelScriptRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Script not found: " + id));
+    public ScriptDtoResponse updateScript(String id, ScriptUpdateRequest request, SpringUserDetails user) {
+        PeelScriptPersistence existing = requireScriptAccess(id, user);
         PeelScriptPersistence updated = existing.update(
                 request.name(),
                 requireScript(request.scriptContent())
@@ -52,15 +54,21 @@ public class PeelScriptService implements PeelScriptController {
     }
 
     @Override
-    public ScriptDtoResponse getScript(String id) {
-        PeelScriptPersistence peelScript = peelScriptRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Script not found: " + id));
+    public ScriptDtoResponse getScript(String id, SpringUserDetails user) {
+        PeelScriptPersistence peelScript = requireScriptAccess(id, user);
         return toResponse(peelScript);
     }
 
     @Override
-    public void deleteScript(String id) {
+    public void deleteScript(String id, SpringUserDetails user) {
+        requireScriptAccess(id, user);
         peelScriptRepository.deleteById(id);
+    }
+
+    private PeelScriptPersistence requireScriptAccess(String id, SpringUserDetails user) {
+        var script = peelScriptRepository.findById(id).orElseThrow(ProjectAccessService::notFound);
+        projectAccess.requireProjectAccess(script.getProjectId(), user.getUserId());
+        return script;
     }
 
     private String requireScript(String script) {

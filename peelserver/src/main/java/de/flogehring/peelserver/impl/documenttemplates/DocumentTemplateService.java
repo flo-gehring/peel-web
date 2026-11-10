@@ -1,148 +1,92 @@
 package de.flogehring.peelserver.impl.documenttemplates;
 
 import de.flogehring.peelserver.api.data.template.*;
-import de.flogehring.peelserver.api.error.ResourceNotFoundException;
 import de.flogehring.peelserver.api.services.DocumentTemplateController;
+import de.flogehring.peelserver.impl.project.ProjectAccessService;
 import de.flogehring.peelserver.impl.project.ProjectId;
 import de.flogehring.peelserver.impl.renderconfig.RenderConfigurationId;
-import de.flogehring.peelserver.impl.renderconfig.RenderConfigurationRepository;
-import de.flogehring.peelserver.impl.scripts.PeelScript;
 import de.flogehring.peelserver.impl.scripts.PeelScriptId;
-import de.flogehring.peelserver.impl.scripts.PeelScriptRepository;
+import de.flogehring.peelserver.impl.users.SpringUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
-
 import java.io.ByteArrayOutputStream;
-import java.util.*;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
-
 import static de.flogehring.peelserver.impl.util.StreamUtil.transformMapValues;
 
 @RestController
 @RequiredArgsConstructor
 public class DocumentTemplateService implements DocumentTemplateController {
-
-    private final PeelDocumentRepository peelDocumentRepository;
-    private final PeelScriptRepository peelScriptRepository;
-    private final RenderConfigurationRepository renderConfigurationRepository;
-    private final DocumentTemplateRenderService documentTemplateRenderService;
+    private final PeelDocumentRepository documents;
+    private final DocumentTemplateRenderService renderer;
+    private final DocumentReferenceService references;
+    private final ProjectAccessService projectAccess;
 
     @Override
-    public DocumentTemplateSaveResponse saveDocument(DocumentTemplateSaveRequest request) {
-        String templateHtml = requireTemplate(request.templateHtml());
-
-        DocumentTemplatePersistence created = DocumentTemplatePersistence.newDocument(
-                UUID.randomUUID().toString(),
-                request.name(),
-                transformMapValues(request.scriptNameTags(), PeelScriptId::new),
-                templateHtml,
-                request.editorStateJson(),
-                new RenderConfigurationId(request.renderConfigurationId()),
-                new ProjectId(request.projectId().id())
-        );
-        DocumentTemplatePersistence saved = peelDocumentRepository.save(created);
-        return getSaveResponse(saved, DocumentTemplateSaveResponse.SaveType.CREATED);
+    public DocumentTemplateSaveResponse saveDocument(DocumentTemplateSaveRequest request, SpringUserDetails user) {
+        ProjectId projectId = new ProjectId(request.projectId().id());
+        projectAccess.requireProjectAccess(projectId, user.getUserId());
+        String template = requireTemplate(request.templateHtml());
+        var tags = transformMapValues(request.scriptNameTags(), PeelScriptId::new);
+        references.resolve(projectId, request.name(), tags, template, request.renderConfigurationId());
+        var created = DocumentTemplatePersistence.newDocument(UUID.randomUUID().toString(), request.name(), tags,
+                template, request.editorStateJson(), new RenderConfigurationId(request.renderConfigurationId()), projectId);
+        return response(documents.save(created), DocumentTemplateSaveResponse.SaveType.CREATED);
     }
 
     @Override
-    public DocumentTemplateSaveResponse updateDocument(String id, DocumentTemplateUpdateRequest request) {
-
-        DocumentTemplatePersistence document = peelDocumentRepository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("Document not found: " + id
-                ));
-        DocumentTemplatePersistence saved = peelDocumentRepository.save(
-                document.update(
-                        request.name(),
-                        transformMapValues(request.scriptNameTags(), PeelScriptId::new),
-                        request.templateHtml(),
-                        request.editorStateJson(),
-                        new RenderConfigurationId(request.renderConfigurationId())
-                ));
-        return getSaveResponse(saved, DocumentTemplateSaveResponse.SaveType.UPDATED);
-    }
-
-    private static DocumentTemplateSaveResponse getSaveResponse(DocumentTemplatePersistence saved, DocumentTemplateSaveResponse.SaveType saveType) {
-        return new DocumentTemplateSaveResponse(
-                saved.getId(),
-                saved.getCreatedAt(),
-                saved.getUpdatedAt(),
-                saveType
-        );
+    public DocumentTemplateSaveResponse updateDocument(String id, DocumentTemplateUpdateRequest request, SpringUserDetails user) {
+        var document = requireDocumentAccess(id, user);
+        String template = requireTemplate(request.templateHtml());
+        var tags = transformMapValues(request.scriptNameTags(), PeelScriptId::new);
+        references.resolve(document.getProjectId(), request.name(), tags, template, request.renderConfigurationId());
+        var updated = document.update(request.name(), tags, template, request.editorStateJson(), new RenderConfigurationId(request.renderConfigurationId()));
+        return response(documents.save(updated), DocumentTemplateSaveResponse.SaveType.UPDATED);
     }
 
     @Override
-    public DocumentTemplateDto getDocument(String id) {
-        DocumentTemplatePersistence document = peelDocumentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Document not found: " + id));
-        return toContent(document);
+    public DocumentTemplateDto getDocument(String id, SpringUserDetails user) {
+        var document = requireDocumentAccess(id, user);
+        var data = document.getData();
+        return new DocumentTemplateDto(document.getId(), data.name(), transformMapValues(data.scriptNameTags(), PeelScriptId::id),
+                data.templateHtml(), data.editorStateJson(), data.renderConfigurationId().id(), document.getCreatedAt(), document.getUpdatedAt());
     }
 
     @Override
-    public DocumentPreviewResponse previewDocument(DocumentPreviewRequest request) {
-        Document document = new Document(
-                "PreviewDocumentRequest",
-                request.scriptTags().entrySet().stream().collect(Collectors.toMap(
-                        entry -> entry.getKey().name(),
-                        entry -> getPeelScript(new PeelScriptId(entry.getValue().id()))
-                )),
-                request.template(),
-                renderConfigurationRepository.findById(request.renderConfigId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Render configuration not found: " + request.renderConfigId()))
-                        .getExpressionRenderConfiguration()
-        );
-        return new DocumentPreviewResponse(documentTemplateRenderService.renderPdf(document, request.bindings(), ByteArrayOutputStream::toByteArray));
+    public void deleteDocument(String id, SpringUserDetails user) {
+        requireDocumentAccess(id, user);
+        documents.deleteById(id);
     }
 
     @Override
-    public DocumentPreviewResponse previewDocument(String id, Map<String, Object> bindings) {
-        DocumentTemplatePersistence documentTemplatePersistence = peelDocumentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Document not found: " + id));
-        DocumentPersistenceData data = documentTemplatePersistence.getData();
-        Document document = new Document(
-                data.name(),
-                transformMapValues(data.scriptNameTags(), this::getPeelScript),
-                documentTemplatePersistence.getData().templateHtml(),
-                renderConfigurationRepository.findById(data.renderConfigurationId().id()).orElseThrow(() -> new ResourceNotFoundException("Render configuration not found: " + data.renderConfigurationId().id())).getExpressionRenderConfiguration()
-        );
-
-        return new DocumentPreviewResponse(documentTemplateRenderService.renderPdf(document, bindings, ByteArrayOutputStream::toByteArray));
-    }
-
-    private PeelScript getPeelScript(PeelScriptId scriptId) {
-        return peelScriptRepository.findById(scriptId.id())
-                .orElseThrow(() -> new ResourceNotFoundException("Did not find Script with Id" + scriptId)).getPeelScript();
-    }
-
-    private DocumentTemplateDto toContent(DocumentTemplatePersistence document) {
-        return new DocumentTemplateDto(
-                document.getId(),
-                document.getData().name(),
-                transformMapValues(document.getData().scriptNameTags(), PeelScriptId::id),
-                document.getData().templateHtml(),
-                document.getData().editorStateJson(),
-                document.getData().renderConfigurationId().id(),
-                document.getCreatedAt(),
-                document.getUpdatedAt()
-        );
+    public DocumentPreviewResponse previewDocument(DocumentPreviewRequest request, SpringUserDetails user) {
+        ProjectId projectId = new ProjectId(request.projectId().id());
+        projectAccess.requireProjectAccess(projectId, user.getUserId());
+        var tags = request.scriptTags().entrySet().stream().collect(Collectors.toMap(
+                entry -> entry.getKey().name(), entry -> new PeelScriptId(entry.getValue().id())));
+        Document document = references.resolve(projectId, "Preview", tags, request.template(), request.renderConfigId());
+        return new DocumentPreviewResponse(renderer.renderPdf(document, request.bindings(), ByteArrayOutputStream::toByteArray));
     }
 
     @Override
-    public void deleteDocument(String id) {
-        peelDocumentRepository.deleteById(id);
+    public DocumentPreviewResponse previewDocument(String id, Map<String, Object> bindings, SpringUserDetails user) {
+        Document document = references.resolve(requireDocumentAccess(id, user));
+        return new DocumentPreviewResponse(renderer.renderPdf(document, bindings, ByteArrayOutputStream::toByteArray));
     }
 
-    private DocumentTemplateSummaryResponse toSummary(DocumentTemplatePersistence document) {
-        return new DocumentTemplateSummaryResponse(
-                document.getId(),
-                document.getData().name(),
-                document.getUpdatedAt()
-        );
+    private DocumentTemplatePersistence requireDocumentAccess(String id, SpringUserDetails user) {
+        var document = documents.findById(id).orElseThrow(ProjectAccessService::notFound);
+        projectAccess.requireProjectAccess(document.getProjectId(), user.getUserId());
+        return document;
+    }
+
+    private DocumentTemplateSaveResponse response(DocumentTemplatePersistence document, DocumentTemplateSaveResponse.SaveType saveType) {
+        return new DocumentTemplateSaveResponse(document.getId(), document.getCreatedAt(), document.getUpdatedAt(), saveType);
     }
 
     private String requireTemplate(String template) {
-        if (template.isBlank()) {
-            throw new IllegalArgumentException("template must not be blank");
-        }
+        if (template == null || template.isBlank()) throw new IllegalArgumentException("template must not be blank");
         return template;
     }
 }

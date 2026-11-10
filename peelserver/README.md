@@ -59,7 +59,9 @@ API authentication uses a server session. Fetch `/api/auth/csrf` and send its to
 mutating requests, including multipart uploads. Fetch a fresh token after login/logout. API failures use JSON
 with `error.code` and `error.message`; unauthenticated requests return 401 instead of redirects.
 An expired session leaves drafts in memory while the user signs in in another tab. Explicit logout discards
-workspace state after confirmation if there are unsaved changes. Resource-level project authorization is a separate task.
+workspace state after confirmation if there are unsaved changes. Resource-level project authorization is implemented;
+see [the authorization concept](docs/AUTHORIZATION.md) for rules and implementation details. Members and owners have
+full access to project contents; document references must stay within one project. Print jobs store their own project ID.
 
 ### Authentication checks and generated types
 
