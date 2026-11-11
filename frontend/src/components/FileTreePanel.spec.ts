@@ -20,7 +20,10 @@ const mockApi = vi.mocked(api)
 describe('FileTreePanel', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    vi.stubGlobal('confirm', vi.fn(() => true))
+    vi.stubGlobal(
+      'confirm',
+      vi.fn(() => true),
+    )
     mockApi.GET.mockImplementation((path) => {
       if (path === '/api/projects/{projectId}') {
         return Promise.resolve({
@@ -62,7 +65,7 @@ describe('FileTreePanel', () => {
     const wrapper = mount(FileTreePanel)
     await flushPromises()
 
-    await wrapper.get('[title="Delete Config"]').trigger('click')
+    await wrapper.get('.document-section:nth-of-type(2) [title="Delete"]').trigger('click')
     await flushPromises()
 
     expect(mockApi.DELETE).toHaveBeenCalledTimes(1)
@@ -71,17 +74,25 @@ describe('FileTreePanel', () => {
     })
     expect(wrapper.text()).not.toContain('Config')
     expect(wrapper.text()).toContain('Document')
-    expect(deletionSpy).toHaveBeenCalledWith({ kind: 'renderConfig', id: 'config-1', name: 'Config', icon: '{}' })
+    expect(deletionSpy).toHaveBeenCalledWith({
+      kind: 'renderConfig',
+      id: 'config-1',
+      name: 'Config',
+      icon: '{}',
+    })
   })
 
   it('does not call any endpoint when render-config deletion is cancelled', async () => {
-    vi.stubGlobal('confirm', vi.fn(() => false))
+    vi.stubGlobal(
+      'confirm',
+      vi.fn(() => false),
+    )
     const projectStore = useProjectStore()
     projectStore.activeProject = { projectIdApi: { id: 'project-1' } }
     const wrapper = mount(FileTreePanel)
     await flushPromises()
 
-    await wrapper.get('[title="Delete Config"]').trigger('click')
+    await wrapper.get('.document-section:nth-of-type(2) [title="Delete"]').trigger('click')
 
     expect(mockApi.DELETE).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('Config')

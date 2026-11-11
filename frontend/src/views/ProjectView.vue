@@ -9,6 +9,7 @@ import {
 } from 'vue-router'
 import {
   DockviewVue,
+  themeAbyss,
   type DockviewReadyEvent,
   type DockviewApi,
   type VueComponent,
@@ -31,9 +32,11 @@ import RenderPreviewPanel from '../components/RenderPreviewPanel.vue'
 import BindingsPanel from '../components/BindingsPanel.vue'
 import OutputPanel from '../components/OutputPanel.vue'
 import GroupActions from '../components/GroupActions.vue'
+import EditorWelcome from '../components/EditorWelcome.vue'
 
 // 1. Component Registry: Map identifier strings to Vue component definitions
 const components: Record<string, DefineComponent<Record<string, unknown>>> = {
+  welcome: EditorWelcome as DefineComponent<Record<string, unknown>>,
   fileTree: FileTreePanel as DefineComponent<Record<string, unknown>>,
   editor: EditorPanel as DefineComponent<Record<string, unknown>>,
   documentEditor: DocumentPanel as DefineComponent<Record<string, unknown>>,
@@ -43,6 +46,12 @@ const components: Record<string, DefineComponent<Record<string, unknown>>> = {
 }
 
 const rightHeaderActionsComponent = GroupActions as unknown as VueComponent
+const workspaceTheme = {
+  ...themeAbyss,
+  name: 'peel',
+  className: 'dockview-theme-abyss dockview-theme-peel',
+  gap: 1,
+}
 
 const percentageWidth = (percent: number): number => {
   if (typeof window === 'undefined') return 0
@@ -188,8 +197,8 @@ const onReady = (event: DockviewReadyEvent) => {
 
   const leftGroup = dockApi.addEdgeGroup('left', {
     id: 'left-group',
-    initialSize: percentageWidth(20),
-    minimumSize: 50,
+    initialSize: Math.max(220, percentageWidth(18)),
+    minimumSize: 180,
   })
 
   dockApi.addPanel({
@@ -203,25 +212,31 @@ const onReady = (event: DockviewReadyEvent) => {
   })
 
   dockApi.addPanel({
-    id: 'bindings-json',
-    component: 'bindings',
-    title: 'Bindings',
-    params: {},
-    position: {
-      referenceGroup: editorGroup,
-    },
+    id: 'workspace-welcome',
+    component: 'welcome',
+    title: 'Start',
+    position: { referenceGroup: editorGroup },
   })
 
   dockApi.addPanel({
     id: 'output-console',
     component: 'output',
     title: 'Output',
-    initialHeight: 180,
+    initialHeight: Math.max(220, Math.round(window.innerHeight * 0.3)),
     position: {
       referenceGroup: editorGroup,
       direction: 'below',
     },
   })
+
+  dockApi.addPanel({
+    id: 'bindings-json',
+    component: 'bindings',
+    title: 'Bindings',
+    initialWidth: percentageWidth(24),
+    position: { referenceGroup: editorGroup, direction: 'right' },
+  })
+  dockApi.getPanel('workspace-welcome')?.api.setActive()
 }
 
 watch(
@@ -316,10 +331,12 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
           templateHtml: document.templateHtml ?? '<p></p>',
           scriptNameTags: document.scriptNameTags ?? {},
           renderConfigurationId: document.renderConfigurationId ?? '',
-          renderConfigurations: (projectStore.activeProject?.renderConfigurations ?? []).map((config) => ({
-            id: config.id ?? '',
-            name: config.name ?? '',
-          })),
+          renderConfigurations: (projectStore.activeProject?.renderConfigurations ?? []).map(
+            (config) => ({
+              id: config.id ?? '',
+              name: config.name ?? '',
+            }),
+          ),
           dirty: false,
         } satisfies DocumentDraft
         documentDraftStore.setDraft(file.id, draft)
@@ -405,13 +422,19 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
 <template>
   <div class="app-layout">
     <DockviewVue
-      class="dockview-root dockview-theme-abyss"
+      class="dockview-root"
+      :theme="workspaceTheme"
       :components="components"
       :rightHeaderActionsComponent="rightHeaderActionsComponent"
       @ready="onReady"
     />
     <div v-if="pendingProjectRoute" class="switch-dialog-backdrop">
-      <section class="switch-dialog" role="alertdialog" aria-modal="true" aria-labelledby="switch-project-title">
+      <section
+        class="switch-dialog"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="switch-project-title"
+      >
         <h2 id="switch-project-title">Unsaved changes</h2>
         <p>Save your changes before switching projects?</p>
         <div>
@@ -426,8 +449,8 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
 
 <style>
 .app-layout {
-  height: 100vh;
-  width: 100vw;
+  height: calc(100dvh - var(--app-header-height));
+  width: 100%;
   display: flex;
   min-height: 0;
   min-width: 0;
@@ -442,16 +465,67 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
 }
 
 /* Optional Dockview Theme Customizations */
-.dockview-theme-abyss {
-  --dv-background-color: #c73a3a;
-  --dv-panegroup-header-background-color: #252526;
-  --dv-activegroup-visiblepanel-tab-background-color: #1e1e1e;
-  --dv-separator-border: #2b2b2b;
+.dockview-theme-abyss.dockview-theme-peel {
+  --dv-background-color: var(--peel-border);
+  --dv-group-view-background-color: var(--peel-background);
+  --dv-tabs-and-actions-container-background-color: var(--peel-surface);
+  --dv-tabs-and-actions-container-height: 44px;
+  --dv-tabs-and-actions-container-font-size: 13px;
+  --dv-activegroup-visiblepanel-tab-background-color: var(--peel-background);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--peel-surface);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--peel-background);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--peel-surface);
+  --dv-activegroup-visiblepanel-tab-color: var(--peel-text);
+  --dv-activegroup-hiddenpanel-tab-color: var(--peel-muted);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--peel-text);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--peel-muted);
+  --dv-tab-divider-color: var(--peel-border);
+  --dv-separator-border: var(--peel-border);
+  --dv-active-sash-color: var(--peel-accent);
+  --dv-drag-over-background-color: #ffcf3220;
+  --dv-drag-over-border: 1px solid var(--peel-accent);
+  --dv-icon-hover-background-color: var(--peel-raised);
+}
+.dockview-theme-peel .dv-tab.dv-active-tab {
+  box-shadow: inset 0 -2px var(--peel-accent);
+}
+.dockview-theme-peel .dv-tab {
+  padding-inline: 14px;
+}
+.dockview-theme-peel .dv-groupview {
+  border-radius: 0;
 }
 
-.switch-dialog-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: rgba(0, 0, 0, .5); }
-.switch-dialog { width: min(420px, calc(100vw - 32px)); padding: 18px; border: 1px solid #3c3c3c; background: #252526; color: #f1f1f1; }
-.switch-dialog h2, .switch-dialog p { margin: 0 0 12px; }
-.switch-dialog div { display: flex; gap: 8px; justify-content: flex-end; }
-.switch-dialog button { padding: 6px 10px; border: 1px solid #3c3c3c; background: #333; color: inherit; cursor: pointer; }
+.switch-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.5);
+}
+.switch-dialog {
+  width: min(420px, calc(100vw - 32px));
+  padding: 24px;
+  border: 1px solid var(--peel-border);
+  border-radius: 12px;
+  background: var(--peel-surface);
+  color: var(--peel-text);
+}
+.switch-dialog h2,
+.switch-dialog p {
+  margin: 0 0 12px;
+}
+.switch-dialog div {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.switch-dialog button {
+  padding: 6px 10px;
+  border: 1px solid #3c3c3c;
+  background: #333;
+  color: inherit;
+  cursor: pointer;
+}
 </style>

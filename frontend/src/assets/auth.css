@@ -3,8 +3,8 @@
   min-height: 100vh;
   place-items: center;
   padding: 24px;
-  background: #17191d;
-  color: #f2f4f6;
+  background: var(--peel-background);
+  color: var(--peel-text);
 }
 .login-card {
   display: grid;
@@ -12,12 +12,13 @@
   box-sizing: border-box;
   gap: 16px;
   padding: 28px;
-  border: 1px solid #3a4049;
-  background: #20242a;
+  border: 1px solid var(--peel-border);
+  border-radius: 16px;
+  background: var(--peel-surface);
 }
 .login-card .eyebrow {
   margin: 0;
-  color: #89c6ff;
+  color: var(--peel-accent);
   font-family: ui-monospace, monospace;
   font-size: 0.78rem;
   letter-spacing: 0.12em;
@@ -42,19 +43,22 @@
 }
 .login-card button {
   cursor: pointer;
-  background: #276da3;
-  border-color: #3d8dcc;
+  background: var(--peel-accent);
+  border-color: var(--peel-accent);
+  color: #221d0c;
+  font-weight: 600;
 }
 .login-card button.secondary {
   background: transparent;
   border-color: #4d5865;
+  color: var(--peel-text);
 }
 .login-card button:disabled {
   opacity: 0.55;
   cursor: default;
 }
 .login-card a {
-  color: #89c6ff;
+  color: var(--peel-accent);
 }
 .auth-error {
   color: #ffa3a3;

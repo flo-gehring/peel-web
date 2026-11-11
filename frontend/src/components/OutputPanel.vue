@@ -1,67 +1,62 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRunOutputStore } from '@/stores/runOutput'
 
-const runOutputStore = useRunOutputStore()
-
-const statusLabel = computed(() => {
-  if (runOutputStore.isRunning) return 'Running...'
-  if (runOutputStore.error) return 'Error'
-  if (runOutputStore.response) return 'Success'
-  return 'Idle'
+const output = useRunOutputStore()
+const activeTab = ref<'Result' | 'Request' | 'Trace'>('Result')
+const tabs = ['Result', 'Request', 'Trace'] as const
+const statusLabel = computed(() =>
+  output.isRunning
+    ? 'Running…'
+    : output.error
+      ? 'Run failed'
+      : output.response
+        ? 'Run completed'
+        : 'Ready to run',
+)
+const formattedContent = computed(() => {
+  if (activeTab.value === 'Request') return JSON.stringify(output.request ?? {}, null, 2)
+  if (activeTab.value === 'Trace') return JSON.stringify(output.response?.trace ?? null, null, 2)
+  return JSON.stringify(output.response?.result ?? null, null, 2)
 })
-
-const formattedResult = computed(() => {
-  const payload = {
-    trace: runOutputStore.response?.trace ?? null,
-    result: runOutputStore.response?.result ?? null,
-  }
-  return JSON.stringify(payload, null, 2)
-})
-
-const formattedRequest = computed(() => {
-  if (!runOutputStore.request) {
-    return '{}'
-  }
-
-  return JSON.stringify(
-    {
-      name: runOutputStore.request.name,
-      panelId: runOutputStore.request.panelId,
-      script: runOutputStore.request.script,
-      bindings: runOutputStore.request.bindings,
-    },
-    null,
-    2,
-  )
-})
-
-const formattedRunAt = computed(() => {
-  if (!runOutputStore.lastRunAt) {
-    return '-'
-  }
-
-  return new Date(runOutputStore.lastRunAt).toLocaleTimeString()
-})
+const lastRun = computed(() =>
+  output.lastRunAt ? new Date(output.lastRunAt).toLocaleTimeString() : '',
+)
 </script>
 
 <template>
-  <div class="output-panel">
-    <div class="output-header">CONSOLE OUTPUT</div>
-    <div class="output-logs">
-      <p><span class="label">Status:</span> <span class="value">{{ statusLabel }}</span></p>
-      <p><span class="label">Last Run:</span> <span class="value">{{ formattedRunAt }}</span></p>
-
-      <p class="section-title">Request</p>
-      <pre class="json-block">{{ formattedRequest }}</pre>
-
-      <p v-if="runOutputStore.error" class="section-title error-title">Error</p>
-      <pre v-if="runOutputStore.error" class="json-block error-block">{{ runOutputStore.error }}</pre>
-
-      <p class="section-title">Result</p>
-      <pre class="json-block">{{ formattedResult }}</pre>
+  <section class="output-panel" aria-label="Run output">
+    <div class="output-toolbar">
+      <div class="output-tabs" role="group" aria-label="Output view">
+        <button
+          v-for="tab in tabs"
+          :key="tab"
+          :aria-pressed="activeTab === tab"
+          :class="{ selected: activeTab === tab }"
+          @click="activeTab = tab"
+        >
+          {{ tab }}
+        </button>
+      </div>
+      <span
+        class="output-status"
+        :class="{
+          failed: !!output.error,
+          complete: !!output.response && !output.error && !output.isRunning,
+        }"
+        role="status"
+        ><span aria-hidden="true" class="status-dot"></span>{{ statusLabel }}</span
+      >
+      <time v-if="lastRun" class="run-time">{{ lastRun }}</time>
     </div>
-  </div>
+    <div class="output-content">
+      <pre v-if="output.error" class="output-error" role="alert">{{ output.error }}</pre>
+      <p v-if="!output.request && !output.response" class="output-empty">
+        Run a script to see its result here.
+      </p>
+      <pre v-else class="json-block">{{ formattedContent }}</pre>
+    </div>
+  </section>
 </template>
 
 <style scoped>
@@ -70,55 +65,81 @@ const formattedRunAt = computed(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background-color: #181818;
-  color: #cccccc;
-  font-family: monospace;
+  background: var(--peel-background);
+  color: var(--peel-text);
+}
+.output-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 40px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--peel-border);
+  background: var(--peel-surface);
+  padding-right: 14px;
+}
+.output-tabs {
+  display: flex;
+  align-self: stretch;
+  margin-right: auto;
+}
+.output-tabs button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--peel-muted);
   font-size: 12px;
+  padding: 10px 16px;
 }
-.output-header {
-  background: #252526;
-  padding: 4px 10px;
-  font-weight: bold;
+.output-tabs button.selected {
+  color: var(--peel-text);
+  box-shadow: inset 0 -2px var(--peel-accent);
+}
+.output-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--peel-muted);
+}
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.complete {
+  color: #a6e3a1;
+}
+.failed,
+.output-error {
+  color: var(--peel-error);
+}
+.run-time {
   font-size: 11px;
-  color: #888888;
+  color: var(--peel-muted);
 }
-.output-logs {
+.output-content {
   flex: 1;
-  min-height: 0;
   overflow: auto;
-  padding: 8px 12px;
+  min-height: 0;
+  padding: 16px 20px;
 }
-
-.label {
-  color: #888;
-}
-
-.value {
-  color: #d4d4d4;
-}
-
-.section-title {
-  margin: 10px 0 6px;
-  color: #9cdcfe;
-}
-
-.error-title {
-  color: #f48771;
-}
-
-.json-block {
+.json-block,
+.output-error {
   margin: 0;
-  padding: 8px;
-  border: 1px solid #2b2b2b;
-  border-radius: 4px;
-  background: #1f1f1f;
-  color: #d4d4d4;
+  font:
+    13px/1.7 'Cascadia Code',
+    Consolas,
+    monospace;
   white-space: pre-wrap;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
-
-.error-block {
-  border-color: #6a2a2a;
-  color: #ffb4a9;
+.output-error {
+  padding-bottom: 16px;
+}
+.output-empty {
+  color: var(--peel-muted);
+  font-size: 13px;
 }
 </style>

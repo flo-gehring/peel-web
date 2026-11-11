@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { nextTick, onMounted, ref } from 'vue'
+import { ArrowRight, FileSpreadsheet, Plus, Printer } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/adapter/client'
 import type { components } from '@/types/api'
@@ -18,6 +19,7 @@ const isCreating = ref(false)
 const errorMessage = ref('')
 const name = ref('')
 const documentId = ref('')
+const nameInput = ref<HTMLInputElement | null>(null)
 
 function documentName(documentId: string | undefined) {
   return (
@@ -65,6 +67,8 @@ async function openCreateDialog() {
   name.value = ''
   documentId.value = ''
   isDialogOpen.value = true
+  await nextTick()
+  nameInput.value?.focus()
 }
 
 async function createPrintJob() {
@@ -98,47 +102,69 @@ onMounted(loadPrintJobs)
 
 <template>
   <main class="page">
-    <header class="page-header">
-      <div>
-        <RouterLink class="back-link" to="/">Peel</RouterLink>
-        <h1>Druckaufträge</h1>
-      </div>
-      <button class="primary-button" type="button" @click="openCreateDialog">
-        + Neuer Auftrag
-      </button>
-    </header>
+    <div class="page-content">
+      <header class="page-header">
+        <div class="page-intro">
+          <h1>Druckaufträge</h1>
+          <p>Aufträge anlegen, Dateien bereitstellen und den Status verfolgen.</p>
+        </div>
+        <button class="primary-button" type="button" @click="openCreateDialog">
+          <Plus :size="18" aria-hidden="true" /> Neuer Auftrag
+        </button>
+      </header>
 
-    <p v-if="errorMessage" class="error-message" role="alert">{{ errorMessage }}</p>
-    <p v-else-if="isLoading" class="status-message">Druckaufträge werden geladen...</p>
-    <p v-else-if="printJobs.length === 0" class="status-message">
-      Noch keine Druckaufträge vorhanden.
-    </p>
+      <p v-if="errorMessage && !isDialogOpen" class="error-message" role="alert">
+        {{ errorMessage }}
+      </p>
+      <p v-else-if="isLoading" class="status-message" role="status">
+        Druckaufträge werden geladen…
+      </p>
+      <p v-else-if="printJobs.length === 0" class="status-message">
+        Noch keine Druckaufträge vorhanden.
+      </p>
 
-    <section v-else class="print-job-list" aria-label="Druckaufträge">
-      <button
-        v-for="printJob in printJobs"
-        :key="printJob.printJobId?.id"
-        class="print-job-row"
-        type="button"
-        @click="openPrintJob(printJob)"
-      >
-        <strong>{{ printJob.name || 'Unbenannter Druckauftrag' }}</strong>
-        <span>{{ documentName(printJob.documentId?.id) }}</span>
-        <span :class="printJob.fileName ? 'file-ready' : 'file-missing'">
-          {{ printJob.fileName || 'Keine Datei hochgeladen' }}
-        </span>
-        <span class="status-badge" :class="`status-${printJob.status?.toLowerCase() ?? 'created'}`">
-          {{ statusLabel(printJob.status) }}
-        </span>
-      </button>
-    </section>
+      <section v-else class="print-job-list" aria-label="Druckaufträge">
+        <button
+          v-for="printJob in printJobs"
+          :key="printJob.printJobId?.id"
+          class="print-job-row"
+          type="button"
+          @click="openPrintJob(printJob)"
+        >
+          <Printer class="job-icon" :size="24" aria-hidden="true" />
+          <span class="job-info">
+            <strong>{{ printJob.name || 'Unbenannter Druckauftrag' }}</strong>
+            <span class="document-name">{{ documentName(printJob.documentId?.id) }}</span>
+          </span>
+          <span class="job-file" :class="{ 'file-missing': !printJob.fileName }">
+            <FileSpreadsheet :size="16" aria-hidden="true" />
+            {{ printJob.fileName || 'Keine Datei hochgeladen' }}
+          </span>
+          <span
+            class="status-badge"
+            :class="`status-${printJob.status?.toLowerCase() ?? 'created'}`"
+          >
+            {{ statusLabel(printJob.status) }}
+          </span>
+          <ArrowRight class="open-arrow" :size="20" aria-hidden="true" />
+        </button>
+      </section>
+    </div>
 
     <div v-if="isDialogOpen" class="dialog-backdrop" @click.self="isDialogOpen = false">
-      <form class="dialog" @submit.prevent="createPrintJob">
-        <h2>Druckauftrag anlegen</h2>
+      <form
+        class="dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-print-job-title"
+        @submit.prevent="createPrintJob"
+        @keydown.esc.prevent="isDialogOpen = false"
+      >
+        <h2 id="create-print-job-title">Druckauftrag anlegen</h2>
+        <p v-if="errorMessage" class="dialog-error" role="alert">{{ errorMessage }}</p>
         <label>
           Name
-          <input v-model="name" required autofocus />
+          <input ref="nameInput" v-model="name" required placeholder="Name des Druckauftrags" />
         </label>
         <label>
           Dokument
@@ -167,111 +193,147 @@ onMounted(loadPrintJobs)
 
 <style scoped>
 .page {
-  min-height: 100vh;
-  padding: 40px max(24px, calc((100vw - 980px) / 2));
-  background: #17191d;
-  color: #edf1f5;
+  min-height: calc(100dvh - var(--app-header-height));
+  padding: 56px 32px;
+  background: var(--peel-background);
+  color: var(--peel-text);
+}
+.page-content {
+  max-width: 1120px;
+  margin: 0 auto;
 }
 .page-header {
   display: flex;
-  align-items: end;
+  align-items: center;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 38px;
+  margin-bottom: 28px;
 }
-.back-link {
-  color: #89c6ff;
-  font-family: ui-monospace, monospace;
-  font-size: 0.8rem;
-  text-decoration: none;
-  text-transform: uppercase;
+.page-intro p {
+  color: var(--peel-muted);
+  margin-top: 8px;
 }
 h1 {
-  margin-top: 5px;
-  font-size: clamp(2.2rem, 6vw, 4rem);
-  letter-spacing: -0.055em;
-}
-button,
-input,
-select {
-  font: inherit;
-}
-button {
-  cursor: pointer;
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.2;
 }
 .primary-button {
-  border: 1px solid #89c6ff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   padding: 10px 15px;
-  background: #89c6ff;
-  color: #102231;
-  font-weight: 700;
-}
-.primary-button:disabled {
-  cursor: wait;
-  opacity: 0.55;
 }
 .print-job-list {
-  border-top: 1px solid #3a4049;
+  border: 1px solid var(--peel-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--peel-surface);
 }
 .print-job-row {
   display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr auto;
+  grid-template-columns: 28px minmax(0, 1.2fr) minmax(0, 1fr) auto 20px;
+  align-items: center;
+  gap: 20px;
+  min-height: 88px;
   width: 100%;
-  padding: 18px 12px;
+  padding: 18px 28px;
   border: 0;
-  border-bottom: 1px solid #3a4049;
+  border-bottom: 1px solid var(--peel-border);
+  border-radius: 0;
   background: transparent;
   color: inherit;
   text-align: left;
 }
+.print-job-row:last-child {
+  border-bottom: 0;
+}
 .print-job-row:hover,
 .print-job-row:focus-visible {
-  background: #252a31;
+  background: var(--peel-raised);
+  filter: none;
 }
-.print-job-row span {
-  color: #afb8c4;
+.print-job-row strong {
+  font-size: 16px;
+  font-weight: 600;
 }
-.file-ready {
-  color: #9ee3b1 !important;
+.job-info {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.document-name {
+  font-size: 13px;
+  color: var(--peel-muted);
+}
+.job-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--peel-muted);
+  overflow-wrap: anywhere;
+}
+.job-file svg {
+  flex-shrink: 0;
+}
+.job-icon {
+  color: var(--peel-accent);
+}
+.open-arrow {
+  color: var(--peel-muted);
+}
+.print-job-row:hover .open-arrow {
+  color: var(--peel-accent);
 }
 .file-missing {
-  color: #e7b76b !important;
+  color: #e7b76b;
 }
 .status-badge {
   width: fit-content;
-  padding: 2px 7px;
-  border: 1px solid #4d5865;
-  color: #c9d1da !important;
-  font-family: ui-monospace, monospace;
-  font-size: 0.72rem;
-  text-transform: uppercase;
+  padding: 4px 10px;
+  border: 1px solid var(--peel-border);
+  border-radius: 20px;
+  color: var(--peel-muted);
+  font-size: 12px;
+  white-space: nowrap;
 }
 .status-completed {
   border-color: #4f9d67;
-  color: #9ee3b1 !important;
+  color: #9ee3b1;
+  background: #9ee3b10d;
 }
 .status-failed {
   border-color: #c97777;
-  color: #ffabab !important;
+  color: var(--peel-error);
+  background: #ffaca00d;
 }
 .status-calculating,
 .status-printing {
   border-color: #b5894c;
-  color: #e7b76b !important;
+  color: #e7b76b;
+  background: #e7b76b0d;
 }
 .status-message,
 .error-message {
-  padding: 22px;
-  border: 1px solid #3a4049;
-  color: #afb8c4;
+  padding: 32px 28px;
+  border: 1px solid var(--peel-border);
+  border-radius: 12px;
+  background: var(--peel-surface);
+  color: var(--peel-muted);
 }
 .error-message {
   border-color: #c97777;
-  color: #ffabab;
+  color: var(--peel-error);
 }
 .dialog-backdrop {
   position: fixed;
   inset: 0;
+  z-index: 100;
   display: grid;
   padding: 24px;
   place-items: center;
@@ -280,26 +342,29 @@ button {
 .dialog {
   display: grid;
   width: min(440px, 100%);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
   gap: 18px;
   padding: 24px;
-  border: 1px solid #4d5865;
-  background: #22272e;
+  border: 1px solid var(--peel-border);
+  border-radius: 16px;
+  background: var(--peel-surface);
 }
 .dialog h2 {
-  font-size: 1.4rem;
+  font-size: 22px;
+  font-weight: 600;
+}
+.dialog-error {
+  color: var(--peel-error);
 }
 .dialog label {
   display: grid;
   gap: 6px;
-  color: #c9d1da;
+  color: var(--peel-text);
 }
 input,
 select {
   width: 100%;
-  border: 1px solid #4d5865;
-  padding: 9px;
-  background: #17191d;
-  color: inherit;
 }
 .hint {
   color: #e7b76b;
@@ -310,19 +375,41 @@ select {
   gap: 10px;
 }
 .dialog-actions button:not(.primary-button) {
-  border: 1px solid #4d5865;
-  padding: 10px 15px;
   background: transparent;
-  color: inherit;
 }
-@media (max-width: 650px) {
+@media (max-width: 680px) {
+  .page {
+    padding: 28px 16px;
+  }
   .page-header {
     align-items: start;
     flex-direction: column;
+    gap: 16px;
   }
   .print-job-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
+    grid-template-columns: 24px minmax(0, 1fr) 20px;
+    gap: 8px 14px;
+    padding: 18px;
+  }
+  .job-icon {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .job-info {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .job-file {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .status-badge {
+    grid-column: 2;
+    grid-row: 3;
+  }
+  .open-arrow {
+    grid-column: 3;
+    grid-row: 1;
   }
 }
 </style>

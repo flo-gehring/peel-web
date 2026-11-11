@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { Check, Copy, Trash2 } from '@lucide/vue'
 
 import { api } from '@/adapter/client'
 import type { PeelWorkspaceDocument } from '@/adapter/ClientTypeDefinition'
@@ -39,23 +40,23 @@ async function fetchFiles() {
     if (!projectId.value) return
     const project = await projectStore.loadProject(projectId.value)
     scripts.value = (project.scripts ?? []).map((script) => ({
-        kind: 'peel',
-        id: script.id ?? '',
-        name: script.name ?? '',
-        icon: '🍌',
-      }))
+      kind: 'peel',
+      id: script.id ?? '',
+      name: script.name ?? '',
+      icon: '🍌',
+    }))
     documents.value = (project.documentTemplates ?? []).map((document) => ({
-        kind: 'document',
-        id: document.id ?? '',
-        name: document.name ?? '',
-        icon: 'DOC',
-      }))
+      kind: 'document',
+      id: document.id ?? '',
+      name: document.name ?? '',
+      icon: 'DOC',
+    }))
     renderConfigs.value = (project.renderConfigurations ?? []).map((renderConfig) => ({
-        kind: 'renderConfig',
-        id: renderConfig.id ?? '',
-        name: renderConfig.name ?? '',
-        icon: '{}',
-      }))
+      kind: 'renderConfig',
+      id: renderConfig.id ?? '',
+      name: renderConfig.name ?? '',
+      icon: '{}',
+    }))
   } catch (error) {
     console.error('Unexpected workspace item fetch error:', error)
   } finally {
@@ -255,12 +256,19 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
 <template>
   <div class="file-tree-container">
     <div class="panel-header">
-      <span>PROJECT EXPLORER</span>
-      <button class="create-button" title="New workspace item" @click="openCreateDialog">+</button>
+      <span>Project files</span>
+      <button
+        class="create-button"
+        title="New workspace item"
+        aria-label="New workspace item"
+        @click="openCreateDialog"
+      >
+        +
+      </button>
     </div>
     <div v-if="isLoading" class="loading">Loading...</div>
     <section class="document-section">
-      <h2>PEEL SCRIPTS</h2>
+      <h2>Scripts</h2>
       <ul class="file-list">
         <li
           v-for="file in scripts"
@@ -269,23 +277,36 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
           @click="selectDocument(file)"
         >
           <span class="file-icon">{{ file.icon }}</span>
-          <span class="file-name">{{ file.name }}</span>
+          <button class="file-name" @click.stop="selectDocument(file)">{{ file.name }}</button>
           <button
             class="delete-button"
             :disabled="deletingScriptId === file.id"
-            :title="`Delete ${file.name}`"
+            title="Delete"
+            aria-label="Delete"
+            :aria-busy="deletingScriptId === file.id"
             @click.stop="deletePeelScript(file)"
           >
-            {{ deletingScriptId === file.id ? '...' : '×' }}
+            <Trash2 :size="16" aria-hidden="true" />
           </button>
-          <button class="copy-id-button" :title="`Copy ${file.name} ID`" @click.stop="copyId(file)">
-            {{ copiedId === `peel-${file.id}` ? 'Copied' : 'Copy ID' }}
+          <button
+            class="copy-id-button"
+            :title="copiedId === `peel-${file.id}` ? 'ID copied' : 'Copy ID'"
+            aria-label="Copy ID"
+            @click.stop="copyId(file)"
+          >
+            <Check
+              v-if="copiedId === `peel-${file.id}`"
+              :size="16"
+              class="copied-icon"
+              aria-hidden="true"
+            />
+            <Copy v-else :size="16" aria-hidden="true" />
           </button>
         </li>
       </ul>
     </section>
     <section class="document-section">
-      <h2>RENDER CONFIGS</h2>
+      <h2>Render configurations</h2>
       <ul class="file-list">
         <li
           v-for="file in renderConfigs"
@@ -294,23 +315,36 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
           @click="selectDocument(file)"
         >
           <span class="file-icon">{{ file.icon }}</span>
-          <span class="file-name">{{ file.name }}</span>
+          <button class="file-name" @click.stop="selectDocument(file)">{{ file.name }}</button>
           <button
             class="delete-button"
             :disabled="deletingRenderConfigId === file.id"
-            :title="`Delete ${file.name}`"
+            title="Delete"
+            aria-label="Delete"
+            :aria-busy="deletingRenderConfigId === file.id"
             @click.stop="deleteRenderConfig(file)"
           >
-            {{ deletingRenderConfigId === file.id ? '...' : '×' }}
+            <Trash2 :size="16" aria-hidden="true" />
           </button>
-          <button class="copy-id-button" :title="`Copy ${file.name} ID`" @click.stop="copyId(file)">
-            {{ copiedId === `renderConfig-${file.id}` ? 'Copied' : 'Copy ID' }}
+          <button
+            class="copy-id-button"
+            :title="copiedId === `renderConfig-${file.id}` ? 'ID copied' : 'Copy ID'"
+            aria-label="Copy ID"
+            @click.stop="copyId(file)"
+          >
+            <Check
+              v-if="copiedId === `renderConfig-${file.id}`"
+              :size="16"
+              class="copied-icon"
+              aria-hidden="true"
+            />
+            <Copy v-else :size="16" aria-hidden="true" />
           </button>
         </li>
       </ul>
     </section>
     <section class="document-section">
-      <h2>DOCUMENTS</h2>
+      <h2>Documents</h2>
       <ul class="file-list">
         <li
           v-for="file in documents"
@@ -319,15 +353,32 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
           @click="selectDocument(file)"
         >
           <span class="file-icon">{{ file.icon }}</span>
-          <span class="file-name">{{ file.name }}</span>
-          <button class="copy-id-button" :title="`Copy ${file.name} ID`" @click.stop="copyId(file)">
-            {{ copiedId === `document-${file.id}` ? 'Copied' : 'Copy ID' }}
+          <button class="file-name" @click.stop="selectDocument(file)">{{ file.name }}</button>
+          <button
+            class="copy-id-button"
+            :title="copiedId === `document-${file.id}` ? 'ID copied' : 'Copy ID'"
+            aria-label="Copy ID"
+            @click.stop="copyId(file)"
+          >
+            <Check
+              v-if="copiedId === `document-${file.id}`"
+              :size="16"
+              class="copied-icon"
+              aria-hidden="true"
+            />
+            <Copy v-else :size="16" aria-hidden="true" />
           </button>
         </li>
       </ul>
     </section>
 
-    <div v-if="isCreateDialogOpen" class="create-dialog-backdrop" @click.self="isCreateDialogOpen = false">
+    <span class="sr-only" role="status">{{ copiedId ? 'ID copied to clipboard.' : '' }}</span>
+
+    <div
+      v-if="isCreateDialogOpen"
+      class="create-dialog-backdrop"
+      @click.self="isCreateDialogOpen = false"
+    >
       <form class="create-dialog" @submit.prevent="createDocument">
         <h2>New Workspace Item</h2>
         <label for="workspace-item-type">Type</label>
@@ -338,20 +389,28 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
         </select>
         <label for="new-document-name">Name</label>
         <input id="new-document-name" v-model="newDocumentName" autofocus placeholder="Name" />
-        <label v-if="newDocumentKind === 'document'" for="new-document-render-config">Render Config</label>
+        <label v-if="newDocumentKind === 'document'" for="new-document-render-config"
+          >Render Config</label
+        >
         <select
           v-if="newDocumentKind === 'document'"
           id="new-document-render-config"
           v-model="newDocumentRenderConfigurationId"
         >
           <option value="">Select a render config</option>
-          <option v-for="config in renderConfigs" :key="config.id" :value="config.id">{{ config.name }}</option>
+          <option v-for="config in renderConfigs" :key="config.id" :value="config.id">
+            {{ config.name }}
+          </option>
         </select>
         <div class="dialog-actions">
           <button type="button" @click="isCreateDialogOpen = false">Cancel</button>
           <button
             type="submit"
-            :disabled="!newDocumentName.trim() || isCreating || (newDocumentKind === 'document' && !newDocumentRenderConfigurationId)"
+            :disabled="
+              !newDocumentName.trim() ||
+              isCreating ||
+              (newDocumentKind === 'document' && !newDocumentRenderConfigurationId)
+            "
           >
             {{ isCreating ? 'Creating...' : 'Create' }}
           </button>
@@ -364,8 +423,9 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
 <style scoped>
 .file-tree-container {
   height: 100%;
-  background-color: #181818;
-  color: #cccccc;
+  background-color: var(--peel-surface);
+  color: var(--peel-text);
+  overflow-y: auto;
   font-family: system-ui, sans-serif;
   font-size: 13px;
   user-select: none;
@@ -376,16 +436,19 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
   justify-content: space-between;
   align-items: center;
   font-weight: bold;
-  font-size: 11px;
-  color: #888888;
-  border-bottom: 1px solid #2b2b2b;
+  font-size: 12px;
+  color: var(--peel-muted);
+  border-bottom: 1px solid var(--peel-border);
 }
 .create-button {
   border: 0;
-  background: transparent;
+  background: var(--peel-raised);
   color: #cccccc;
   font-size: 18px;
-  line-height: 16px;
+  line-height: 24px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   cursor: pointer;
 }
 .create-button:hover {
@@ -398,9 +461,9 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
 }
 .document-section h2 {
   margin: 0;
-  padding: 12px 12px 4px;
-  color: #888888;
-  font-size: 11px;
+  padding: 20px 14px 8px;
+  color: var(--peel-muted);
+  font-size: 12px;
   font-weight: bold;
 }
 .loading {
@@ -408,7 +471,9 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
   color: #888888;
 }
 .file-list li {
-  padding: 6px 12px;
+  padding: 9px 10px;
+  margin: 2px 6px;
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -416,12 +481,25 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
 }
 .file-name {
   flex: 1;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  text-align: left;
+  color: inherit;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .delete-button {
-  visibility: hidden;
+  display: none;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
   border: 0;
   background: transparent;
   color: #cccccc;
@@ -430,18 +508,30 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
   line-height: 16px;
 }
 .copy-id-button {
-  visibility: hidden;
+  display: none;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
   border: 0;
   background: transparent;
   color: #cccccc;
   cursor: pointer;
   font-size: 11px;
+  padding: 0;
+}
+.copied-icon {
+  color: #a6e3a1;
 }
 .file-list li:hover .delete-button,
 .file-list li.active .delete-button,
 .file-list li:hover .copy-id-button,
+.file-list li:focus-within .delete-button,
+.file-list li:focus-within .copy-id-button,
 .file-list li.active .copy-id-button {
-  visibility: visible;
+  display: inline-flex;
 }
 .delete-button:hover {
   color: #f48771;
@@ -451,16 +541,16 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
   opacity: 0.5;
 }
 .file-list li:hover {
-  background-color: #2a2d2e;
+  background-color: var(--peel-raised);
 }
 .file-list li.active {
-  background-color: #37373d;
-  color: #ffffff;
+  background-color: #ffcf3226;
+  color: var(--peel-text);
 }
 .create-dialog-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10;
+  z-index: 100;
   display: grid;
   place-items: center;
   background: rgba(0, 0, 0, 0.45);
@@ -471,8 +561,8 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
   gap: 12px;
   padding: 16px;
   border: 1px solid #3c3c3c;
-  border-radius: 6px;
-  background: #252526;
+  border-radius: 12px;
+  background: var(--peel-surface);
 }
 .create-dialog h2 {
   margin: 0;
@@ -487,6 +577,7 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
   border: 1px solid #3c3c3c;
   background: #1e1e1e;
   color: #ffffff;
+  border-radius: 8px;
 }
 .dialog-actions {
   display: flex;

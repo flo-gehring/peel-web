@@ -2,6 +2,7 @@
 import { ref, computed, shallowRef, watch } from 'vue'
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
 import { useEditorDraftStore } from '@/stores/editorDrafts'
+import { definePeelEditorTheme } from '@/adapter/editorTheme'
 
 // 1. Accept props passed by Dockview via params
 const props = defineProps<{
@@ -26,8 +27,12 @@ const props = defineProps<{
 const draftStore = useEditorDraftStore()
 
 const panelId = computed(() => props.params?.api?.id || props.params?.id || '')
-const documentId = computed(() => props.params?.params?.documentId || props.params?.documentId || '')
-const filename = computed(() => props.params?.params?.filename || props.params?.filename || 'untitled')
+const documentId = computed(
+  () => props.params?.params?.documentId || props.params?.documentId || '',
+)
+const filename = computed(
+  () => props.params?.params?.filename || props.params?.filename || 'untitled',
+)
 const documentKind = computed(
   () => props.params?.params?.documentKind || props.params?.documentKind || 'peel',
 )
@@ -78,10 +83,11 @@ const editorOptions = {
   // and auto-resize when panel splitters are dragged
   automaticLayout: true,
 
-  theme: 'vs-dark',
+  theme: 'peel-dark',
   fontSize: 14,
   fontFamily: "'Fira Code', 'Cascadia Code', Consolas, monospace",
-  minimap: { enabled: true },
+  minimap: { enabled: false },
+  padding: { top: 16, bottom: 16 },
   scrollBeyondLastLine: false,
   tabSize: 4,
   smoothScrolling: true,
@@ -104,6 +110,7 @@ watch(code, (newVal) => {
       v-model:value="code"
       :language="language"
       :options="editorOptions"
+      @before-mount="definePeelEditorTheme"
       @mount="handleMount"
       class="monaco-editor-instance"
     />
@@ -115,7 +122,7 @@ watch(code, (newVal) => {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background-color: #1e1e1e;
+  background-color: var(--peel-background);
 }
 
 .monaco-editor-instance {

@@ -192,18 +192,25 @@ async function handleRun() {
 
 <template>
   <div v-if="showActions" class="group-header-actions">
-    <button class="action-btn" :disabled="isSaving" title="Save file" @click="handleSave">Save</button>
+    <button class="action-btn" :disabled="isSaving" title="Save file" @click="handleSave">
+      {{ isSaving ? 'Saving…' : 'Save' }}
+    </button>
     <button
       v-if="activeDocumentKind === 'peel'"
-      class="action-btn"
+      class="action-btn run-button"
       :disabled="isRunning"
       title="Run script"
       @click="handleRun"
     >
-      Run
+      {{ isRunning ? 'Running…' : '▶ Run' }}
     </button>
     <div v-if="saveError" class="save-error-backdrop" @click.self="saveError = null">
-      <section class="save-error-dialog" role="alertdialog" aria-modal="true" aria-labelledby="save-error-title">
+      <section
+        class="save-error-dialog"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="save-error-title"
+      >
         <h2 id="save-error-title">Cannot Save</h2>
         <p>{{ saveError }}</p>
         <button class="save-error-close" @click="saveError = null">Close</button>
@@ -216,18 +223,27 @@ async function handleRun() {
 .group-header-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 0 4px;
+  gap: 8px;
+  padding: 0 10px;
 }
 
 .action-btn {
-  background: transparent;
-  border: none;
+  background: var(--peel-raised);
+  border: 1px solid var(--peel-border);
   cursor: pointer;
   color: inherit;
   font-size: 12px;
-  padding: 2px 4px;
-  border-radius: 3px;
+  padding: 5px 12px;
+  border-radius: 8px;
+}
+.run-button {
+  background: var(--peel-accent);
+  border-color: var(--peel-accent);
+  color: #221d0c;
+  font-weight: 650;
+}
+.action-btn.run-button:hover {
+  background: var(--peel-accent);
 }
 
 .action-btn:disabled {

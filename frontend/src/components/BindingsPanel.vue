@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
 import { useRunBindingsStore } from '@/stores/runBindings'
+import { definePeelEditorTheme } from '@/adapter/editorTheme'
 
 const bindingsStore = useRunBindingsStore()
 
@@ -12,10 +13,11 @@ const bindingsJson = computed({
 
 const editorOptions = {
   automaticLayout: true,
-  theme: 'vs-dark',
+  theme: 'peel-dark',
   fontSize: 13,
   fontFamily: "'Fira Code', 'Cascadia Code', Consolas, monospace",
   minimap: { enabled: false },
+  padding: { top: 14, bottom: 14 },
   scrollBeyondLastLine: false,
   tabSize: 2,
 }
@@ -25,12 +27,13 @@ const editorOptions = {
   <div class="bindings-container">
     <div class="bindings-status" :class="{ invalid: !!bindingsStore.parseError }">
       <span v-if="bindingsStore.parseError">Invalid JSON: {{ bindingsStore.parseError }}</span>
-      <span v-else>Bindings JSON is valid</span>
+      <span v-else>✓ Valid JSON</span>
     </div>
     <VueMonacoEditor
       v-model:value="bindingsJson"
       language="json"
       :options="editorOptions"
+      @before-mount="definePeelEditorTheme"
       class="bindings-editor"
     />
   </div>
@@ -42,15 +45,15 @@ const editorOptions = {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background-color: #1e1e1e;
+  background-color: var(--peel-background);
 }
 
 .bindings-status {
-  padding: 6px 10px;
+  padding: 8px 14px;
   font-size: 12px;
   color: #a6e3a1;
-  border-bottom: 1px solid #2b2b2b;
-  background: #202020;
+  border-bottom: 1px solid var(--peel-border);
+  background: var(--peel-surface);
 }
 
 .bindings-status.invalid {

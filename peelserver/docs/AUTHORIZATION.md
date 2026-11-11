@@ -6,7 +6,7 @@ Status: Implementiert. Die Regeln werden serverseitig in den Ressourcen-Services
 
 Jeder API-Zugriff auf gespeicherte Inhalte wird anhand des angemeldeten Benutzers und des zugehörigen Projekts geprüft. Eine gefilterte Projektübersicht ersetzt diese Prüfung nicht: Auch direkte Aufrufe mit fremden Ressourcen-IDs müssen geschützt sein.
 
-Benutzer-ID und Identität stammen ausschließlich aus der serverseitigen Session. Das bestehende Projektmodell mit Eigentümer und Mitgliedern bildet die Grundlage. Eigentümer und Mitglieder dürfen zunächst alle Projektinhalte lesen, erstellen, bearbeiten und löschen. Zusätzliche Rollen und abgestufte Inhaltsrechte kommen später; die Verwaltung des Projekts selbst gehört zum Projektmanagement.
+Benutzer-ID und Identität stammen ausschließlich aus der serverseitigen Session. Das bestehende Projektmodell mit Eigentümer und Mitgliedern bildet die Grundlage. Eigentümer und Mitglieder dürfen zunächst alle Projektinhalte lesen, erstellen, bearbeiten und löschen. Abgestufte Inhaltsrechte kommen später. Die im [Projektmanagement](PROJECT_MANAGEMENT.md) geplante Admin-Rolle erweitert die Einladungsrechte; die hier implementierten Inhaltsrechte bleiben gleich.
 
 ## Prüfungen
 
