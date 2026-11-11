@@ -35,6 +35,7 @@ describe('authentication state', () => {
     get.mockResolvedValueOnce({ data: { authenticated: false } })
     await auth.refresh()
     expect(auth.sessionExpired).toBe(true)
+    expect(auth.linkEmail).toBe('one@example.test')
     expect(drafts.getDraft('script')).toBe('unsaved work')
     get.mockResolvedValueOnce({
       data: { authenticated: true, userId: 'one', email: 'one@example.test' },
@@ -77,6 +78,7 @@ describe('authentication state', () => {
     await auth.logout()
     expect(auth.isAuthenticated).toBe(false)
     expect(useEditorDraftStore().draftsById).toEqual({})
+    expect(auth.linkEmail).toBe('')
     expect(useProjectStore().projects).toEqual([])
     expect(useDocumentPreviewStore().pdfUrl).toBeNull()
   })

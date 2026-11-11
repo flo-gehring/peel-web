@@ -117,9 +117,34 @@ public class ProjectManagementService {
     }
 
     public void answerInvitation(String token, SpringUserDetails user, boolean accept) {
-        var invite = recipientInvitation(token, user);
+        answerInvitation(() -> recipientInvitation(token, user), user, accept);
+    }
+
+    public List<ReceivedInvitation> receivedInvitations(SpringUserDetails user) {
+        var pending = invitations.findByEmailAndExpiresAtAfter(user.getUsername(), Instant.now());
+        Map<String, ProjectPersistence> invitedProjects = new HashMap<>();
+        projects.findAllById(pending.stream().map(invite -> invite.projectId().id()).distinct().toList())
+                .forEach(project -> invitedProjects.put(project.getId(), project));
+        Map<String, String> inviterEmails = new HashMap<>();
+        users.findAllById(pending.stream().map(invite -> invite.invitedBy().id()).distinct().toList())
+                .forEach(inviter -> inviterEmails.put(inviter.getId(), inviter.getUserPersistenceData().eMail()));
+        return pending.stream().filter(invite -> {
+            var project = invitedProjects.get(invite.projectId().id());
+            return project != null && project.getState() == ProjectState.ACTIVE && access.isAdmin(project, invite.invitedBy());
+        }).sorted(Comparator.comparing(ProjectInvitationPersistence::expiresAt))
+                .map(invite -> new ReceivedInvitation(invite.id(), invitedProjects.get(invite.projectId().id()).getPersistenceData().projectName(),
+                        inviterEmails.getOrDefault(invite.invitedBy().id(), ""), invite.expiresAt())).toList();
+    }
+
+    public void answerReceivedInvitation(String id, SpringUserDetails user, boolean accept) {
+        answerInvitation(() -> invitations.findById(id).filter(invite -> invite.email().equals(user.getUsername())
+                && invite.expiresAt().isAfter(Instant.now())).orElseThrow(ProjectAccessService::notFound), user, accept);
+    }
+
+    private void answerInvitation(java.util.function.Supplier<ProjectInvitationPersistence> lookup, SpringUserDetails user, boolean accept) {
+        var invite = lookup.get();
         access.locked(invite.projectId(), () -> {
-            var fresh = recipientInvitation(token, user);
+            var fresh = lookup.get();
             var project = projects.findById(fresh.projectId().id()).filter(value -> value.getState() != ProjectState.DELETING).orElseThrow(ProjectAccessService::notFound);
             if (accept) {
                 access.requireActive(project);

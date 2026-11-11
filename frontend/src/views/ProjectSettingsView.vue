@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { LogOut } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/adapter/client'
@@ -270,9 +271,12 @@ function deleteProject(): void {
             </div>
           </li>
         </ul>
-        <button v-if="!owner && active" :disabled="busy" class="quiet-button" @click="leave">
-          Leave project
-        </button>
+        <div v-if="!owner && active" class="leave-project-actions">
+          <button :disabled="busy" class="danger-button leave-project-button" @click="leave">
+            <LogOut :size="18" aria-hidden="true" />
+            Leave project
+          </button>
+        </div>
       </section>
       <section v-if="admin && settings.state !== 'DELETING'" class="settings-card">
         <h2>Invitations</h2>
@@ -543,6 +547,20 @@ small {
 }
 .danger-card {
   border-color: var(--peel-error);
+}
+.leave-project-actions {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--peel-border);
+}
+.danger-button.leave-project-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: color-mix(in srgb, var(--peel-error) 12%, transparent);
+}
+.leave-project-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--peel-error) 22%, transparent);
 }
 .danger-button {
   padding: 10px 16px;

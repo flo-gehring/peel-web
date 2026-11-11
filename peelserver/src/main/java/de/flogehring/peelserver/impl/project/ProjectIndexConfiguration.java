@@ -19,6 +19,7 @@ public class ProjectIndexConfiguration {
         return () -> {
             mongo.indexOps(ProjectInvitationPersistence.class).createIndex(new Index().on("tokenHash", Sort.Direction.ASC).unique());
             mongo.indexOps(ProjectInvitationPersistence.class).createIndex(new Index().on("projectId", Sort.Direction.ASC));
+            mongo.indexOps(ProjectInvitationPersistence.class).createIndex(new Index().on("email", Sort.Direction.ASC).on("expiresAt", Sort.Direction.ASC));
             mongo.indexOps(ProjectPersistence.class).createIndex(new Index().on("persistenceData.ownerId", Sort.Direction.ASC));
             mongo.indexOps(ProjectPersistence.class).createIndex(new Index().on("persistenceData.members", Sort.Direction.ASC));
             for (Class<?> type : new Class<?>[]{PeelScriptPersistence.class, DocumentTemplatePersistence.class,

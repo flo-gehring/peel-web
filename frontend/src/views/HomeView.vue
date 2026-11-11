@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { Settings } from '@lucide/vue'
 import { useProjectStore } from '@/stores/projects'
 import peelLogo from '@/assets/peel-logo.png'
+import ReceivedInvitations from '@/components/ReceivedInvitations.vue'
 
 const router = useRouter()
 const projectStore = useProjectStore()
@@ -85,6 +87,7 @@ onMounted(loadProjects)
           <span aria-hidden="true">＋</span> New project
         </button>
       </div>
+      <ReceivedInvitations />
       <div class="project-collection" :aria-busy="isLoading">
         <label class="project-filter"
           >Show
@@ -168,8 +171,10 @@ onMounted(loadProjects)
             <RouterLink
               class="manage-project"
               :to="`/projects/${project.projectIdApi?.id}/settings`"
-              >Manage</RouterLink
-            >
+              title="Settings"
+              aria-label="Settings"
+              ><Settings :size="18" aria-hidden="true"
+            /></RouterLink>
           </div>
         </nav>
       </div>
@@ -199,6 +204,16 @@ onMounted(loadProjects)
 .manage-project {
   margin-right: 24px;
   color: var(--peel-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+.manage-project:hover {
+  background: var(--peel-raised);
 }
 .home-view {
   min-height: calc(100dvh - var(--app-header-height));

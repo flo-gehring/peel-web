@@ -10,5 +10,7 @@ public interface ProjectInvitationRepository extends MongoRepository<ProjectInvi
 
     List<ProjectInvitationPersistence> findByProjectId(ProjectId projectId);
 
+    List<ProjectInvitationPersistence> findByEmailAndExpiresAtAfter(String email, java.time.Instant now);
+
     void deleteByProjectId(ProjectId projectId);
 }

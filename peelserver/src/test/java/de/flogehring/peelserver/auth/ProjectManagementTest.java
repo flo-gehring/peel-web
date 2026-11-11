@@ -74,6 +74,48 @@ class ProjectManagementTest {
         mvc.perform(get("/api/projects/" + id).with(user(member))).andExpect(status().isOk());
         mvc.perform(post("/api/invitations/" + token + "/accept").with(user(member)).with(csrf())).andExpect(status().isNotFound());
     }
+    @Test void receivedInvitationsArePrivateAndRequireExplicitAcceptance() throws Exception {
+        invite(owner, member.getUsername());
+        var invitation = invitations.findByProjectId(new ProjectId(id)).getFirst();
+        mvc.perform(get("/api/invitations/received")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/invitations/received").with(user(guest))).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/invitations/received").with(user(member)))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(invitation.id()))
+                .andExpect(jsonPath("$[0].projectName").value("Test project"))
+                .andExpect(jsonPath("$[0].invitedByEmail").value(owner.getUsername()))
+                .andExpect(jsonPath("$[0].tokenHash").doesNotExist());
+        mvc.perform(get("/api/projects/" + id).with(user(member))).andExpect(status().isNotFound());
+        mvc.perform(post("/api/invitations/received/" + invitation.id() + "/accept").with(user(guest)).with(csrf())).andExpect(status().isNotFound());
+        mvc.perform(post("/api/invitations/received/" + invitation.id() + "/accept").with(user(member))).andExpect(status().isForbidden());
+        mvc.perform(post("/api/invitations/received/" + invitation.id() + "/accept").with(user(member)).with(csrf())).andExpect(status().isNoContent());
+        mvc.perform(get("/api/projects/" + id).with(user(member))).andExpect(status().isOk());
+        mvc.perform(get("/api/invitations/received").with(user(member))).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(post("/api/invitations/received/" + invitation.id() + "/accept").with(user(member)).with(csrf())).andExpect(status().isNotFound());
+    }
+
+    @Test void receivedInvitationsCanBeDeclinedAndHideExpiredArchivedOrRevokedEntries() throws Exception {
+        String token = invite(owner, member.getUsername());
+        var invitation = invitations.findByProjectId(new ProjectId(id)).getFirst();
+        mongo.updateFirst(Query.query(Criteria.where("id").is(id)), new Update().set("state", ProjectState.ARCHIVED), ProjectPersistence.class);
+        mvc.perform(get("/api/invitations/received").with(user(member))).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(post("/api/invitations/received/" + invitation.id() + "/accept").with(user(member)).with(csrf())).andExpect(status().isConflict());
+        mongo.updateFirst(Query.query(Criteria.where("id").is(id)), new Update().set("state", ProjectState.ACTIVE), ProjectPersistence.class);
+        mongo.updateFirst(Query.query(Criteria.where("id").is(invitation.id())), new Update().set("expiresAt", Instant.now().minusSeconds(1)), ProjectInvitationPersistence.class);
+        mvc.perform(get("/api/invitations/received").with(user(member))).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(post("/api/invitations/received/" + invitation.id() + "/accept").with(user(member)).with(csrf())).andExpect(status().isNotFound());
+        token = invite(owner, member.getUsername());
+        invitation = invitations.findByProjectId(new ProjectId(id)).getFirst();
+        mvc.perform(post("/api/invitations/received/" + invitation.id() + "/decline").with(user(guest)).with(csrf())).andExpect(status().isNotFound());
+        mvc.perform(post("/api/invitations/received/" + invitation.id() + "/decline").with(user(member)).with(csrf())).andExpect(status().isNoContent());
+        mvc.perform(get("/api/invitations/" + token).with(user(member))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/projects/" + id).with(user(member))).andExpect(status().isNotFound());
+        invite(owner, guest.getUsername());
+        invitation = invitations.findByProjectId(new ProjectId(id)).getFirst();
+        mvc.perform(delete("/api/projects/" + id + "/invitations/" + invitation.id()).with(user(owner)).with(csrf())).andExpect(status().isNoContent());
+        mvc.perform(get("/api/invitations/received").with(user(guest))).andExpect(jsonPath("$.length()").value(0));
+    }
+
     @Test void invitesUnregisteredAddressesWithoutAccountDisclosure() throws Exception {
         String email = UUID.randomUUID() + "@example.test";
         String token = invite(owner, email);

@@ -37,6 +37,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   function expireSession(): void {
     clearCsrf()
+    if (email.value) linkEmail.value = email.value
     if (previousUserId) sessionExpired.value = true
     isAuthenticated.value = false
     email.value = null
@@ -61,6 +62,7 @@ export const useAuthStore = defineStore('auth', () => {
         if (previousUserId && previousUserId !== data.userId) clearWorkspace()
         isAuthenticated.value = true
         email.value = data.email ?? null
+        if (email.value) linkEmail.value = email.value
         userId.value = data.userId ?? null
         previousUserId = userId.value
         sessionExpired.value = false

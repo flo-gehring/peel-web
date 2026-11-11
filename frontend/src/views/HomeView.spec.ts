@@ -19,7 +19,10 @@ async function openHome() {
     ],
   })
   await router.push('/')
-  wrapper = mount(HomeView, { attachTo: document.body, global: { plugins: [router] } })
+  wrapper = mount(HomeView, {
+    attachTo: document.body,
+    global: { plugins: [router], stubs: { ReceivedInvitations: true } },
+  })
   await flushPromises()
   return router
 }

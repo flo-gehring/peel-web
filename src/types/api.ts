@@ -436,6 +436,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/invitations/received/{id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["declineReceivedInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invitations/received/{id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["acceptReceivedInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documents": {
         parameters: {
             query?: never;
@@ -572,6 +604,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["invitation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invitations/received": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["receivedInvitations"];
         put?: never;
         post?: never;
         delete?: never;
@@ -885,6 +933,13 @@ export interface components {
         InvitationDetails: {
             projectName?: string;
             email?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+        };
+        ReceivedInvitation: {
+            id?: string;
+            projectName?: string;
+            invitedByEmail?: string;
             /** Format: date-time */
             expiresAt?: string;
         };
@@ -1876,6 +1931,46 @@ export interface operations {
             };
         };
     };
+    declineReceivedInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    acceptReceivedInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     saveDocument: {
         parameters: {
             query?: never;
@@ -2078,6 +2173,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["InvitationDetails"];
+                };
+            };
+        };
+    };
+    receivedInvitations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ReceivedInvitation"][];
                 };
             };
         };

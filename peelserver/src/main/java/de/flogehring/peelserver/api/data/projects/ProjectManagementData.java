@@ -28,6 +28,9 @@ public final class ProjectManagementData {
     public record InvitationDetails(String projectName, String email, Instant expiresAt) {
     }
 
+    public record ReceivedInvitation(String id, String projectName, String invitedByEmail, Instant expiresAt) {
+    }
+
     public record TransferRequest(String id, String email, String recipientId, Instant expiresAt) {
     }
 

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { LogOut } from '@lucide/vue'
+import { LogOut, Settings } from '@lucide/vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProjectStore } from '@/stores/projects'
 import peelLogo from '@/assets/peel-logo.png'
 import { useAuthStore } from '@/stores/auth'
 import { useEditorDraftStore } from '@/stores/editorDrafts'
 import { useDocumentDraftStore } from '@/stores/documentDrafts'
-import SignInForm from '@/components/SignInForm.vue'
+import SessionSignInForm from '@/components/SessionSignInForm.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -81,16 +81,17 @@ onUnmounted(() => window.removeEventListener('focus', refreshSession))
         >
         <template v-if="inWorkspace"
           ><span class="breadcrumb-divider" aria-hidden="true">/</span
+          ><RouterLink to="/print-jobs" class="header-print-jobs">Print jobs</RouterLink
+          ><RouterLink
+            :to="`/projects/${route.params.projectId}/settings`"
+            class="settings-link"
+            title="Settings"
+            aria-label="Settings"
+            ><Settings :size="18" aria-hidden="true" /></RouterLink
           ><strong class="project-breadcrumb">{{ projectName }}</strong></template
         >
         <RouterLink v-if="!inWorkspace" to="/print-jobs">Print jobs</RouterLink>
       </nav>
-      <RouterLink v-if="inWorkspace" to="/print-jobs" class="header-print-jobs"
-        >Print jobs</RouterLink
-      >
-      <RouterLink v-if="inWorkspace" :to="`/projects/${route.params.projectId}/settings`"
-        >Project settings</RouterLink
-      >
       <button
         class="logout-button"
         title="logout"
@@ -115,8 +116,10 @@ onUnmounted(() => window.removeEventListener('focus', refreshSession))
   >
     <div class="session-content">
       <h2 id="session-title">Your session has ended</h2>
-      <p>Your drafts are still here. Sign in using the email link, then return to this tab.</p>
-      <SignInForm :redirect="router.currentRoute.value.fullPath" />
+      <p>
+        Your drafts are still here. Request an email and paste its sign-in code below to continue.
+      </p>
+      <SessionSignInForm :redirect="router.currentRoute.value.fullPath" />
       <button @click="refreshSession">Check sign-in</button>
       <button :disabled="signingOut" @click="logout">Discard drafts and sign out</button>
       <p v-if="authStore.statusError || logoutError" role="alert" class="auth-error">
@@ -194,6 +197,18 @@ onUnmounted(() => window.removeEventListener('focus', refreshSession))
   white-space: nowrap;
   text-overflow: ellipsis;
   font-weight: 600;
+}
+.settings-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+.settings-link:hover {
+  background: var(--peel-raised);
 }
 .breadcrumb-divider {
   color: var(--peel-muted);

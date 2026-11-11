@@ -35,6 +35,10 @@ Admins sind Projektmitglieder mit zusätzlichen Einladungsrechten. Sie dürfen z
 
 Die Einladung ist an das Projekt und die eingeladene E-Mail-Adresse gebunden. Eine Anmeldung mit einer anderen Adresse erlaubt keine Annahme. Versandbestätigung und Fehlerverhalten dürfen nicht zwischen bereits registrierten und neuen Empfängern unterscheiden; technische Versandfehler dürfen als solche angezeigt werden.
 
+Die Startseite zeigt offene, noch gültige Einladungen an die angemeldete E-Mail-Adresse mit Projektname, E-Mail-Adresse des Einladenden und Ablaufdatum. Der Empfänger kann sie dort ausdrücklich annehmen oder ablehnen; nach Annahme wird die Projektliste aktualisiert. Einladungen zu archivierten oder gelöschten Projekten sowie Einladungen ohne fortbestehende Einladungsrechte des Absenders werden nicht angezeigt. Nach Wiederherstellung eines Projekts erscheint eine noch gültige Einladung wieder.
+
+`GET /api/invitations/received` sucht über einen Index auf E-Mail-Adresse und Ablaufdatum und lädt Projekte und Einladende gesammelt. `POST /api/invitations/received/{id}/accept` und `/decline` prüfen Empfänger und Gültigkeit erneut und verwenden dieselbe Verarbeitung wie der E-Mail-Link. Die API gibt weder den Link-Token noch dessen Hash aus.
+
 ## Eigentümerschaft übertragen
 
 Nur der aktuelle Eigentümer darf die Eigentümerschaft an einen anderen Benutzer übertragen. Vor der Übertragung muss er beide Bestätigungen eingeben:

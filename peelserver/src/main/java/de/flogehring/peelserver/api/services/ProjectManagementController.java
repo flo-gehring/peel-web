@@ -110,6 +110,23 @@ public class ProjectManagementController {
         return service.invitation(token, user);
     }
 
+    @GetMapping("/invitations/received")
+    public java.util.List<ReceivedInvitation> receivedInvitations(@AuthenticationPrincipal SpringUserDetails user) {
+        return service.receivedInvitations(user);
+    }
+
+    @PostMapping("/invitations/received/{id}/accept")
+    @ResponseStatus(NO_CONTENT)
+    public void acceptReceivedInvitation(@PathVariable String id, @AuthenticationPrincipal SpringUserDetails user) {
+        service.answerReceivedInvitation(id, user, true);
+    }
+
+    @PostMapping("/invitations/received/{id}/decline")
+    @ResponseStatus(NO_CONTENT)
+    public void declineReceivedInvitation(@PathVariable String id, @AuthenticationPrincipal SpringUserDetails user) {
+        service.answerReceivedInvitation(id, user, false);
+    }
+
     @PostMapping("/invitations/{token}/accept")
     @ResponseStatus(NO_CONTENT)
     public void acceptInvitation(@PathVariable String token, @AuthenticationPrincipal SpringUserDetails user) {

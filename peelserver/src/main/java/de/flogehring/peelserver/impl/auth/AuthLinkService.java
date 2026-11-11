@@ -38,8 +38,10 @@ public class AuthLinkService {
         message.setTo(email);
         message.setSubject("Sign in to PEEL WEB");
         message.setText("Confirm your sign-in to PEEL WEB:\n\n" + link
-                + "\n\nThis link expires in " + properties.tokenValidity().toMinutes()
-                + " minutes and can only be used once.\nIf you did not request it, ignore this email.");
+                + "\n\nTo continue in an open PEEL WEB session, paste this sign-in code into the sign-in dialog:\n\n"
+                + token.getTokenValue()
+                + "\n\nThe link and code expire in " + properties.tokenValidity().toMinutes()
+                + " minutes and share a single use.\nIf you did not request it, ignore this email.");
         try {
             mailSender.send(message);
         } catch (MailException exception) {

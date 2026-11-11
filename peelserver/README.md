@@ -55,21 +55,26 @@ Resends are limited to one per address per 60 seconds and 20 per socket IP per h
 Repeated requests create separate links; requesting a new link does not invalidate older unexpired ones.
 Accounts are created after successful token verification. Email addresses are trimmed and lowercased and have a unique index.
 
-API authentication uses a server session. Fetch `/api/auth/csrf` and send its token in the returned header on all
+API authentication uses a server session that expires after eight hours of inactivity. Fetch `/api/auth/csrf` and send its token in the returned header on all
 mutating requests, including multipart uploads. Fetch a fresh token after login/logout. API failures use JSON
 with `error.code` and `error.message`; unauthenticated requests return 401 instead of redirects.
-An expired session leaves drafts in memory while the user signs in in another tab. Explicit logout discards
+An expired session leaves drafts and the last authenticated email address in memory. The session dialog prefills
+that address, sends a sign-in email on request, and accepts the code from the email without leaving the current tab.
+The email link and code use the same single-use token, valid for 15 minutes. Neither is stored in browser storage.
+After successful sign-in the dialog closes and drafts remain available for the same account. Explicit logout discards
 workspace state after confirmation if there are unsaved changes. Resource-level project authorization is implemented;
 see [the authorization concept](docs/AUTHORIZATION.md) for rules and implementation details. Members and owners have
 full access to project contents; document references must stay within one project. Print jobs store their own project ID.
 
 ## Project management
 
-Open **Manage** on a project in the overview, or **Project settings** in its workspace. Owners and members can edit
+Open the **Settings** gear on a project in the overview or beside its name in the workspace header. Owners and members can edit
 the name and description of active projects. Owners can grant/revoke admin rights, remove members, archive/restore,
 and permanently delete archived projects. Admins can invite members, resend invitations, and revoke invitations;
 they cannot appoint admins. Invitations work for registered and unregistered email addresses and require explicit
 acceptance after email sign-in. The inviter receives no registration-status information.
+Pending invitations also appear on the start page with the project name, inviter and expiry date. Recipients can
+explicitly accept or decline there; accepting refreshes their project list. Email invitation links remain available.
 
 Ownership transfers require typing the recipient's email and `TRANSFER <project name>`. The recipient must already
 be a member and must explicitly accept; they may decline, and the owner may withdraw. On acceptance the former owner

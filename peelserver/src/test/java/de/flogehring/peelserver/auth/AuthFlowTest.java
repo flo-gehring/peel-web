@@ -56,6 +56,7 @@ class AuthFlowTest {
         String body = message.getValue().getText();
         assertThat(body).contains("http://localhost:5173/login/confirm?token=", "redirect=");
         String token = body.split("token=")[1].split("[&\\s]")[0];
+        assertThat(body).contains("sign-in code into the sign-in dialog:\n\n" + token + "\n\n");
         var login = mvc.perform(post("/api/auth/login").with(csrf()).param("token", token))
                 .andExpect(status().isNoContent()).andReturn();
         MockHttpSession session = (MockHttpSession) login.getRequest().getSession(false);
