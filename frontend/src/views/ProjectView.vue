@@ -421,6 +421,10 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
 
 <template>
   <div class="app-layout">
+    <div v-if="projectStore.isReadOnly" class="archive-banner" role="status">
+      Archived project — read-only. Existing results can still be downloaded.
+      <RouterLink :to="`/projects/${route.params.projectId}/settings`">Project settings</RouterLink>
+    </div>
     <DockviewVue
       class="dockview-root"
       :theme="workspaceTheme"
@@ -449,11 +453,18 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
 
 <style>
 .app-layout {
+  flex-direction: column;
   height: calc(100dvh - var(--app-header-height));
   width: 100%;
   display: flex;
   min-height: 0;
   min-width: 0;
+}
+.archive-banner {
+  padding: 10px 18px;
+  color: var(--peel-muted);
+  background: var(--peel-surface);
+  border-bottom: 1px solid var(--peel-border);
 }
 
 .dockview-root {

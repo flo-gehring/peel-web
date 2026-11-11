@@ -6,6 +6,7 @@ import { api } from '@/adapter/client'
 import { useEditorDraftStore } from '@/stores/editorDrafts'
 import { useRunBindingsStore } from '@/stores/runBindings'
 import { useRunOutputStore } from '@/stores/runOutput'
+import { useProjectStore } from '@/stores/projects'
 
 vi.mock('@/adapter/client', () => ({
   api: {
@@ -39,8 +40,13 @@ function mountActions(documentKind: 'peel' | 'renderConfig' = 'peel') {
 
 describe('GroupActions', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     setActivePinia(createPinia())
-    mockApi.PUT.mockResolvedValue({ data: { trace: { step: 1 }, result: { value: 1 } }, error: undefined })
+    useProjectStore().activeProject = { projectIdApi: { id: 'project' }, state: 'ACTIVE' }
+    mockApi.PUT.mockResolvedValue({
+      data: { trace: { step: 1 }, result: { value: 1 } },
+      error: undefined,
+    })
   })
 
   it('runs the latest draft through the generated script-run endpoint', async () => {
@@ -55,7 +61,7 @@ describe('GroupActions', () => {
     await flushPromises()
 
     expect(mockApi.PUT).toHaveBeenCalledWith('/api/scripts/run', {
-      body: { script: 'unsaved script', bindings: { amount: 5 } },
+      body: { projectId: { id: 'project' }, script: 'unsaved script', bindings: { amount: 5 } },
     })
     expect(outputStore.response).toEqual({ trace: { step: 1 }, result: { value: 1 } })
     expect(outputPanel.api.setActive).toHaveBeenCalled()

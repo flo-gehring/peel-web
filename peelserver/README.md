@@ -63,6 +63,23 @@ workspace state after confirmation if there are unsaved changes. Resource-level 
 see [the authorization concept](docs/AUTHORIZATION.md) for rules and implementation details. Members and owners have
 full access to project contents; document references must stay within one project. Print jobs store their own project ID.
 
+## Project management
+
+Open **Manage** on a project in the overview, or **Project settings** in its workspace. Owners and members can edit
+the name and description of active projects. Owners can grant/revoke admin rights, remove members, archive/restore,
+and permanently delete archived projects. Admins can invite members, resend invitations, and revoke invitations;
+they cannot appoint admins. Invitations work for registered and unregistered email addresses and require explicit
+acceptance after email sign-in. The inviter receives no registration-status information.
+
+Ownership transfers require typing the recipient's email and `TRANSFER <project name>`. The recipient must already
+be a member and must explicitly accept; they may decline, and the owner may withdraw. On acceptance the former owner
+becomes an admin. Invitations and transfers expire after seven days by default.
+
+Archived projects remain readable and downloadable; edits, uploads, previews and new runs are blocked. Use the
+overview filter to find archived projects. Deletion requires typing the project name and waits for running jobs.
+Failed object cleanup can be retried from settings. See [PROJECT_MANAGEMENT.md](docs/PROJECT_MANAGEMENT.md) for the
+single-backend-instance concurrency scope, persistent cleanup state, API routes and test coverage.
+
 ### Authentication checks and generated types
 
 ```powershell

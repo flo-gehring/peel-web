@@ -29,7 +29,7 @@ public interface PeelScriptController {
     void deleteScript(@PathVariable String id, @AuthenticationPrincipal SpringUserDetails user);
 
     @PutMapping(path = "/run", consumes = MediaType.APPLICATION_JSON_VALUE)
-    RunResponse run(@RequestBody RunRequest request);
+    RunResponse run(@Valid @RequestBody RunRequest request, @AuthenticationPrincipal SpringUserDetails user);
 
     @GetMapping("/validate")
     ValidationResponse validate(@RequestBody ValidationRequest request);

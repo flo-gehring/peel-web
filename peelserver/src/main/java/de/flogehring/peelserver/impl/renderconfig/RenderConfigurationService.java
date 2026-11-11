@@ -26,18 +26,20 @@ public class RenderConfigurationService implements RenderConfigurationController
 
     @Override
     public RenderConfigurationCreateResponse createRenderConfiguration(RenderConfigurationPersistenceDto renderConfigurationDto, SpringUserDetails user) {
-        ProjectId projectId = new ProjectId(renderConfigurationDto.projectIdApi().id());
-        projectAccess.requireProjectAccess(projectId, user.getUserId());
-        String id = UUID.randomUUID().toString();
-        renderConfigurationRepository.insert(
-                RenderConfigurationPersistence.valueOf(
-                        id,
-                        renderConfigurationDto.name(),
-                        toExpressionRenderConfig(renderConfigurationDto.renderConfigurationDto()),
-                        projectId
-                )
-        );
-        return new RenderConfigurationCreateResponse(id);
+        return projectAccess.active(new ProjectId(renderConfigurationDto.projectIdApi().id()), user.getUserId(), () -> {
+            ProjectId projectId = new ProjectId(renderConfigurationDto.projectIdApi().id());
+            projectAccess.requireProjectAccess(projectId, user.getUserId());
+            String id = UUID.randomUUID().toString();
+            renderConfigurationRepository.insert(
+                    RenderConfigurationPersistence.valueOf(
+                            id,
+                            renderConfigurationDto.name(),
+                            toExpressionRenderConfig(renderConfigurationDto.renderConfigurationDto()),
+                            projectId
+                    )
+            );
+            return new RenderConfigurationCreateResponse(id);
+        });
     }
 
     @Override
@@ -46,16 +48,19 @@ public class RenderConfigurationService implements RenderConfigurationController
             RenderConfigurationUpdateRequest updateRequest,
             SpringUserDetails user
     ) {
-        log.info("Updating Render Config {}", id);
-        RenderConfigurationPersistence renderConfigurationPersistence = requireConfigAccess(id, user);
-        renderConfigurationRepository.save(
-                RenderConfigurationPersistence.valueOf(
-                        id,
-                        updateRequest.name(),
-                        toExpressionRenderConfig(updateRequest.renderConfigurationDto()),
-                        renderConfigurationPersistence.getProjectId()
-                )
-        );
+        projectAccess.active(requireConfigAccess(id, user).getProjectId(), user.getUserId(), () -> {
+            log.info("Updating Render Config {}", id);
+            RenderConfigurationPersistence renderConfigurationPersistence = requireConfigAccess(id, user);
+            renderConfigurationRepository.save(
+                    RenderConfigurationPersistence.valueOf(
+                            id,
+                            updateRequest.name(),
+                            toExpressionRenderConfig(updateRequest.renderConfigurationDto()),
+                            renderConfigurationPersistence.getProjectId()
+                    )
+            );
+            return null;
+        });
     }
 
     @Override
@@ -83,8 +88,11 @@ public class RenderConfigurationService implements RenderConfigurationController
 
     @Override
     public void deleteById(String id, SpringUserDetails user) {
-        requireConfigAccess(id, user);
-        renderConfigurationRepository.deleteById(id);
+        projectAccess.active(requireConfigAccess(id, user).getProjectId(), user.getUserId(), () -> {
+            requireConfigAccess(id, user);
+            renderConfigurationRepository.deleteById(id);
+            return null;
+        });
     }
 
     private RenderConfigurationPersistence requireConfigAccess(String id, SpringUserDetails user) {

@@ -25,24 +25,28 @@ public class DocumentTemplateService implements DocumentTemplateController {
 
     @Override
     public DocumentTemplateSaveResponse saveDocument(DocumentTemplateSaveRequest request, SpringUserDetails user) {
-        ProjectId projectId = new ProjectId(request.projectId().id());
-        projectAccess.requireProjectAccess(projectId, user.getUserId());
-        String template = requireTemplate(request.templateHtml());
-        var tags = transformMapValues(request.scriptNameTags(), PeelScriptId::new);
-        references.resolve(projectId, request.name(), tags, template, request.renderConfigurationId());
-        var created = DocumentTemplatePersistence.newDocument(UUID.randomUUID().toString(), request.name(), tags,
-                template, request.editorStateJson(), new RenderConfigurationId(request.renderConfigurationId()), projectId);
-        return response(documents.save(created), DocumentTemplateSaveResponse.SaveType.CREATED);
+        return projectAccess.active(new ProjectId(request.projectId().id()), user.getUserId(), () -> {
+            ProjectId projectId = new ProjectId(request.projectId().id());
+            projectAccess.requireProjectAccess(projectId, user.getUserId());
+            String template = requireTemplate(request.templateHtml());
+            var tags = transformMapValues(request.scriptNameTags(), PeelScriptId::new);
+            references.resolve(projectId, request.name(), tags, template, request.renderConfigurationId());
+            var created = DocumentTemplatePersistence.newDocument(UUID.randomUUID().toString(), request.name(), tags,
+                    template, request.editorStateJson(), new RenderConfigurationId(request.renderConfigurationId()), projectId);
+            return response(documents.save(created), DocumentTemplateSaveResponse.SaveType.CREATED);
+        });
     }
 
     @Override
     public DocumentTemplateSaveResponse updateDocument(String id, DocumentTemplateUpdateRequest request, SpringUserDetails user) {
-        var document = requireDocumentAccess(id, user);
-        String template = requireTemplate(request.templateHtml());
-        var tags = transformMapValues(request.scriptNameTags(), PeelScriptId::new);
-        references.resolve(document.getProjectId(), request.name(), tags, template, request.renderConfigurationId());
-        var updated = document.update(request.name(), tags, template, request.editorStateJson(), new RenderConfigurationId(request.renderConfigurationId()));
-        return response(documents.save(updated), DocumentTemplateSaveResponse.SaveType.UPDATED);
+        return projectAccess.active(requireDocumentAccess(id, user).getProjectId(), user.getUserId(), () -> {
+            var document = requireDocumentAccess(id, user);
+            String template = requireTemplate(request.templateHtml());
+            var tags = transformMapValues(request.scriptNameTags(), PeelScriptId::new);
+            references.resolve(document.getProjectId(), request.name(), tags, template, request.renderConfigurationId());
+            var updated = document.update(request.name(), tags, template, request.editorStateJson(), new RenderConfigurationId(request.renderConfigurationId()));
+            return response(documents.save(updated), DocumentTemplateSaveResponse.SaveType.UPDATED);
+        });
     }
 
     @Override
@@ -55,24 +59,31 @@ public class DocumentTemplateService implements DocumentTemplateController {
 
     @Override
     public void deleteDocument(String id, SpringUserDetails user) {
-        requireDocumentAccess(id, user);
-        documents.deleteById(id);
+        projectAccess.active(requireDocumentAccess(id, user).getProjectId(), user.getUserId(), () -> {
+            requireDocumentAccess(id, user);
+            documents.deleteById(id);
+            return null;
+        });
     }
 
     @Override
     public DocumentPreviewResponse previewDocument(DocumentPreviewRequest request, SpringUserDetails user) {
-        ProjectId projectId = new ProjectId(request.projectId().id());
-        projectAccess.requireProjectAccess(projectId, user.getUserId());
-        var tags = request.scriptTags().entrySet().stream().collect(Collectors.toMap(
-                entry -> entry.getKey().name(), entry -> new PeelScriptId(entry.getValue().id())));
-        Document document = references.resolve(projectId, "Preview", tags, request.template(), request.renderConfigId());
-        return new DocumentPreviewResponse(renderer.renderPdf(document, request.bindings(), ByteArrayOutputStream::toByteArray));
+        return projectAccess.active(new ProjectId(request.projectId().id()), user.getUserId(), () -> {
+            ProjectId projectId = new ProjectId(request.projectId().id());
+            projectAccess.requireProjectAccess(projectId, user.getUserId());
+            var tags = request.scriptTags().entrySet().stream().collect(Collectors.toMap(
+                    entry -> entry.getKey().name(), entry -> new PeelScriptId(entry.getValue().id())));
+            Document document = references.resolve(projectId, "Preview", tags, request.template(), request.renderConfigId());
+            return new DocumentPreviewResponse(renderer.renderPdf(document, request.bindings(), ByteArrayOutputStream::toByteArray));
+        });
     }
 
     @Override
     public DocumentPreviewResponse previewDocument(String id, Map<String, Object> bindings, SpringUserDetails user) {
-        Document document = references.resolve(requireDocumentAccess(id, user));
-        return new DocumentPreviewResponse(renderer.renderPdf(document, bindings, ByteArrayOutputStream::toByteArray));
+        return projectAccess.active(requireDocumentAccess(id, user).getProjectId(), user.getUserId(), () -> {
+            Document document = references.resolve(requireDocumentAccess(id, user));
+            return new DocumentPreviewResponse(renderer.renderPdf(document, bindings, ByteArrayOutputStream::toByteArray));
+        });
     }
 
     private DocumentTemplatePersistence requireDocumentAccess(String id, SpringUserDetails user) {

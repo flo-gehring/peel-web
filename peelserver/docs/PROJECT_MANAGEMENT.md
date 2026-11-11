@@ -1,6 +1,6 @@
 # Konzept: Projektmanagement
 
-Status: Fachlich abgestimmt; Grundlage für die Umsetzung von Ticket #3.
+Status: Implementiert. Die Verwaltungsseite ist über „Manage“ in der Projektübersicht und „Project settings“ im Arbeitsbereich erreichbar.
 
 ## Oberfläche und Rechte
 
@@ -42,7 +42,9 @@ Nur der aktuelle Eigentümer darf die Eigentümerschaft an einen anderen Benutze
 - die E-Mail-Adresse des neuen Eigentümers;
 - `TRANSFER <Projektname>` mit dem tatsächlichen Projektnamen.
 
-Beide Eingaben und die Berechtigung werden serverseitig geprüft. Der Wechsel muss atomar erfolgen, sodass das Projekt genau einen Eigentümer behält. Ob das Ziel bereits Projektmitglied sein muss und welche Rolle der bisherige Eigentümer anschließend erhält, ist noch festzulegen.
+Beide Eingaben und die Berechtigung werden serverseitig geprüft. Der Empfänger muss bereits Mitglied sein und erhält eine E-Mail mit einem Link zur Verwaltungsseite. Die Übertragung wird erst durch seine ausdrückliche Annahme wirksam. Er kann sie auch ablehnen; der bisherige Eigentümer kann die Anfrage zurückziehen. Bis dahin bleiben beide Rollen unverändert.
+
+Bei Annahme werden Eigentümer, Mitgliedschaft und Admin-Rolle in einem atomaren MongoDB-Update geändert: Der Empfänger wird Eigentümer, der bisherige Eigentümer wird Mitglied und Admin. Das Backend prüft erneut den bisherigen Eigentümer, den konkreten Auftrag und die fortbestehende Mitgliedschaft des Empfängers. Pro Projekt gibt es höchstens eine offene Anfrage. Eine neue Anfrage erfordert das Zurückziehen der alten; abgelaufene Anfragen können ersetzt werden.
 
 ## Lebenszyklus
 
@@ -64,11 +66,22 @@ Entfernt werden das Projekt, seine Skripte, Dokumentvorlagen, Render-Konfigurati
 
 Die Löschung darf erst als erfolgreich gemeldet werden, wenn die zugehörigen Datenbankeinträge und Dateien entfernt sind. Ein Hintergrundauftrag darf nach erfolgreicher Löschung keine Daten oder Dateien neu erzeugen.
 
-## Noch technisch auszuarbeiten
+## Einladungs- und Übertragungsfristen
 
-- Sicherer Ablauf bei Fehlern während der Löschung über MongoDB und MinIO hinweg sowie bei gleichzeitig eintreffenden Start-, Archivierungs- und Löschanfragen.
-- Gültigkeitsdauer, erneutes Senden und Widerruf von Einladungen sowie Behandlung mehrfacher Einladungen und bereits bestehender Mitgliedschaft. Der Empfängerablauf und die Vertraulichkeit des Registrierungsstatus sind oben festgelegt.
-- Eigentümerübertragung: Muss das Ziel bereits Projektmitglied sein? Welche Rolle erhält der bisherige Eigentümer? Wie werden Admin-Rechte wieder entzogen?
-- Konkrete API-Verträge und Gestaltung der Verwaltungsseite.
+Einladungen und Übertragungsanfragen gelten jeweils sieben Tage. Die Fristen sind über `peel.projects.invitation-validity` und `peel.projects.transfer-validity` konfigurierbar. Eigentümer und Admins können Einladungen erneut senden und widerrufen. Ein erneuter Versand macht den vorherigen Link erst nach erfolgreichem Versand ungültig. Pro Adresse und Projekt ist zwischen zwei Sendungen mindestens eine Minute Abstand erforderlich.
 
-Dies sind offene Umsetzungsdetails; die oben festgelegten Rechte und Lebenszyklusregeln bleiben die fachliche Grundlage.
+Einladungstokens bestehen aus 32 zufälligen Bytes; gespeichert wird ausschließlich ihr SHA-256-Hash. Die Empfängeransicht erfordert eine Anmeldung mit der eingeladenen E-Mail-Adresse. Der vorhandene Magic-Link-Login führt nach Anmeldung oder Registrierung zur Einladung zurück. GET-Aufrufe nehmen niemals Einladungen an. Eine bestehende Mitgliedschaft wird bei Annahme nicht dupliziert; auch bei bereits registrierten Empfängern bleibt die Versandantwort gleich.
+
+Der Eigentümer kann Admin-Rechte wieder entziehen. Dabei werden noch offene, von diesem Admin erstellte Einladungen widerrufen. Entfernen oder Austreten eines Mitglieds zieht dessen offene Einladungen sowie eine an dieses Mitglied gerichtete Eigentumsübertragung zurück. Beim Austritt des Eigentümers wird zunächst eine Übertragung verlangt.
+
+## Technischer Ablauf und Prüfungen
+
+Die Endpunkte liegen unter `/api/projects/{id}/settings`, `/members`, `/invitations` und `/transfer`; Empfänger verwenden `/api/invitations/{token}`. Archivierung und Wiederherstellung sind eigene POST-Aktionen. Die endgültige Löschung verwendet DELETE mit bestätigtem Projektnamen.
+
+Änderungen, Ausführungsstarts und Lebenszyklusaktionen werden innerhalb der aktuellen einzelnen Backend-Instanz über dieselbe Projekt-Sperre koordiniert. Ein Druckauftrag erhält den Status `CALCULATING` bereits vor der asynchronen Übergabe. Dadurch kann eine Löschung keinen gerade gestarteten Auftrag übersehen. Bereits laufende Aufträge dürfen nach dem Archivieren fertig werden. Alle neuen Änderungen, Uploads, Vorschauen und Ausführungen sind serverseitig gesperrt. Freie Skriptausführungen enthalten dafür ebenfalls den Projektkontext.
+
+Die Löschung setzt zunächst den dauerhaften Zustand `DELETING`. Danach werden CSVs, PDFs und auch nicht mehr im Ergebnisverzeichnis verzeichnete PDF-Teilergebnisse der Projektaufträge aus MinIO entfernt. Erst danach werden Inhalte, Aufträge, Einladungen und zuletzt das Projekt aus MongoDB gelöscht. Bei Fehlern bleibt die Zuordnung für einen erneuten Löschversuch erhalten. Die Verwaltungsseite zeigt dem Eigentümer dafür „Retry permanent deletion“ an; andere Zugriffe auf das Projekt sind gesperrt.
+
+Die Koordination der laufenden Operationen gilt für **eine Backend-Instanz**. Ein Betrieb mit mehreren gleichzeitig schreibenden Backend-Instanzen benötigt vorher eine gemeinsame Sperr-/Transaktionsstrategie. Einladungen, Zustände und Übertragungsanfragen selbst sind persistent; ein Serverneustart verliert sie nicht. Für das Vorproduktionssystem ist keine Datenmigration enthalten.
+
+`ProjectManagementTest` prüft Rechte, Einladungen, Ablauf/Widerruf, Eigentümerwechsel und wiederholbare Löschung. `ProjectDeletionStorageTest` prüft die tatsächliche Dateilöschung im isolierten Testcontainer und erhält Dateien anderer Aufträge. Frontend-Tests prüfen explizite Annahme, Rollen und Bestätigungseingaben. Die OpenAPI-Typen beider Arbeitsverzeichnisse sind synchronisiert.

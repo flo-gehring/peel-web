@@ -38,6 +38,19 @@ public class StorageService {
         }
     }
 
+    public void deleteFilesWithPrefix(String bucket, String jobId) {
+        try {
+            if (!minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucket).build())) return;
+            var objects = minioClient.listObjects(io.minio.ListObjectsArgs.builder().bucket(bucket).prefix(jobId).recursive(true).build());
+            for (var object : objects) {
+                String name = object.get().objectName();
+                // Job objects use either the exact UUID (CSV) or UUID_record.pdf; never delete a neighbouring job.
+                if (name.equals(jobId) || name.startsWith(jobId + "_"))
+                    minioClient.removeObject(io.minio.RemoveObjectArgs.builder().bucket(bucket).object(name).build());
+            }
+        } catch (Exception exception) { throw new IllegalStateException("Project file cleanup failed", exception); }
+    }
+
     private void ensureBucketExists(String bucketName) {
         try {
             boolean found = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build());

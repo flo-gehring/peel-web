@@ -31,9 +31,11 @@ public class ProjectService implements ProjectController {
     public List<ProjectSummary> listProjects(SpringUserDetails springUserDetails) {
         return projectRepository.findAccessibleByUser(springUserDetails.getUserId())
                 .stream()
+                .filter(project -> project.getState() != ProjectState.DELETING || projectAccess.isOwner(project, springUserDetails.getUserId()))
                 .map(project -> new ProjectSummary(
                         new ProjectIdApi(project.getId()),
-                        project.getPersistenceData().projectName()
+                        project.getPersistenceData().projectName(),
+                        project.getPersistenceData().projectDescription(), project.getState()
                 ))
                 .toList();
     }
@@ -44,7 +46,8 @@ public class ProjectService implements ProjectController {
         projectRepository.save(projectPersistence);
         return new ProjectSummary(
                 new ProjectIdApi(projectPersistence.getId()),
-                projectPersistence.getPersistenceData().projectName()
+                projectPersistence.getPersistenceData().projectName(),
+                projectPersistence.getPersistenceData().projectDescription(), projectPersistence.getState()
         );
     }
 
@@ -55,6 +58,7 @@ public class ProjectService implements ProjectController {
         return new ProjectData(
                 new ProjectIdApi(projectPersistence.getId()),
                 projectPersistence.getPersistenceData().projectName(),
+                projectPersistence.getState(),
                 peelScriptRepository.findByProjectId(projectIdDomainValue).stream()
                         .map(script -> new ScriptSummaryResponse(
                                 script.getId(),

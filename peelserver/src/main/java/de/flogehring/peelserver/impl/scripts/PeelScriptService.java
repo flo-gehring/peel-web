@@ -21,8 +21,8 @@ public class PeelScriptService implements PeelScriptController {
     private final ValidationService validationService;
 
     @Override
-    public RunResponse run(RunRequest request) {
-        return runService.run(request);
+    public RunResponse run(RunRequest request, SpringUserDetails user) {
+        return projectAccess.active(new ProjectId(request.projectId().id()), user.getUserId(), () -> runService.run(request));
     }
 
     @Override
@@ -32,25 +32,29 @@ public class PeelScriptService implements PeelScriptController {
 
     @Override
     public ScriptDtoResponse saveScript(CreateScriptRequest request, SpringUserDetails user) {
-        String scriptContent = request.script();
-        ProjectId projectId = new ProjectId(request.projectIdApi().id());
-        projectAccess.requireProjectAccess(projectId, user.getUserId());
-        PeelScriptPersistence created = PeelScriptPersistence.newScript(
-                projectId,request.name(), scriptContent
-        );
-        PeelScriptPersistence saved = peelScriptRepository.save(created);
-        return toResponse(saved);
+        return projectAccess.active(new ProjectId(request.projectIdApi().id()), user.getUserId(), () -> {
+            String scriptContent = request.script();
+            ProjectId projectId = new ProjectId(request.projectIdApi().id());
+            projectAccess.requireProjectAccess(projectId, user.getUserId());
+            PeelScriptPersistence created = PeelScriptPersistence.newScript(
+                    projectId,request.name(), scriptContent
+            );
+            PeelScriptPersistence saved = peelScriptRepository.save(created);
+            return toResponse(saved);
+        });
     }
 
     @Override
     public ScriptDtoResponse updateScript(String id, ScriptUpdateRequest request, SpringUserDetails user) {
-        PeelScriptPersistence existing = requireScriptAccess(id, user);
-        PeelScriptPersistence updated = existing.update(
-                request.name(),
-                requireScript(request.scriptContent())
-        );
-        PeelScriptPersistence saved = peelScriptRepository.save(updated);
-        return toResponse(saved);
+        return projectAccess.active(requireScriptAccess(id, user).getProjectId(), user.getUserId(), () -> {
+            PeelScriptPersistence existing = requireScriptAccess(id, user);
+            PeelScriptPersistence updated = existing.update(
+                    request.name(),
+                    requireScript(request.scriptContent())
+            );
+            PeelScriptPersistence saved = peelScriptRepository.save(updated);
+            return toResponse(saved);
+        });
     }
 
     @Override
@@ -61,8 +65,11 @@ public class PeelScriptService implements PeelScriptController {
 
     @Override
     public void deleteScript(String id, SpringUserDetails user) {
-        requireScriptAccess(id, user);
-        peelScriptRepository.deleteById(id);
+        projectAccess.active(requireScriptAccess(id, user).getProjectId(), user.getUserId(), () -> {
+            requireScriptAccess(id, user);
+            peelScriptRepository.deleteById(id);
+            return null;
+        });
     }
 
     private PeelScriptPersistence requireScriptAccess(String id, SpringUserDetails user) {

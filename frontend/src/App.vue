@@ -44,8 +44,11 @@ async function logout(): Promise<void> {
   signingOut.value = true
   logoutError.value = null
   try {
+    const invitationReturn = route.name === 'invitation' ? route.fullPath : null
     await authStore.logout()
-    await router.replace('/login')
+    await router.replace(
+      invitationReturn ? { name: 'login', query: { redirect: invitationReturn } } : '/login',
+    )
   } catch {
     logoutError.value = 'Sign-out failed. Check your connection and try again.'
   } finally {
@@ -65,7 +68,10 @@ onUnmounted(() => window.removeEventListener('focus', refreshSession))
     :inert="authStore.sessionExpired && !!router.currentRoute.value.meta.requiresAuth"
     class="workspace-shell"
   >
-    <header v-if="route.meta.requiresAuth" class="app-header">
+    <header
+      v-if="route.meta.requiresAuth || (route.name === 'invitation' && authStore.isAuthenticated)"
+      class="app-header"
+    >
       <RouterLink to="/" class="app-brand" aria-label="Peel projects">
         <img :src="peelLogo" alt="" width="38" height="32" /><span>peel</span>
       </RouterLink>
@@ -81,6 +87,9 @@ onUnmounted(() => window.removeEventListener('focus', refreshSession))
       </nav>
       <RouterLink v-if="inWorkspace" to="/print-jobs" class="header-print-jobs"
         >Print jobs</RouterLink
+      >
+      <RouterLink v-if="inWorkspace" :to="`/projects/${route.params.projectId}/settings`"
+        >Project settings</RouterLink
       >
       <button
         class="logout-button"

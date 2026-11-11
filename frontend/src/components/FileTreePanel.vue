@@ -70,6 +70,7 @@ function selectDocument(file: PeelScriptDocument | RenderConfigDocument | Docume
 }
 
 function openCreateDialog() {
+  if (projectStore.isReadOnly) return
   newDocumentName.value = ''
   newDocumentKind.value = 'peel'
   newDocumentRenderConfigurationId.value = ''
@@ -77,6 +78,7 @@ function openCreateDialog() {
 }
 
 async function createDocument() {
+  if (projectStore.isReadOnly) return
   const name = newDocumentName.value.trim()
   if (!name || isCreating.value) {
     return
@@ -180,6 +182,7 @@ async function copyId(file: PeelWorkspaceDocument): Promise<void> {
 }
 
 async function deletePeelScript(file: PeelScriptDocument) {
+  if (projectStore.isReadOnly) return
   if (deletingScriptId.value || !window.confirm(`Delete "${file.name}"?`)) {
     return
   }
@@ -208,6 +211,7 @@ async function deletePeelScript(file: PeelScriptDocument) {
 }
 
 async function deleteRenderConfig(file: RenderConfigDocument) {
+  if (projectStore.isReadOnly) return
   if (deletingRenderConfigId.value || !window.confirm(`Delete "${file.name}"?`)) {
     return
   }
@@ -231,6 +235,7 @@ async function deleteRenderConfig(file: RenderConfigDocument) {
 }
 
 async function deleteDocument(file: DocumentWorkspaceItem) {
+  if (projectStore.isReadOnly) return
   if (deletingDocumentId.value || !window.confirm(`Delete "${file.name}"?`)) {
     return
   }
@@ -261,6 +266,7 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
         class="create-button"
         title="New workspace item"
         aria-label="New workspace item"
+        :disabled="projectStore.isReadOnly"
         @click="openCreateDialog"
       >
         +
@@ -280,7 +286,7 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
           <button class="file-name" @click.stop="selectDocument(file)">{{ file.name }}</button>
           <button
             class="delete-button"
-            :disabled="deletingScriptId === file.id"
+            :disabled="projectStore.isReadOnly || deletingScriptId === file.id"
             title="Delete"
             aria-label="Delete"
             :aria-busy="deletingScriptId === file.id"
@@ -318,7 +324,7 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
           <button class="file-name" @click.stop="selectDocument(file)">{{ file.name }}</button>
           <button
             class="delete-button"
-            :disabled="deletingRenderConfigId === file.id"
+            :disabled="projectStore.isReadOnly || deletingRenderConfigId === file.id"
             title="Delete"
             aria-label="Delete"
             :aria-busy="deletingRenderConfigId === file.id"
@@ -367,6 +373,15 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
               aria-hidden="true"
             />
             <Copy v-else :size="16" aria-hidden="true" />
+          </button>
+          <button
+            class="delete-button"
+            :disabled="projectStore.isReadOnly || deletingDocumentId === file.id"
+            title="Delete document"
+            aria-label="Delete document"
+            @click.stop="deleteDocument(file)"
+          >
+            <Trash2 :size="16" aria-hidden="true" />
           </button>
         </li>
       </ul>

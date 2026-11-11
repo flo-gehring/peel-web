@@ -59,7 +59,7 @@ async function loadPrintJobs() {
 async function openCreateDialog() {
   errorMessage.value = ''
   try {
-    documents.value = await projectStore.loadDocuments()
+    documents.value = await projectStore.loadDocuments(false)
   } catch {
     errorMessage.value = 'Dokumente konnten nicht geladen werden.'
     return

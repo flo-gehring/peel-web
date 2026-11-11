@@ -12,10 +12,13 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.Index;
 
 @Configuration
+@org.springframework.boot.context.properties.EnableConfigurationProperties(ProjectProperties.class)
 public class ProjectIndexConfiguration {
     @Bean
     InitializingBean projectAccessIndexes(MongoTemplate mongo) {
         return () -> {
+            mongo.indexOps(ProjectInvitationPersistence.class).createIndex(new Index().on("tokenHash", Sort.Direction.ASC).unique());
+            mongo.indexOps(ProjectInvitationPersistence.class).createIndex(new Index().on("projectId", Sort.Direction.ASC));
             mongo.indexOps(ProjectPersistence.class).createIndex(new Index().on("persistenceData.ownerId", Sort.Direction.ASC));
             mongo.indexOps(ProjectPersistence.class).createIndex(new Index().on("persistenceData.members", Sort.Direction.ASC));
             for (Class<?> type : new Class<?>[]{PeelScriptPersistence.class, DocumentTemplatePersistence.class,

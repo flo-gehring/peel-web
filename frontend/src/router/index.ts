@@ -42,6 +42,17 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/projects/:projectId/settings',
+      name: 'project-settings',
+      component: () => import('../views/ProjectSettingsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/invitations/:token',
+      name: 'invitation',
+      component: () => import('../views/InvitationView.vue'),
+    },
+    {
       path: '/print-jobs',
       name: 'print-jobs',
       component: () => import('../views/PrintJobsView.vue'),

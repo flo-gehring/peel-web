@@ -30,24 +30,29 @@ public class PrintJobService implements PrintJobController {
 
     @Override
     public PrintJobId initPrintJob(PrintJobInitRequestDto request, SpringUserDetails user) {
-        var document = documents.findById(request.documentId().id()).orElseThrow(ProjectAccessService::notFound);
-        projectAccess.requireProjectAccess(document.getProjectId(), user.getUserId());
-        var id = new PrintJobId(UUID.randomUUID().toString());
-        jobs.insert(PrintJobPersistence.init(id, request.documentId(), document.getProjectId(), request.name()));
-        return id;
+        return projectAccess.active(documents.findById(request.documentId().id()).orElseThrow(ProjectAccessService::notFound).getProjectId(), user.getUserId(), () -> {
+            var document = documents.findById(request.documentId().id()).orElseThrow(ProjectAccessService::notFound);
+            projectAccess.requireProjectAccess(document.getProjectId(), user.getUserId());
+            var id = new PrintJobId(UUID.randomUUID().toString());
+            jobs.insert(PrintJobPersistence.init(id, request.documentId(), document.getProjectId(), request.name()));
+            return id;
+        });
     }
 
     @Override
     public void uploadFile(String id, MultipartFile file, SpringUserDetails user) throws IOException {
-        var job = requireJobAccess(id, user);
-        String fileName = file.getOriginalFilename();
-        if (fileName == null || !fileName.toLowerCase(Locale.ROOT).endsWith(".csv")) {
-            throw new IllegalArgumentException("only CSV files can be uploaded");
-        }
-        if (!"text/csv".equals(file.getContentType())) throw new IllegalArgumentException("CSV uploads must use content type text/csv");
-        storage.uploadFile(BUCKET_NAME, id, file.getInputStream(), file.getContentType());
-        job.updateFileName(fileName);
-        jobs.save(job);
+        projectAccess.active(requireJobAccess(id, user).getProjectId(), user.getUserId(), () -> {
+            var job = requireJobAccess(id, user);
+            String fileName = file.getOriginalFilename();
+            if (fileName == null || !fileName.toLowerCase(Locale.ROOT).endsWith(".csv")) {
+                throw new IllegalArgumentException("only CSV files can be uploaded");
+            }
+            if (!"text/csv".equals(file.getContentType())) throw new IllegalArgumentException("CSV uploads must use content type text/csv");
+            try { storage.uploadFile(BUCKET_NAME, id, file.getInputStream(), file.getContentType()); } catch (IOException exception) { throw new java.io.UncheckedIOException(exception); }
+            job.updateFileName(fileName);
+            jobs.save(job);
+            return null;
+        });
     }
 
     @Override
@@ -63,15 +68,25 @@ public class PrintJobService implements PrintJobController {
 
     @Override
     public PrintJobStatus runPrintJob(String id, SpringUserDetails user) {
-        var job = requireJobAccess(id, user);
-        var status = job.getPrintJobPersistenceData().status();
-        if (status != PrintJobStatus.CREATED) return status;
-        var document = documents.findById(job.getPrintJobPersistenceData().documentId())
-                .filter(value -> job.getProjectId().equals(value.getProjectId())).orElseThrow(ProjectAccessService::notFound);
-        // Resolve and authorize before scheduling; the worker does not depend on a request SecurityContext.
-        var resolved = references.resolve(document);
-        runner.run(job, resolved);
-        return PrintJobStatus.CALCULATING;
+        return projectAccess.active(requireJobAccess(id, user).getProjectId(), user.getUserId(), () -> {
+            var job = requireJobAccess(id, user);
+            var status = job.getPrintJobPersistenceData().status();
+            if (status != PrintJobStatus.CREATED) return status;
+            var document = documents.findById(job.getPrintJobPersistenceData().documentId())
+                    .filter(value -> job.getProjectId().equals(value.getProjectId())).orElseThrow(ProjectAccessService::notFound);
+            // Resolve and authorize before scheduling; the worker does not depend on a request SecurityContext.
+            var resolved = references.resolve(document);
+            job.updateStatus(PrintJobStatus.CALCULATING);
+            jobs.save(job);
+            try {
+            runner.run(job, resolved);
+            } catch (RuntimeException exception) {
+                job.updateStatus(PrintJobStatus.FAILED);
+                jobs.save(job);
+                throw exception;
+            }
+            return PrintJobStatus.CALCULATING;
+        });
     }
 
     @Override

@@ -6,6 +6,7 @@ import { renderConfigurationSchema } from '@/adapter/renderConfigurationSchema'
 import { useEditorDraftStore } from '@/stores/editorDrafts'
 import { useRunBindingsStore } from '@/stores/runBindings'
 import { useRunOutputStore } from '@/stores/runOutput'
+import { useProjectStore } from '@/stores/projects'
 
 const props = defineProps<{
   params: IDockviewHeaderActionsProps
@@ -22,6 +23,7 @@ const saveError = ref<string | null>(null)
 const draftStore = useEditorDraftStore()
 const bindingsStore = useRunBindingsStore()
 const runOutputStore = useRunOutputStore()
+const projectStore = useProjectStore()
 
 type EditorPanelParams = {
   filename?: string
@@ -69,6 +71,7 @@ function showSaveError(message: string): void {
 }
 
 async function handleSave() {
+  if (projectStore.isReadOnly) return
   const context = getActiveEditorContext()
   if (!context || isSaving.value) {
     return
@@ -152,6 +155,7 @@ async function handleSave() {
 }
 
 async function handleRun() {
+  if (projectStore.isReadOnly) return
   const context = getActiveEditorContext()
   if (!context || context.documentKind !== 'peel' || isRunning.value) {
     return
@@ -174,7 +178,14 @@ async function handleRun() {
   isRunning.value = true
   runOutputStore.startRun({ panelId: context.panelId, name: context.name, script, bindings })
   try {
-    const { data, error } = await api.PUT('/api/scripts/run', { body: { script, bindings } })
+    const projectId = projectStore.activeProject?.projectIdApi?.id
+    if (!projectId || projectStore.isReadOnly) {
+      runOutputStore.setRunError('Open an active project to run a script.')
+      return
+    }
+    const { data, error } = await api.PUT('/api/scripts/run', {
+      body: { projectId: { id: projectId }, script, bindings },
+    })
     if (error) {
       runOutputStore.setRunError((error as { message?: string }).message || 'Run request failed.')
       return
@@ -192,13 +203,18 @@ async function handleRun() {
 
 <template>
   <div v-if="showActions" class="group-header-actions">
-    <button class="action-btn" :disabled="isSaving" title="Save file" @click="handleSave">
+    <button
+      class="action-btn"
+      :disabled="isSaving || projectStore.isReadOnly"
+      title="Save file"
+      @click="handleSave"
+    >
       {{ isSaving ? 'Saving…' : 'Save' }}
     </button>
     <button
       v-if="activeDocumentKind === 'peel'"
       class="action-btn run-button"
-      :disabled="isRunning"
+      :disabled="isRunning || projectStore.isReadOnly"
       title="Run script"
       @click="handleRun"
     >

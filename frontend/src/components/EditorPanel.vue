@@ -3,6 +3,8 @@ import { ref, computed, shallowRef, watch } from 'vue'
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
 import { useEditorDraftStore } from '@/stores/editorDrafts'
 import { definePeelEditorTheme } from '@/adapter/editorTheme'
+import { useProjectStore } from '@/stores/projects'
+import type { editor as MonacoEditor } from 'monaco-editor'
 
 // 1. Accept props passed by Dockview via params
 const props = defineProps<{
@@ -25,6 +27,7 @@ const props = defineProps<{
 }>()
 
 const draftStore = useEditorDraftStore()
+const projectStore = useProjectStore()
 
 const panelId = computed(() => props.params?.api?.id || props.params?.id || '')
 const documentId = computed(
@@ -70,15 +73,16 @@ const language = computed(() => {
 
 // 4. IMPORTANT: Use shallowRef for the editor instance to prevent
 // Vue from making the Monaco internals reactive (which degrades performance)
-const editorRef = shallowRef(null)
+const editorRef = shallowRef<MonacoEditor.IStandaloneCodeEditor | null>(null)
 
 // Called when Monaco mounts inside the DOM
-const handleMount = (editorInstance: any) => {
+const handleMount = (editorInstance: MonacoEditor.IStandaloneCodeEditor) => {
   editorRef.value = editorInstance
 }
 
 // 5. Monaco configuration options
-const editorOptions = {
+const editorOptions = computed(() => ({
+  readOnly: projectStore.isReadOnly,
   // CRITICAL FOR DOCKVIEW: Tells Monaco to observe container size changes
   // and auto-resize when panel splitters are dragged
   automaticLayout: true,
@@ -92,7 +96,7 @@ const editorOptions = {
   tabSize: 4,
   smoothScrolling: true,
   cursorBlinking: 'smooth',
-}
+}))
 
 // 6. Notify parent or handle content updates
 watch(code, (newVal) => {

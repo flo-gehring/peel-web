@@ -36,15 +36,18 @@ public class PrintJobRunner {
 
     public void run(PrintJobPersistence printJob, Document document) {
         PrintJobStatus status = printJob.getPrintJobPersistenceData().status();
-        if (status != PrintJobStatus.CREATED) {
-            log.warn("Print job {} is not in CREATED state, current state: {}", printJob.getId(), status);
-            printJob.updateStatus(PrintJobStatus.FAILED);
-            printJobRepository.save(printJob);
+        if (status != PrintJobStatus.CALCULATING) {
+            log.warn("Print job {} is not in CALCULATING state, current state: {}", printJob.getId(), status);
             return;
         }
-        printJob.updateStatus(PrintJobStatus.CALCULATING);
-        printJobRepository.save(printJob);
-        runJob(printJob, document);
+        try { runJob(printJob, document); }
+        catch (RuntimeException exception) {
+            printJob.updateStatus(PrintJobStatus.FAILED);
+            log.error("Print job {} failed", printJob.getId(), exception);
+        } finally {
+            // Publish a terminal status only after storage processing and stream closing have finished.
+            printJobRepository.save(printJob);
+        }
     }
 
     private void runJob(PrintJobPersistence printJobPersistence, Document document) {
@@ -52,7 +55,6 @@ public class PrintJobRunner {
         if (fileName == null) {
             log.warn("Print job {} has no file uploaded, cannot run", printJobPersistence.getId());
             printJobPersistence.updateStatus(PrintJobStatus.FAILED);
-            printJobRepository.save(printJobPersistence);
             return;
         }
         storageService.processFile(
@@ -93,8 +95,6 @@ public class PrintJobRunner {
         } catch (Exception e) {
             log.error("Error processing CSV for print job {}: {}", printJobPersistence.getId(), e.getMessage());
             printJobPersistence.updateStatus(PrintJobStatus.FAILED);
-        } finally {
-            printJobRepository.save(printJobPersistence);
         }
     }
 

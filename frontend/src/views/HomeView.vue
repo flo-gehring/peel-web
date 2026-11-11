@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjectStore } from '@/stores/projects'
 import peelLogo from '@/assets/peel-logo.png'
@@ -14,6 +14,14 @@ const isLoading = ref(true)
 const showCreate = ref(false)
 const loadError = ref<string | null>(null)
 const createError = ref<string | null>(null)
+const projectFilter = ref('active')
+const visibleProjects = computed(() =>
+  projectStore.projects.filter((project) =>
+    projectFilter.value === 'archived'
+      ? project.state === 'ARCHIVED'
+      : project.state !== 'ARCHIVED',
+  ),
+)
 
 async function loadProjects(): Promise<void> {
   isLoading.value = true
@@ -78,6 +86,13 @@ onMounted(loadProjects)
         </button>
       </div>
       <div class="project-collection" :aria-busy="isLoading">
+        <label class="project-filter"
+          >Show
+          <select v-model="projectFilter" aria-label="Project status">
+            <option value="active">Active projects</option>
+            <option value="archived">Archived projects</option>
+          </select></label
+        >
         <form
           v-if="showCreate"
           id="new-project-form"
@@ -118,32 +133,44 @@ onMounted(loadProjects)
           <p role="alert" class="project-error">{{ loadError }}</p>
           <button class="quiet-button" @click="loadProjects">Try again</button>
         </div>
-        <div v-else-if="!projectStore.projects.length" class="collection-message">
+        <div v-else-if="!visibleProjects.length" class="collection-message">
           <p>No projects yet. Create your first project to get started.</p>
         </div>
         <nav v-else aria-label="Projects" class="project-list">
-          <RouterLink
-            v-for="project in projectStore.projects"
+          <div
+            v-for="project in visibleProjects"
             :key="project.projectIdApi?.id"
-            class="project-row"
-            :to="{ name: 'project', params: { projectId: project.projectIdApi?.id } }"
+            class="project-entry"
           >
-            <svg
-              class="folder-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.7"
-              aria-hidden="true"
+            <RouterLink
+              :key="project.projectIdApi?.id"
+              class="project-row"
+              :to="{ name: 'project', params: { projectId: project.projectIdApi?.id } }"
             >
-              <path
-                d="M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"
-              />
-            </svg>
-            <strong>{{ project.name }}</strong
-            ><span class="project-description">Documents, scripts &amp; render configurations</span
-            ><span class="open-arrow" aria-hidden="true">→</span>
-          </RouterLink>
+              <svg
+                class="folder-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.7"
+                aria-hidden="true"
+              >
+                <path
+                  d="M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"
+                />
+              </svg>
+              <strong>{{ project.name }}</strong
+              ><span class="project-description"
+                >{{ project.description || 'Documents, scripts & render configurations'
+                }}{{ project.state === 'DELETING' ? ' — Cleanup incomplete' : '' }}</span
+              ><span class="open-arrow" aria-hidden="true">→</span>
+            </RouterLink>
+            <RouterLink
+              class="manage-project"
+              :to="`/projects/${project.projectIdApi?.id}/settings`"
+              >Manage</RouterLink
+            >
+          </div>
         </nav>
       </div>
     </section>
@@ -151,6 +178,28 @@ onMounted(loadProjects)
 </template>
 
 <style scoped>
+.project-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--peel-border);
+  color: var(--peel-muted);
+}
+.project-entry {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--peel-border);
+}
+.project-entry .project-row {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 0;
+}
+.manage-project {
+  margin-right: 24px;
+  color: var(--peel-accent);
+}
 .home-view {
   min-height: calc(100dvh - var(--app-header-height));
   padding: 56px 32px;

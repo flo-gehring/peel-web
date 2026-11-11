@@ -63,7 +63,7 @@ public class AuthLinkService {
     public static String safeRedirect(String path) {
         if (path == null || path.length() > 2048 || path.contains("\\") || path.contains("%")
                 || path.chars().anyMatch(Character::isISOControl)) return "/";
-        return path.matches("/(?:projects/[^/?#]+|print-jobs(?:/[^/?#]+)?)(?:[?#].*)?") ? path : "/";
+        return path.matches("/(?:projects/[^/?#]+(?:/settings)?|invitations/[A-Za-z0-9_-]{43}|print-jobs(?:/[^/?#]+)?)(?:[?#].*)?") ? path : "/";
     }
 
     private synchronized void checkRateLimit(String email, String clientIp) {

@@ -17,6 +17,12 @@ const isUploading = ref(false)
 const isStarting = ref(false)
 const errorMessage = ref('')
 const printJobId = computed(() => String(route.params.id))
+const readOnly = computed(
+  () =>
+    projectStore.projects.find(
+      (project) => project.projectIdApi?.id === printJob.value?.projectId?.id,
+    )?.state !== 'ACTIVE',
+)
 const documentName = computed(() => {
   const documentId = printJob.value?.documentId?.id
   return (
@@ -25,7 +31,7 @@ const documentName = computed(() => {
   )
 })
 const canStart = computed(
-  () => printJob.value?.status === 'CREATED' && Boolean(printJob.value.fileName),
+  () => !readOnly.value && printJob.value?.status === 'CREATED' && Boolean(printJob.value.fileName),
 )
 
 function statusLabel(status: PrintJobSummary['status']) {
@@ -74,6 +80,7 @@ async function startPrintJob() {
 }
 
 async function uploadFile(event: Event) {
+  if (readOnly.value) return
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
   if (!file.name.toLowerCase().endsWith('.csv')) {
@@ -88,6 +95,7 @@ async function uploadFile(event: Event) {
     params: { path: { id: printJobId.value } },
     body: { file: csvFile as unknown as string },
     bodySerializer: (body) => {
+      if (!body?.file) throw new Error('A CSV file is required.')
       const formData = new FormData()
       formData.append('file', body.file as unknown as File)
       return formData
@@ -169,7 +177,7 @@ onMounted(loadPrintJob)
             <input
               type="file"
               accept=".csv,text/csv"
-              :disabled="isUploading"
+              :disabled="isUploading || readOnly"
               @change="uploadFile"
             />
           </label>

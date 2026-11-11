@@ -8,6 +8,9 @@ describe('safeAuthRedirect', () => {
     )
     expect(safeAuthRedirect('/print-jobs')).toBe('/print-jobs')
     expect(safeAuthRedirect('/print-jobs/123')).toBe('/print-jobs/123')
+    expect(safeAuthRedirect('/projects/123/settings')).toBe('/projects/123/settings')
+    const invitation = '/invitations/' + 'a'.repeat(43)
+    expect(safeAuthRedirect(invitation)).toBe(invitation)
   })
   it('rejects external URLs, encoded paths and login loops', () => {
     for (const value of [

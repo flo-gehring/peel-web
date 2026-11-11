@@ -10,6 +10,7 @@ import java.util.List;
 public record ProjectData(
         ProjectIdApi projectIdApi,
         String name,
+        de.flogehring.peelserver.impl.project.ProjectState state,
         List<ScriptSummaryResponse> scripts,
         List<DocumentTemplateSummaryResponse> documentTemplates,
         List<RenderConfigurationSummaryResponse> renderConfigurations

@@ -36,7 +36,7 @@ Zunächst kein Cache über Requests hinweg: Änderungen an Eigentümer/Mitglieds
 
 Bestehende Print Jobs ohne `projectId` werden nicht migriert und geben keinen Zugriff frei. Bei neuen Aufträgen wird die Zuordnung ausschließlich aus der geprüften Vorlage übernommen. Der Hintergrund-Worker erhält die bereits geprüfte, aufgelöste Vorlage als Snapshot und benötigt keinen Session-Kontext.
 
-Einladungen, Mitgliederverwaltung und zusätzliche Rollen gehören zum anschließenden Projektmanagement.
+Einladungen, Mitgliederverwaltung, Admin-Rechte und der Lebenszyklus sind im [Projektmanagement](PROJECT_MANAGEMENT.md) implementiert. Archivierte Projekte erlauben weiterhin Lesezugriffe und Downloads; schreibende Aktionen und Ausführungen benötigen ein aktives Projekt. Auch freie Skriptausführung trägt inzwischen einen Projektkontext. Admins erhalten zusätzliche Einladungsrechte; abgestufte Inhaltsrechte sind weiterhin nicht vorgesehen.
 
 ## Abschlusskriterium
 

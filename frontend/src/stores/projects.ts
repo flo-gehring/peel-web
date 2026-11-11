@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '@/adapter/client'
 import type { components } from '@/types/api'
@@ -11,6 +11,9 @@ export const useProjectStore = defineStore('projects', () => {
   const projects = ref<ProjectSummary[]>([])
   const activeProject = ref<ProjectData | null>(null)
   const isLoading = ref(false)
+  const isReadOnly = computed(
+    () => activeProject.value?.state === 'ARCHIVED' || activeProject.value?.state === 'DELETING',
+  )
 
   async function loadProjects(): Promise<void> {
     const { data, error } = await api.GET('/api/projects/list')
@@ -41,10 +44,14 @@ export const useProjectStore = defineStore('projects', () => {
     return data
   }
 
-  async function loadDocuments(): Promise<DocumentSummary[]> {
+  async function loadDocuments(includeArchived = true): Promise<DocumentSummary[]> {
     await loadProjects()
     const projectData = await Promise.all(
       projects.value
+        .filter(
+          (project) =>
+            project.state !== 'DELETING' && (includeArchived || project.state !== 'ARCHIVED'),
+        )
         .map((project) => project.projectIdApi?.id)
         .filter((projectId): projectId is string => !!projectId)
         .map(async (projectId) => {
@@ -69,6 +76,7 @@ export const useProjectStore = defineStore('projects', () => {
   }
 
   return {
+    isReadOnly,
     projects,
     activeProject,
     isLoading,

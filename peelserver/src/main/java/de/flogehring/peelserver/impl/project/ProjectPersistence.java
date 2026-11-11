@@ -16,6 +16,8 @@ public class ProjectPersistence {
     @Id
     private String id;
     private ProjectPersistenceData persistenceData;
+    private ProjectState state = ProjectState.ACTIVE;
+    private OwnershipTransfer transfer;
 
     @PersistenceCreator
     public ProjectPersistence(String id, ProjectPersistenceData persistenceData) {
