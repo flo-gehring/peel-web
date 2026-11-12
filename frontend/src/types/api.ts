@@ -172,7 +172,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/projects/{projectId}/files": {
+    "/api/projects/{projectId}/print-jobs": {
         parameters: {
             query?: never;
             header?: never;
@@ -181,11 +181,27 @@ export interface paths {
         };
         get: operations["list"];
         put?: never;
+        post: operations["create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{projectId}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_1"];
+        put?: never;
         /**
          * Create a file at version 0
          * @description A repeated creation succeeds only for an identical file still at version 0. Never overwrites an existing file.
          */
-        post: operations["create"];
+        post: operations["create_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -336,22 +352,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/print-jobs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["initPrintJob"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/print-jobs/{id}/run": {
         parameters: {
             query?: never;
@@ -496,6 +496,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{projectId}/print-jobs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["details"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/list": {
         parameters: {
             query?: never;
@@ -520,22 +536,6 @@ export interface paths {
             cookie?: never;
         };
         get: operations["downloadFile_1"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/print-jobs/list": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["listPrintJobs"];
         put?: never;
         post?: never;
         delete?: never;
@@ -754,6 +754,16 @@ export interface components {
         AdminRequest: {
             admin?: boolean;
         };
+        DocumentId: {
+            id: string;
+        };
+        PrintJobInitRequestDto: {
+            documentId: components["schemas"]["DocumentId"];
+            name: string;
+        };
+        PrintJobId: {
+            id?: string;
+        };
         CreateFile: {
             /** Format: uuid */
             id: string;
@@ -774,16 +784,6 @@ export interface components {
         };
         EmailRequest: {
             email: string;
-        };
-        DocumentId: {
-            id: string;
-        };
-        PrintJobInitRequestDto: {
-            documentId: components["schemas"]["DocumentId"];
-            name?: string;
-        };
-        PrintJobId: {
-            id?: string;
         };
         DocumentPreviewRequest: {
             projectId: components["schemas"]["ProjectIdApi"];
@@ -830,6 +830,39 @@ export interface components {
                     [key: string]: string;
                 };
             };
+        };
+        DocumentJobs: {
+            documentId?: string;
+            name?: string;
+            jobs?: components["schemas"]["PrintJobSummary"][];
+        };
+        PrintJobSummary: {
+            printJobId?: components["schemas"]["PrintJobId"];
+            projectId?: components["schemas"]["ProjectIdApi"];
+            name?: string;
+            documentId?: components["schemas"]["DocumentId"];
+            documentName?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            fileName?: string;
+            /** @enum {string} */
+            status?: "CREATED" | "CALCULATING" | "PRINTING" | "COMPLETED" | "FAILED";
+            fileIds?: string[];
+        };
+        ProjectPrintJobs: {
+            projectId?: components["schemas"]["ProjectIdApi"];
+            projectName?: string;
+            /** @enum {string} */
+            state?: "ACTIVE" | "ARCHIVED" | "DELETING";
+            documents?: components["schemas"]["DocumentJobs"][];
+            deletedDocuments?: components["schemas"]["DocumentJobs"][];
+        };
+        ProjectPrintJobDetails: {
+            job?: components["schemas"]["PrintJobSummary"];
+            projectName?: string;
+            /** @enum {string} */
+            projectState?: "ACTIVE" | "ARCHIVED" | "DELETING";
+            currentDocumentName?: string;
         };
         FileSummary: {
             id?: string;
@@ -894,16 +927,6 @@ export interface components {
             recipientId?: string;
             /** Format: date-time */
             expiresAt?: string;
-        };
-        PrintJobSummary: {
-            printJobId?: components["schemas"]["PrintJobId"];
-            projectId?: components["schemas"]["ProjectIdApi"];
-            name?: string;
-            documentId?: components["schemas"]["DocumentId"];
-            fileName?: string;
-            /** @enum {string} */
-            status?: "CREATED" | "CALCULATING" | "PRINTING" | "COMPLETED" | "FAILED";
-            fileIds?: string[];
         };
         InvitationDetails: {
             projectName?: string;
@@ -1551,6 +1574,54 @@ export interface operations {
     };
     list: {
         parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPrintJobs"];
+                };
+            };
+        };
+    };
+    create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrintJobInitRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrintJobId"];
+                };
+            };
+        };
+    };
+    list_1: {
+        parameters: {
             query?: {
                 type?: string;
             };
@@ -1618,7 +1689,7 @@ export interface operations {
             };
         };
     };
-    create: {
+    create_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -1904,30 +1975,6 @@ export interface operations {
             };
         };
     };
-    initPrintJob: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PrintJobInitRequestDto"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PrintJobId"];
-                };
-            };
-        };
-    };
     runPrintJob: {
         parameters: {
             query?: never;
@@ -2126,6 +2173,29 @@ export interface operations {
             };
         };
     };
+    details: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPrintJobDetails"];
+                };
+            };
+        };
+    };
     listProjects: {
         parameters: {
             query?: never;
@@ -2166,26 +2236,6 @@ export interface operations {
                 content: {
                     "application/pdf": string;
                     "application/json": string;
-                };
-            };
-        };
-    };
-    listPrintJobs: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PrintJobSummary"][];
                 };
             };
         };

@@ -97,6 +97,9 @@ The Vite alias `@/` resolves to `frontend/src/`. The Vite dev server proxies `/a
 
 ### Compact editor layout
 
+- Print Jobs is project-scoped at `/projects/:projectId/print-jobs` and `/projects/:projectId/print-jobs/:id`. Use the matching `/api/projects/{projectId}/print-jobs` list/create/detail endpoints; do not aggregate documents across projects.
+- `CreatePrintJobDialog.vue` is shared by project groups and the document editor. The editor prepares/saves its document before creation; a failed save must prevent the job request. See `peelserver/docs/PRINT_JOBS.md`.
+
 - `EditorPanel.vue` and `DocumentPanel.vue` embed the same `FileToolbar.vue`; do not add save/run controls to Dockview headers.
 - Document script links and render configuration have dedicated Banana/Palette toolbar buttons and separate side panels. The gear opens only file metadata. Edit/Preview share the document area; keep the Tiptap instance mounted when switching.
 - Document previews are keyed by file ID in `documentPreview.ts`. Ignore superseded/cleared requests and revoke old object URLs.

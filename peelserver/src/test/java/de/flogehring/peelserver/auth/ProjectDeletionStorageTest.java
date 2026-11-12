@@ -21,7 +21,7 @@ class ProjectDeletionStorageTest {
     @Test void hardDeletionRemovesCsvPdfAndOrphanResultsButPreservesOtherProjectsFiles() {
         var owner = new SpringUserDetails(new UserId("owner"), new UserPersistenceData("owner@example.test", null));
         var project = projects.save(ProjectPersistence.newProject(owner.getUserId(), "Delete me"));
-        var job = jobs.save(PrintJobPersistence.init(new PrintJobId(UUID.randomUUID().toString()), new DocumentId("template"), new ProjectId(project.getId()), "Job"));
+        var job = jobs.save(PrintJobPersistence.init(new PrintJobId(UUID.randomUUID().toString()), new DocumentId("template"), new ProjectId(project.getId()), "Job", "Template"));
         String unrelated = UUID.randomUUID().toString();
         for (String key : new String[]{job.getId(), job.getId() + "_1.pdf", job.getId() + "_orphan.pdf", unrelated})
             storage.uploadFile("print-jobs", key, new ByteArrayInputStream("data".getBytes()), "application/octet-stream");

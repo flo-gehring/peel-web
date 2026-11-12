@@ -23,18 +23,12 @@ import java.util.List;
 @RequestMapping(path = "/api/print-jobs", produces = MediaType.APPLICATION_JSON_VALUE)
 public interface PrintJobController {
 
-    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    PrintJobId initPrintJob(@Valid @RequestBody PrintJobInitRequestDto initRequestDto, @AuthenticationPrincipal SpringUserDetails user);
-
     @PutMapping(path = "/{id:.+}/data", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     void uploadFile(
             @PathVariable("id") String printJobId,
             @RequestPart("file") MultipartFile multipartFile,
             @AuthenticationPrincipal SpringUserDetails user
     ) throws IOException;
-
-    @GetMapping("/list")
-    List<PrintJobSummary> listPrintJobs(@AuthenticationPrincipal SpringUserDetails user);
 
     @PostMapping("/{id:.+}/run")
     PrintJobStatus runPrintJob(@PathVariable("id") String printJobId, @AuthenticationPrincipal SpringUserDetails user);

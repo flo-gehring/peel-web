@@ -19,18 +19,24 @@ public class PrintJobPersistence {
     @Indexed(unique = true)
     private final String id;
     private final ProjectId projectId;
+    private final String documentName;
+    private final java.time.Instant createdAt;
     private PrintJobPersistenceData printJobPersistenceData;
 
-    private PrintJobPersistence(String id, ProjectId projectId, PrintJobPersistenceData printJobPersistenceData) {
+    private PrintJobPersistence(String id, ProjectId projectId, String documentName, java.time.Instant createdAt, PrintJobPersistenceData printJobPersistenceData) {
         this.id = id;
         this.projectId = projectId;
+        this.documentName = documentName;
+        this.createdAt = createdAt;
         this.printJobPersistenceData = printJobPersistenceData;
     }
 
-    public static PrintJobPersistence init(PrintJobId printJobId, DocumentId documentId, ProjectId projectId, String name) {
+    public static PrintJobPersistence init(PrintJobId printJobId, DocumentId documentId, ProjectId projectId, String name, String documentName) {
         return new PrintJobPersistence(
                 printJobId.id(),
                 projectId,
+                documentName,
+                java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS),
                 new PrintJobPersistenceData(
                         name,
                         documentId.id(),

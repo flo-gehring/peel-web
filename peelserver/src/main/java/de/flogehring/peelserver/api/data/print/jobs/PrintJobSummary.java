@@ -11,6 +11,8 @@ public record PrintJobSummary(
         ProjectIdApi projectId,
         String name,
         DocumentId documentId,
+        @Nullable String documentName,
+        @Nullable java.time.Instant createdAt,
         @Nullable String fileName,
         PrintJobStatus status,
         List<String> fileIds

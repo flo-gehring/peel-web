@@ -6,5 +6,5 @@ import java.util.List;
 import java.util.Collection;
 
 public interface PrintJobRepository extends MongoRepository<PrintJobPersistence, String> {
-    List<PrintJobPersistence> findByProjectIdIn(Collection<ProjectId> projectIds);
+    List<PrintJobPersistence> findByProjectId(ProjectId projectId);
 }

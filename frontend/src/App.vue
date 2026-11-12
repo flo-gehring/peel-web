@@ -13,11 +13,12 @@ import SessionSignInForm from '@/components/SessionSignInForm.vue'
 const router = useRouter()
 const route = useRoute()
 const projects = useProjectStore()
-const inWorkspace = computed(() => route.name === 'project')
+const inWorkspace = computed(() => typeof route.params.projectId === 'string')
 const projectName = computed(() =>
   projects.activeProject?.projectIdApi?.id === route.params.projectId
     ? projects.activeProject?.name
-    : 'Loading project…',
+    : (projects.projects.find((project) => project.projectIdApi?.id === route.params.projectId)
+        ?.name ?? 'Project'),
 )
 const authStore = useAuthStore()
 const drafts = useEditorDraftStore()
@@ -84,7 +85,17 @@ onUnmounted(() => window.removeEventListener('focus', refreshSession))
         >
         <template v-if="inWorkspace"
           ><span class="breadcrumb-divider" aria-hidden="true">/</span
-          ><RouterLink to="/print-jobs" class="header-print-jobs">Print jobs</RouterLink
+          ><RouterLink
+            :to="`/projects/${route.params.projectId}`"
+            :aria-current="route.name === 'project' ? 'page' : undefined"
+            >Workspace</RouterLink
+          ><RouterLink
+            :to="`/projects/${route.params.projectId}/print-jobs`"
+            class="header-print-jobs"
+            :aria-current="
+              route.name === 'print-jobs' || route.name === 'print-job-detail' ? 'page' : undefined
+            "
+            >Print jobs</RouterLink
           ><RouterLink
             :to="`/projects/${route.params.projectId}/settings`"
             class="settings-link"
@@ -93,7 +104,6 @@ onUnmounted(() => window.removeEventListener('focus', refreshSession))
             ><Settings :size="18" aria-hidden="true" /></RouterLink
           ><strong class="project-breadcrumb">{{ projectName }}</strong></template
         >
-        <RouterLink v-if="!inWorkspace" to="/print-jobs">Print jobs</RouterLink>
       </nav>
       <button
         class="logout-button"
@@ -175,6 +185,7 @@ onUnmounted(() => window.removeEventListener('focus', refreshSession))
   letter-spacing: -1px;
 }
 .app-navigation {
+  overflow-x: auto;
   display: flex;
   align-items: center;
   gap: 20px;
@@ -248,9 +259,7 @@ onUnmounted(() => window.removeEventListener('focus', refreshSession))
     gap: 10px;
     padding-left: 12px;
   }
-  .header-print-jobs {
-    display: none;
-  }
+
   .project-breadcrumb {
     max-width: 130px;
   }

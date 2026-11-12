@@ -230,7 +230,7 @@ public class ProjectManagementService {
             if (!project.getPersistenceData().projectName().equals(confirmation)) throw new IllegalArgumentException("Type the exact project name to delete it.");
             if (project.getState() == ProjectState.ACTIVE) throw new ResponseStatusException(HttpStatus.CONFLICT, "Archive the project before deleting it.");
             ProjectId projectId = new ProjectId(id);
-            var projectJobs = jobs.findByProjectIdIn(List.of(projectId));
+            var projectJobs = jobs.findByProjectId(projectId);
             if (projectJobs.stream().anyMatch(job -> List.of(PrintJobStatus.CALCULATING, PrintJobStatus.PRINTING).contains(job.getPrintJobPersistenceData().status())))
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Wait for running print jobs to finish before deleting this project.");
             mongo.updateFirst(byId(id), new Update().set("state", ProjectState.DELETING), ProjectPersistence.class);

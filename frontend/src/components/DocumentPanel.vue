@@ -3,8 +3,10 @@ import { computed, ref, watchEffect } from 'vue'
 import type { JSONContent } from '@tiptap/core'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
-import { Banana, Palette } from '@lucide/vue'
+import { Banana, Palette, Printer } from '@lucide/vue'
 import FileToolbar from './FileToolbar.vue'
+import CreatePrintJobDialog from './CreatePrintJobDialog.vue'
+import { useRouter } from 'vue-router'
 import FileSettings from './FileSettings.vue'
 import RenderPreviewPanel from './RenderPreviewPanel.vue'
 import { apiErrorMessage } from '@/adapter/apiError'
@@ -36,6 +38,25 @@ const files = useProjectFileStore()
 const draft = computed(() => draftStore.getDraft(documentId) ?? initialDraft)
 const toolbar = ref<InstanceType<typeof FileToolbar> | null>(null)
 const settingsOpen = ref(false)
+const router = useRouter()
+const printJobDialog = ref(false)
+const printJobNeedsSave = computed(() => !!draft.value?.dirty || files.metadataDirty(documentId))
+async function preparePrintJob(): Promise<void> {
+  if (projectStore.isReadOnly) throw new Error('Das Projekt ist schreibgeschützt.')
+  if (printJobNeedsSave.value && !(await toolbar.value?.save()))
+    throw new Error(
+      'Die Dokumentvorlage konnte nicht gespeichert werden. Prüfe die Dateiangaben und versuche es erneut.',
+    )
+  if (printJobNeedsSave.value)
+    throw new Error('Die Vorlage wurde während des Speicherns geändert. Bitte erneut speichern.')
+}
+function printJobCreated(id: string): void {
+  printJobDialog.value = false
+  void router.push({
+    name: 'print-job-detail',
+    params: { projectId: projectStore.activeProject?.projectIdApi?.id, id },
+  })
+}
 const setupOpen = ref<'scripts' | 'renderConfig' | null>(null)
 function toggleSetup(section: 'scripts' | 'renderConfig'): void {
   settingsOpen.value = false
@@ -233,9 +254,27 @@ async function previewDocument(): Promise<void> {
           >
             <Palette :size="16" aria-hidden="true" />
           </button>
+          <button
+            title="Create print job"
+            aria-label="Create print job"
+            :disabled="projectStore.isReadOnly"
+            @click="printJobDialog = true"
+          >
+            <Printer :size="16" aria-hidden="true" />
+          </button>
         </div>
       </template>
     </FileToolbar>
+    <CreatePrintJobDialog
+      v-if="printJobDialog && projectStore.activeProject?.projectIdApi?.id"
+      :project-id="projectStore.activeProject.projectIdApi.id"
+      :document-id="documentId"
+      :document-name="files.metadata(documentId).name || draft?.name || ''"
+      :save-required="printJobNeedsSave"
+      :prepare="preparePrintJob"
+      @cancel="printJobDialog = false"
+      @created="printJobCreated"
+    />
     <div class="document-body">
       <FileSettings v-if="settingsOpen" :document-id="documentId" @close="settingsOpen = false" />
       <FileSettings

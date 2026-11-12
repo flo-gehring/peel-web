@@ -53,13 +53,13 @@ const router = createRouter({
       component: () => import('../views/InvitationView.vue'),
     },
     {
-      path: '/print-jobs',
+      path: '/projects/:projectId/print-jobs',
       name: 'print-jobs',
       component: () => import('../views/PrintJobsView.vue'),
       meta: { requiresAuth: true },
     },
     {
-      path: '/print-jobs/:id',
+      path: '/projects/:projectId/print-jobs/:id',
       name: 'print-job-detail',
       component: () => import('../views/PrintJobDetailView.vue'),
       meta: { requiresAuth: true },

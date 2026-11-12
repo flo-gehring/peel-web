@@ -53,8 +53,8 @@ const status = computed(() =>
           : 'Saved',
 )
 
-async function save(): Promise<void> {
-  if (projects.isReadOnly || saving.value) return
+async function save(): Promise<boolean> {
+  if (projects.isReadOnly || saving.value) return false
   const id = props.documentId
   const projectId = projects.activeProject?.projectIdApi?.id
   const metadata = { ...files.metadata(id) }
@@ -81,8 +81,10 @@ async function save(): Promise<void> {
     if (props.documentKind === 'document') {
       if (documents.getDraft(id) === document) documents.markSaved(id)
     } else if (drafts.getDraft(id) === text) drafts.markSaved(id, text)
+    return true
   } catch (error) {
     saveError.value = error instanceof Error ? error.message : 'The file could not be saved.'
+    return false
   } finally {
     saving.value = false
   }

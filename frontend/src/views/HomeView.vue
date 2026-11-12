@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Settings } from '@lucide/vue'
+import { Printer, Settings } from '@lucide/vue'
 import { useProjectStore } from '@/stores/projects'
 import peelLogo from '@/assets/peel-logo.png'
 import ReceivedInvitations from '@/components/ReceivedInvitations.vue'
@@ -169,6 +169,14 @@ onMounted(loadProjects)
               ><span class="open-arrow" aria-hidden="true">→</span>
             </RouterLink>
             <RouterLink
+              v-if="project.state !== 'DELETING'"
+              class="manage-project project-print-jobs"
+              :to="`/projects/${project.projectIdApi?.id}/print-jobs`"
+              title="Print jobs"
+              aria-label="Print jobs"
+              ><Printer :size="18" aria-hidden="true"
+            /></RouterLink>
+            <RouterLink
               class="manage-project"
               :to="`/projects/${project.projectIdApi?.id}/settings`"
               title="Settings"
@@ -211,6 +219,9 @@ onMounted(loadProjects)
   height: 32px;
   flex-shrink: 0;
   border-radius: 8px;
+}
+.manage-project.project-print-jobs {
+  margin-right: 8px;
 }
 .manage-project:hover {
   background: var(--peel-raised);

@@ -6,8 +6,10 @@ describe('safeAuthRedirect', () => {
     expect(safeAuthRedirect('/projects/123?tab=editor#draft')).toBe(
       '/projects/123?tab=editor#draft',
     )
-    expect(safeAuthRedirect('/print-jobs')).toBe('/print-jobs')
-    expect(safeAuthRedirect('/print-jobs/123')).toBe('/print-jobs/123')
+    expect(safeAuthRedirect('/projects/project/print-jobs')).toBe('/projects/project/print-jobs')
+    expect(safeAuthRedirect('/projects/project/print-jobs/123')).toBe(
+      '/projects/project/print-jobs/123',
+    )
     expect(safeAuthRedirect('/projects/123/settings')).toBe('/projects/123/settings')
     const invitation = '/invitations/' + 'a'.repeat(43)
     expect(safeAuthRedirect(invitation)).toBe(invitation)

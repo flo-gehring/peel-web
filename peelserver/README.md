@@ -85,6 +85,13 @@ scope, indexes and verification, and [DATA_MODEL.md](docs/DATA_MODEL.md).
 
 ## Project management
 
+Print jobs now live inside their project under `/projects/{projectId}/print-jobs`,
+grouped by document template. Jobs for deleted templates remain separately available.
+Create a job from a document's Printer button or its group in the project overview;
+unsaved document changes must be saved successfully first. Upload CSV and start the
+job on its detail page. See [PRINT_JOBS.md](docs/PRINT_JOBS.md) for routes, grouping,
+historical names, missing metadata in older jobs, and execution semantics.
+
 Open the **Settings** gear on a project in the overview or beside its name in the workspace header. Owners and members can edit
 the name and description of active projects. Owners can grant/revoke admin rights, remove members, archive/restore,
 and permanently delete archived projects. Admins can invite members, resend invitations, and revoke invitations;

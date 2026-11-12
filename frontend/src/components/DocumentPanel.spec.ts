@@ -5,15 +5,80 @@ import DocumentPanel from './DocumentPanel.vue'
 import { useDocumentDraftStore } from '@/stores/documentDrafts'
 import { useProjectStore } from '@/stores/projects'
 import { useProjectFileStore } from '@/stores/projectFiles'
+import { createMemoryHistory, createRouter } from 'vue-router'
 
 const { post, put } = vi.hoisted(() => ({ post: vi.fn(), put: vi.fn() }))
 vi.mock('@/adapter/client', () => ({ api: { POST: post, PUT: put } }))
 vi.mock('@tiptap/vue-3', () => ({ useEditor: () => null, EditorContent: { template: '<div />' } }))
 
 describe('DocumentPanel preview project context', () => {
+  it.each([true, false])(
+    'creates a print job only after a successful draft save (success=%s)',
+    async (success) => {
+      useProjectStore().activeProject = { projectIdApi: { id: 'project' } }
+      const files = useProjectFileStore()
+      files.loaded.document = {
+        projectId: { id: 'project' },
+        version: 0,
+        name: 'Template',
+        description: '',
+        content: {
+          type: 'document',
+          templateHtml: '<p>Test</p>',
+          editorStateJson: '{}',
+          scriptNameTags: {},
+          renderConfigurationId: 'config',
+        },
+      }
+      useDocumentDraftStore().updateDraft('document', { templateHtml: '<p>Changed</p>' })
+      put.mockResolvedValueOnce(
+        success
+          ? { data: { ...files.loaded.document, version: 1 } }
+          : { error: { error: { message: 'Version conflict' } } },
+      )
+      post.mockImplementationOnce(async () => {
+        expect(put).toHaveBeenCalledOnce()
+        expect(useDocumentDraftStore().getDraft('document')?.dirty).toBe(false)
+        return { data: { id: 'job' } }
+      })
+      const router = createRouter({
+        history: createMemoryHistory(),
+        routes: [
+          { path: '/projects/:projectId', component: { template: '<div />' } },
+          {
+            path: '/projects/:projectId/print-jobs/:id',
+            name: 'print-job-detail',
+            component: { template: '<div />' },
+          },
+        ],
+      })
+      await router.push('/projects/project')
+      const wrapper = mount(DocumentPanel, {
+        props: { params: { params: { documentId: 'document' } } },
+        global: { plugins: [router], stubs: { Teleport: true } },
+      })
+      await wrapper.get('[title="Create print job"]').trigger('click')
+      expect(wrapper.get('[role="dialog"]').text()).toContain('Speichern und Auftrag anlegen')
+      await wrapper.get('#print-job-name').setValue('Batch')
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+      if (success) {
+        expect(post).toHaveBeenCalledWith(
+          '/api/projects/{projectId}/print-jobs',
+          expect.objectContaining({ params: { path: { projectId: 'project' } } }),
+        )
+        expect(router.currentRoute.value.fullPath).toBe('/projects/project/print-jobs/job')
+      } else {
+        expect(post).not.toHaveBeenCalled()
+        expect(wrapper.get('[role="dialog"]').text()).toContain('konnte nicht gespeichert')
+        expect(useDocumentDraftStore().getDraft('document')?.dirty).toBe(true)
+      }
+      wrapper.unmount()
+    },
+  )
   beforeEach(() => {
     setActivePinia(createPinia())
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     useDocumentDraftStore().setDraft('document', {
       name: 'Template',
       templateHtml: '<p>Test</p>',

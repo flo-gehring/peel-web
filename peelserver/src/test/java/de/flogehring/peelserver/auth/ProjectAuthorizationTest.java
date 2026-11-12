@@ -69,11 +69,10 @@ class ProjectAuthorizationTest {
 
     @Test
     void printJobsHaveTheirOwnProjectAndDoNotExposeForeignFiles() throws Exception {
-        var created = mvc.perform(body(post("/api/print-jobs"), Map.of("name", "Job", "documentId", Map.of("id", documentId)))
+        var created = mvc.perform(body(post("/api/projects/" + project.id() + "/print-jobs"), Map.of("name", "Job", "documentId", Map.of("id", documentId)))
                 .with(user(member))).andExpect(status().isOk()).andReturn();
         String jobId = json.readTree(created.getResponse().getContentAsString()).get("id").asText();
-        mvc.perform(get("/api/print-jobs/list").with(user(outsider))).andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.printJobId.id == '" + jobId + "')]").isEmpty());
+        mvc.perform(get("/api/projects/" + project.id() + "/print-jobs").with(user(outsider))).andExpect(status().isNotFound());
         mvc.perform(post("/api/print-jobs/" + jobId + "/run").with(user(outsider)).with(csrf())).andExpect(status().isNotFound());
         mvc.perform(get("/api/print-jobs/" + jobId + "/data").with(user(outsider))).andExpect(status().isNotFound());
         mvc.perform(get("/api/print-jobs/" + jobId + "/file/guessed.pdf").with(user(outsider))).andExpect(status().isNotFound());
@@ -87,8 +86,8 @@ class ProjectAuthorizationTest {
         storedJob.setDocumentIds(List.of("result.pdf"));
         jobs.save(storedJob);
         files.deleteById(documentId);
-        mvc.perform(get("/api/print-jobs/list").with(user(member))).andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.printJobId.id == '" + jobId + "')].projectId.id").value(org.hamcrest.Matchers.hasItem(project.id())));
+        mvc.perform(get("/api/projects/" + project.id() + "/print-jobs").with(user(member))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.deletedDocuments[0].jobs[0].projectId.id").value(project.id()));
         mvc.perform(post("/api/print-jobs/" + jobId + "/run").with(user(member)).with(csrf())).andExpect(status().isNotFound());
         mvc.perform(get("/api/print-jobs/" + jobId + "/file/guessed.pdf").with(user(member))).andExpect(status().isNotFound());
         verifyNoInteractions(storage);
@@ -138,7 +137,7 @@ class ProjectAuthorizationTest {
     }
 
     private String createJob(SpringUserDetails user) throws Exception {
-        var response = mvc.perform(body(post("/api/print-jobs"), Map.of("name", "Job", "documentId", Map.of("id", documentId)))
+        var response = mvc.perform(body(post("/api/projects/" + project.id() + "/print-jobs"), Map.of("name", "Job", "documentId", Map.of("id", documentId)))
                 .with(user(user))).andExpect(status().isOk()).andReturn();
         return json.readTree(response.getResponse().getContentAsString()).get("id").asText();
     }

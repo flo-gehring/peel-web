@@ -223,7 +223,7 @@ class ProjectManagementTest {
     @Test void deletionWaitsForJobsAndCanRetryFailedFileCleanupWithoutLosingRecords() throws Exception {
         var project = new ProjectId(id);
         var script = scripts.insert(new ProjectFile(UUID.randomUUID().toString(), project, "Script", "", 0, new FileContent.ScriptContent("1;"), Instant.now(), Instant.now()));
-        var job = PrintJobPersistence.init(new PrintJobId(UUID.randomUUID().toString()), new DocumentId("template"), project, "Job");
+        var job = PrintJobPersistence.init(new PrintJobId(UUID.randomUUID().toString()), new DocumentId("template"), project, "Job", "Template");
         job.updateStatus(PrintJobStatus.CALCULATING); jobs.save(job);
         mvc.perform(post("/api/projects/" + id + "/archive").with(user(owner)).with(csrf())).andExpect(status().isNoContent());
         mvc.perform(delete("/api/projects/" + id).with(user(owner)).with(csrf()).contentType("application/json")

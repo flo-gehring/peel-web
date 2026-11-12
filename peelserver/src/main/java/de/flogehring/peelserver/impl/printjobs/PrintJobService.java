@@ -8,6 +8,9 @@ import de.flogehring.peelserver.impl.documenttemplates.DocumentReferenceService;
 import de.flogehring.peelserver.impl.files.*;
 import de.flogehring.peelserver.impl.filestorage.StorageService;
 import de.flogehring.peelserver.impl.project.ProjectAccessService;
+import de.flogehring.peelserver.impl.project.ProjectId;
+import java.util.*;
+import java.util.stream.Collectors;
 import de.flogehring.peelserver.impl.users.SpringUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,21 +29,50 @@ public class PrintJobService implements PrintJobController {
     private final PrintJobRunner runner;
     private final ProjectFileRepository documents;
     private final DocumentReferenceService references;
+    private final ProjectFileService files;
     private final ProjectAccessService projectAccess;
 
-    @Override
-    public PrintJobId initPrintJob(PrintJobInitRequestDto request, SpringUserDetails user) {
-        var initial = documents.findById(request.documentId().id())
-                .filter(value -> value.content() instanceof FileContent.DocumentContent).orElseThrow(ProjectAccessService::notFound);
-        return projectAccess.active(initial.projectId(), user.getUserId(), () -> {
-            var document = documents.findById(request.documentId().id())
-                    .filter(value -> value.projectId().equals(initial.projectId()) && value.content() instanceof FileContent.DocumentContent)
-                    .orElseThrow(ProjectAccessService::notFound);
-            projectAccess.requireProjectAccess(document.projectId(), user.getUserId());
+    public PrintJobId initPrintJob(String projectId, PrintJobInitRequestDto request, SpringUserDetails user) {
+        var project = new ProjectId(projectId);
+        return projectAccess.active(project, user.getUserId(), () -> {
+            var document = files.requireFile(project, request.documentId().id());
+            if (!(document.content() instanceof FileContent.DocumentContent)) throw ProjectAccessService.notFound();
             var id = new PrintJobId(UUID.randomUUID().toString());
-            jobs.insert(PrintJobPersistence.init(id, request.documentId(), document.projectId(), request.name()));
+            jobs.insert(PrintJobPersistence.init(id, request.documentId(), project, request.name().strip(), document.name()));
             return id;
         });
+    }
+
+    public ProjectPrintJobs projectJobs(String projectId, SpringUserDetails user) {
+        var project = projectAccess.requireProjectAccess(new ProjectId(projectId), user.getUserId());
+        var summaries = jobs.findByProjectId(new ProjectId(projectId)).stream().map(this::summary)
+                .sorted(Comparator.comparing(PrintJobSummary::createdAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(job -> job.printJobId().id())).toList();
+        var byDocument = summaries.stream().collect(Collectors.groupingBy(job -> job.documentId().id()));
+        var existing = files.list(projectId, "document", user).stream()
+                .sorted(Comparator.comparing(file -> file.name().toLowerCase(Locale.ROOT)))
+                .map(file -> new ProjectPrintJobs.DocumentJobs(file.id(), file.name(), byDocument.getOrDefault(file.id(), List.of()))).toList();
+        var existingIds = existing.stream().map(ProjectPrintJobs.DocumentJobs::documentId).collect(Collectors.toSet());
+        var deleted = byDocument.entrySet().stream().filter(entry -> !existingIds.contains(entry.getKey()))
+                .map(entry -> new ProjectPrintJobs.DocumentJobs(entry.getKey(), entry.getValue().stream()
+                        .map(PrintJobSummary::documentName).filter(Objects::nonNull).filter(name -> !name.isBlank())
+                        .findFirst().orElse("Gelöschte Dokumentvorlage"), entry.getValue()))
+                .sorted(Comparator.comparing(group -> group.name().toLowerCase(Locale.ROOT))).toList();
+        return new ProjectPrintJobs(new ProjectIdApi(projectId), project.getPersistenceData().projectName(), project.getState(), existing, deleted);
+    }
+
+    public ProjectPrintJobDetails details(String projectId, String id, SpringUserDetails user) {
+        var project = projectAccess.requireProjectAccess(new ProjectId(projectId), user.getUserId());
+        var job = jobs.findById(id).filter(value -> value.getProjectId().id().equals(projectId)).orElseThrow(ProjectAccessService::notFound);
+        var currentDocument = documents.findById(job.getPrintJobPersistenceData().documentId())
+                .filter(file -> file.projectId().equals(job.getProjectId()) && file.content() instanceof FileContent.DocumentContent);
+        return new ProjectPrintJobDetails(summary(job), project.getPersistenceData().projectName(), project.getState(), currentDocument.map(ProjectFile::name).orElse(null));
+    }
+
+    private PrintJobSummary summary(PrintJobPersistence job) {
+        var data = job.getPrintJobPersistenceData();
+        return new PrintJobSummary(new PrintJobId(job.getId()), new ProjectIdApi(job.getProjectId().id()), data.name(),
+                new DocumentId(data.documentId()), job.getDocumentName(), job.getCreatedAt(), data.fileName(), data.status(), List.copyOf(data.fileIds()));
     }
 
     @Override
@@ -57,17 +89,6 @@ public class PrintJobService implements PrintJobController {
             jobs.save(job);
             return null;
         });
-    }
-
-    @Override
-    public List<PrintJobSummary> listPrintJobs(SpringUserDetails user) {
-        var projectIds = projectAccess.accessibleProjectIds(user.getUserId());
-        if (projectIds.isEmpty()) return List.of();
-        return jobs.findByProjectIdIn(projectIds).stream().map(job -> {
-            var data = job.getPrintJobPersistenceData();
-            return new PrintJobSummary(new PrintJobId(job.getId()), new ProjectIdApi(job.getProjectId().id()), data.name(),
-                    new DocumentId(data.documentId()), data.fileName(), data.status(), List.copyOf(data.fileIds()));
-        }).toList();
     }
 
     @Override

@@ -19,7 +19,7 @@ class ProjectPrintJobCompletionTest {
         var storage = mock(StorageService.class);
         var renderer = mock(DocumentTemplateRenderService.class);
         var runner = new PrintJobRunner(jobs, storage, renderer);
-        var job = PrintJobPersistence.init(new PrintJobId("job"), new DocumentId("template"), new ProjectId("project"), "Job");
+        var job = PrintJobPersistence.init(new PrintJobId("job"), new DocumentId("template"), new ProjectId("project"), "Job", "Template");
         job.updateFileName("data.csv"); job.updateStatus(PrintJobStatus.CALCULATING);
         doAnswer(invocation -> {
             Consumer<InputStream> process = invocation.getArgument(2);

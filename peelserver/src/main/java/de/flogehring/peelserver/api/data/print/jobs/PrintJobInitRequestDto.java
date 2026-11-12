@@ -6,6 +6,6 @@ import jakarta.validation.constraints.NotNull;
 
 public record PrintJobInitRequestDto(
         @NotNull @Valid DocumentId documentId,
-        String name
+        @jakarta.validation.constraints.NotBlank String name
 ) {
 }
