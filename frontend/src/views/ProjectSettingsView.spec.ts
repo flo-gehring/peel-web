@@ -42,6 +42,16 @@ async function open(role = 'OWNER', state = 'ACTIVE') {
   return wrapper
 }
 describe('Project settings', () => {
+  it('groups ownership transfer and lifecycle in a closed danger zone with a red archive button', async () => {
+    const wrapper = await open()
+    const zone = wrapper.get('details.danger-zone')
+    expect((zone.element as HTMLDetailsElement).open).toBe(false)
+    expect(zone.get('summary').text()).toBe('Danger Zone')
+    expect(zone.find('#transfer-target').exists()).toBe(true)
+    expect(zone.text()).toContain('Project lifecycle')
+    expect(zone.get('.archive-project-button').classes()).toContain('danger-button')
+    wrapper.unmount()
+  })
   it('shows active metadata controls to members but reserves administrative controls', async () => {
     const wrapper = await open('MEMBER')
     expect(wrapper.find('#project-name').exists()).toBe(true)

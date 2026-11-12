@@ -66,6 +66,23 @@ workspace state after confirmation if there are unsaved changes. Resource-level 
 see [the authorization concept](docs/AUTHORIZATION.md) for rules and implementation details. Members and owners have
 full access to project contents; document references must stay within one project. Print jobs store their own project ID.
 
+## Project files
+
+Scripts, render configurations and document templates share one typed file model,
+MongoDB collection and CRUD API under `/api/projects/{projectId}/files`. Creation
+uses a client-generated UUID and starts at version 0; it never overwrites an
+existing file. Updates and deletion require the last acknowledged version.
+An identical update succeeds without writing even when its expected version is
+stale. Otherwise concurrent changes return `409` and drafts remain available.
+
+The explorer supports common name/description editing, creation retries, protected
+deletion and explicit reloading of the server version. Run, preview and print
+operations resolve references from the same collection. Old CRUD endpoints and
+collections are no longer used. There is no migration: recreate development
+contents as needed; this change does not automatically delete old data.
+See [FILE_MANAGEMENT.md](docs/FILE_MANAGEMENT.md) for request semantics, concurrency
+scope, indexes and verification, and [DATA_MODEL.md](docs/DATA_MODEL.md).
+
 ## Project management
 
 Open the **Settings** gear on a project in the overview or beside its name in the workspace header. Owners and members can edit

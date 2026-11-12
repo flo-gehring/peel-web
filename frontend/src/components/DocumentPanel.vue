@@ -3,6 +3,7 @@ import { computed, ref, watchEffect } from 'vue'
 import type { JSONContent } from '@tiptap/core'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
+import { useProjectFileStore } from '@/stores/projectFiles'
 import { api } from '@/adapter/client'
 import type { DocumentDraft } from '@/stores/documentDrafts'
 import { useDocumentDraftStore } from '@/stores/documentDrafts'
@@ -26,6 +27,7 @@ const draftStore = useDocumentDraftStore()
 const previewStore = useDocumentPreviewStore()
 const bindingsStore = useRunBindingsStore()
 const projectStore = useProjectStore()
+const files = useProjectFileStore()
 const draft = computed(() => draftStore.getDraft(documentId) ?? initialDraft)
 const isSaving = ref(false)
 const saveError = ref<string | null>(null)
@@ -110,24 +112,23 @@ async function saveDocument(): Promise<void> {
   isSaving.value = true
   saveError.value = null
   try {
-    const { error } = await api.PUT('/api/documents/{id}', {
-      params: { path: { id: documentId } },
-      body: {
-        name: current.name,
-        scriptNameTags: current.scriptNameTags,
+    const projectId = projectStore.activeProject?.projectIdApi?.id
+    const baseline = files.loaded[documentId]
+    if (!projectId || !baseline) throw new Error('Reopen the file before saving.')
+    await files.save(projectId, documentId, {
+      name: baseline.name ?? current.name,
+      description: baseline.description ?? '',
+      content: {
+        type: 'document',
+        scriptNameTags: { ...current.scriptNameTags },
         templateHtml: current.templateHtml,
         editorStateJson: current.editorStateJson,
         renderConfigurationId: current.renderConfigurationId,
       },
     })
-    if (error) {
-      saveError.value =
-        'The document could not be saved. Ensure a render configuration is selected.'
-      return
-    }
-    draftStore.markSaved(documentId)
-  } catch {
-    saveError.value = 'An unexpected error occurred while saving.'
+    if (draft.value === current) draftStore.markSaved(documentId)
+  } catch (error) {
+    saveError.value = error instanceof Error ? error.message : 'The document could not be saved.'
   } finally {
     isSaving.value = false
   }

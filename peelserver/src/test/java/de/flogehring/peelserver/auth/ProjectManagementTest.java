@@ -14,7 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.*;
 import de.flogehring.peelserver.impl.printjobs.*;
-import de.flogehring.peelserver.impl.scripts.*;
+import de.flogehring.peelserver.impl.files.*;
 import de.flogehring.peelserver.impl.documenttemplates.*;
 import de.flogehring.peelserver.impl.renderconfig.*;
 import de.flogehring.peelserver.api.data.print.jobs.*;
@@ -36,7 +36,7 @@ class ProjectManagementTest {
     @Autowired ProjectInvitationRepository invitations;
     @Autowired MongoTemplate mongo;
     @Autowired PrintJobRepository jobs;
-    @Autowired PeelScriptRepository scripts;
+    @Autowired ProjectFileRepository scripts;
     @MockitoBean MailSender mail;
     @MockitoBean StorageService storage;
     SpringUserDetails owner, member, guest;
@@ -151,8 +151,8 @@ class ProjectManagementTest {
     @Test void archivedProjectsAreReadOnlyAndDeletionRequiresConfirmation() throws Exception {
         mvc.perform(post("/api/projects/" + id + "/archive").with(user(owner)).with(csrf())).andExpect(status().isNoContent());
         mvc.perform(get("/api/projects/" + id).with(user(owner))).andExpect(status().isOk());
-        mvc.perform(post("/api/scripts").with(user(owner)).with(csrf()).contentType("application/json")
-                .content(body(Map.of("projectIdApi", Map.of("id", id), "name", "Blocked", "script", "")))).andExpect(status().isConflict());
+        mvc.perform(post("/api/projects/" + id + "/files").with(user(owner)).with(csrf()).contentType("application/json")
+                .content(body(Map.of("id", UUID.randomUUID(), "name", "Blocked", "content", Map.of("type", "script", "source", ""))))).andExpect(status().isConflict());
         mvc.perform(delete("/api/projects/" + id).with(user(owner)).with(csrf()).contentType("application/json")
                 .content(body(Map.of("confirmation", "wrong")))).andExpect(status().isBadRequest());
         mvc.perform(delete("/api/projects/" + id).with(user(owner)).with(csrf()).contentType("application/json")
@@ -222,7 +222,7 @@ class ProjectManagementTest {
 
     @Test void deletionWaitsForJobsAndCanRetryFailedFileCleanupWithoutLosingRecords() throws Exception {
         var project = new ProjectId(id);
-        var script = scripts.save(PeelScriptPersistence.newScript(project, "Script", "1;"));
+        var script = scripts.insert(new ProjectFile(UUID.randomUUID().toString(), project, "Script", "", 0, new FileContent.ScriptContent("1;"), Instant.now(), Instant.now()));
         var job = PrintJobPersistence.init(new PrintJobId(UUID.randomUUID().toString()), new DocumentId("template"), project, "Job");
         job.updateStatus(PrintJobStatus.CALCULATING); jobs.save(job);
         mvc.perform(post("/api/projects/" + id + "/archive").with(user(owner)).with(csrf())).andExpect(status().isNoContent());
@@ -234,11 +234,11 @@ class ProjectManagementTest {
         mvc.perform(delete("/api/projects/" + id).with(user(owner)).with(csrf()).contentType("application/json")
                 .content(body(Map.of("confirmation", "Test project")))).andExpect(status().isServiceUnavailable());
         assertThat(projects.findById(id).orElseThrow().getState()).isEqualTo(ProjectState.DELETING);
-        assertThat(scripts.existsById(script.getId())).isTrue();
-        mvc.perform(post("/api/scripts").with(user(owner)).with(csrf()).contentType("application/json")
-                .content(body(Map.of("projectIdApi", Map.of("id", id), "name", "No recreation", "script", "")))).andExpect(status().isNotFound());
+        assertThat(scripts.existsById(script.id())).isTrue();
+        mvc.perform(post("/api/projects/" + id + "/files").with(user(owner)).with(csrf()).contentType("application/json")
+                .content(body(Map.of("id", UUID.randomUUID(), "name", "No recreation", "content", Map.of("type", "script", "source", ""))))).andExpect(status().isNotFound());
         mvc.perform(delete("/api/projects/" + id).with(user(owner)).with(csrf()).contentType("application/json")
                 .content(body(Map.of("confirmation", "Test project")))).andExpect(status().isNoContent());
-        assertThat(projects.existsById(id)).isFalse(); assertThat(scripts.existsById(script.getId())).isFalse(); assertThat(jobs.existsById(job.getId())).isFalse();
+        assertThat(projects.existsById(id)).isFalse(); assertThat(scripts.existsById(script.id())).isFalse(); assertThat(jobs.existsById(job.getId())).isFalse();
     }
 }

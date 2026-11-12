@@ -28,13 +28,19 @@ public class ExpressionRenderConfiguration {
             Map<String, Map<TraceExpressionKind, String>> namedOverrides
     ) {
         return new ExpressionRenderConfiguration(
-                new ExpressionRenderTemplate(Map.copyOf(new EnumMap<>(render))),
+                new ExpressionRenderTemplate(Map.copyOf(enumMap(render))),
                 namedOverrides.entrySet().stream().collect(
                         LinkedHashMap::new,
-                        (map, entry) -> map.put(entry.getKey(), new ExpressionRenderTemplate(Map.copyOf(new EnumMap<>(entry.getValue())))),
+                        (map, entry) -> map.put(entry.getKey(), new ExpressionRenderTemplate(Map.copyOf(enumMap(entry.getValue())))),
                         LinkedHashMap::putAll
                 )
         );
+    }
+
+    private static EnumMap<TraceExpressionKind, String> enumMap(Map<TraceExpressionKind, String> values) {
+        var result = new EnumMap<TraceExpressionKind, String>(TraceExpressionKind.class);
+        result.putAll(values);
+        return result;
     }
 
     public static ExpressionRenderConfiguration defaultConfig() {

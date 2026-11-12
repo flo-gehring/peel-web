@@ -14,7 +14,8 @@ import {
   type DockviewApi,
   type VueComponent,
 } from 'dockview-vue'
-import { api } from '@/adapter/client'
+import { useProjectFileStore } from '@/stores/projectFiles'
+import { renderConfigurationSchema } from '@/adapter/renderConfigurationSchema'
 import type { PeelWorkspaceDocument } from '@/adapter/ClientTypeDefinition'
 import { useEditorDraftStore } from '@/stores/editorDrafts'
 import { useDocumentDraftStore, type DocumentDraft } from '@/stores/documentDrafts'
@@ -66,6 +67,8 @@ const documentDraftStore = useDocumentDraftStore()
 const documentPreviewStore = useDocumentPreviewStore()
 const selectionStore = useWorkspaceSelectionStore()
 const projectStore = useProjectStore()
+const files = useProjectFileStore()
+const switchError = shallowRef<string | null>(null)
 const route = useRoute()
 const router = useRouter()
 const pendingOpenById = new Map<string, Promise<void>>()
@@ -93,6 +96,7 @@ function hasDirtyDrafts(): boolean {
 }
 
 function discardDrafts(): void {
+  files.clear()
   draftStore.clear()
   documentDraftStore.clear()
   selectionStore.clear()
@@ -120,48 +124,49 @@ async function saveAndSwitch(): Promise<void> {
   const project = projectStore.activeProject
   if (!project) return
 
+  switchError.value = null
+  const projectId = project.projectIdApi?.id
+  if (!projectId) return
   try {
     for (const [id, draft] of Object.entries(draftStore.draftsById)) {
       if (!draft.dirty) continue
-      const script = project.scripts?.find((item) => item.id === id)
-      if (script) {
-        const { error } = await api.PUT('/api/scripts/{id}', {
-          params: { path: { id } },
-          body: { name: script.name, scriptContent: draft.content },
-        })
-        if (error) throw error
-        draftStore.markSaved(id)
-        continue
-      }
-      const renderConfig = project.renderConfigurations?.find((item) => item.id === id)
-      if (renderConfig) {
-        const renderConfigurationDto = JSON.parse(draft.content)
-        const { error } = await api.PUT('/api/render-config/{id}', {
-          params: { path: { id } },
-          body: { name: renderConfig.name, renderConfigurationDto },
-        })
-        if (error) throw error
-        draftStore.markSaved(id)
-      }
+      const baseline = files.loaded[id]
+      if (!baseline) throw new Error('Reopen the file before saving.')
+      const content =
+        baseline.content?.type === 'script'
+          ? { type: 'script' as const, source: draft.content }
+          : {
+              type: 'render-config' as const,
+              ...renderConfigurationSchema.parse(JSON.parse(draft.content)),
+            }
+      await files.save(projectId, id, {
+        name: baseline.name ?? '',
+        description: baseline.description ?? '',
+        content,
+      })
+      if (draftStore.draftsById[id] === draft) draftStore.markSaved(id)
     }
-
     for (const [id, draft] of Object.entries(documentDraftStore.draftsById)) {
       if (!draft.dirty) continue
-      const { error } = await api.PUT('/api/documents/{id}', {
-        params: { path: { id } },
-        body: {
-          name: draft.name,
-          scriptNameTags: draft.scriptNameTags,
+      const baseline = files.loaded[id]
+      if (!baseline) throw new Error('Reopen the file before saving.')
+      await files.save(projectId, id, {
+        name: baseline.name ?? draft.name,
+        description: baseline.description ?? '',
+        content: {
+          type: 'document',
+          scriptNameTags: { ...draft.scriptNameTags },
           templateHtml: draft.templateHtml,
           editorStateJson: draft.editorStateJson,
           renderConfigurationId: draft.renderConfigurationId,
         },
       })
-      if (error) throw error
-      documentDraftStore.markSaved(id)
+      if (documentDraftStore.getDraft(id) === draft) documentDraftStore.markSaved(id)
     }
+    if (hasDirtyDrafts())
+      throw new Error('Files changed while saving. Save again before switching.')
   } catch (error) {
-    console.error('Failed to save drafts before switching projects:', error)
+    switchError.value = error instanceof Error ? error.message : 'The files could not be saved.'
     return
   }
 
@@ -287,12 +292,41 @@ watch(
 
     draftStore.removeDocument(deletedDocument.id)
     documentDraftStore.removeDocument(deletedDocument.id)
-    const panelType = deletedDocument.kind === 'peel' ? 'script' : deletedDocument.kind
+    const panelType =
+      deletedDocument.kind === 'peel'
+        ? 'script'
+        : deletedDocument.kind === 'renderConfig'
+          ? 'render-config'
+          : 'document'
     dockviewApi.value?.getPanel(`editor-${panelType}-${deletedDocument.id}`)?.api.close()
   },
 )
 
 // 3. Dynamic Action: Open or Switch Editor Tabs Programmatically
+watch(
+  () => selectionStore.reloadVersion,
+  async () => {
+    const file = selectionStore.reloadedDocument
+    const projectId = projectStore.activeProject?.projectIdApi?.id
+    if (!file || !projectId) return
+    try {
+      const loaded = await files.load(projectId, file.id, true)
+      draftStore.removeDocument(file.id)
+      documentDraftStore.removeDocument(file.id)
+      const kind =
+        file.kind === 'peel'
+          ? 'script'
+          : file.kind === 'renderConfig'
+            ? 'render-config'
+            : 'document'
+      dockviewApi.value?.getPanel(`editor-${kind}-${file.id}`)?.api.close()
+      await openFileInEditor({ ...file, name: loaded.name ?? file.name })
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'The file could not be reloaded.')
+    }
+  },
+)
+
 async function openFileInEditor(file: PeelWorkspaceDocument) {
   if (!dockviewApi.value) return
 
@@ -300,6 +334,7 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
   const existingPanel = dockviewApi.value.getPanel(panelId)
 
   if (existingPanel) {
+    existingPanel.api.setTitle(file.name)
     existingPanel.api.setActive()
     return
   }
@@ -317,15 +352,13 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
     if (file.kind === 'document') {
       let draft = documentDraftStore.getDraft(file.id)
       if (!draft) {
-        const { data: document, error: documentError } = await api.GET('/api/documents/{id}', {
-          params: { path: { id: file.id } },
-        })
-        if (documentError || !document) {
-          console.error('Failed to load document for editor tab:', documentError)
-          return
-        }
+        const projectId = projectStore.activeProject?.projectIdApi?.id
+        if (!projectId) return
+        const loadedFile = await files.load(projectId, file.id)
+        if (loadedFile.content?.type !== 'document') throw new Error('Unexpected file type.')
+        const document = loadedFile.content
         draft = {
-          name: document.name ?? file.name,
+          name: loadedFile.name ?? file.name,
           editorStateJson:
             document.editorStateJson ?? '{"type":"doc","content":[{"type":"paragraph"}]}',
           templateHtml: document.templateHtml ?? '<p></p>',
@@ -360,28 +393,15 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
     let content = draftStore.getDraft(file.id)
 
     if (content === undefined) {
-      if (file.kind === 'peel') {
-        const { data, error } = await api.GET('/api/scripts/{id}', {
-          params: { path: { id: file.id } },
-        })
-        if (error) {
-          console.error('Failed to load script content for editor tab:', error)
-          content = ''
-        } else {
-          content = data?.script ?? ''
-        }
-      } else {
-        const { data, error } = await api.GET('/api/render-config/{id}', {
-          params: { path: { id: file.id } },
-        })
-        if (error) {
-          console.error('Failed to load render configuration for editor tab:', error)
-          content = ''
-        } else {
-          content = JSON.stringify(data?.renderConfigurationDto ?? {}, null, 2)
-        }
-      }
-
+      const projectId = projectStore.activeProject?.projectIdApi?.id
+      if (!projectId) return
+      const loadedFile = await files.load(projectId, file.id)
+      if (file.kind === 'peel' && loadedFile.content?.type === 'script') {
+        content = loadedFile.content.source ?? ''
+      } else if (file.kind === 'renderConfig' && loadedFile.content?.type === 'render-config') {
+        const { renderConfigurations, namedOverrides } = loadedFile.content
+        content = JSON.stringify({ renderConfigurations, namedOverrides }, null, 2)
+      } else throw new Error('Unexpected file type.')
       draftStore.markLoaded(file.id, content)
     }
 
@@ -441,6 +461,7 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
       >
         <h2 id="switch-project-title">Unsaved changes</h2>
         <p>Save your changes before switching projects?</p>
+        <p v-if="switchError" role="alert">{{ switchError }}</p>
         <div>
           <button @click="saveAndSwitch">Save and switch</button>
           <button @click="discardAndSwitch">Discard and switch</button>

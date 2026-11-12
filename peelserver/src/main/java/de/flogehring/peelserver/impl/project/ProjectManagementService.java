@@ -1,13 +1,11 @@
 package de.flogehring.peelserver.impl.project;
+import de.flogehring.peelserver.impl.files.*;
 
 import de.flogehring.peelserver.api.data.projects.ProjectManagementData.*;
 import de.flogehring.peelserver.impl.auth.AuthLinkService;
 import de.flogehring.peelserver.impl.auth.AuthProperties;
-import de.flogehring.peelserver.impl.documenttemplates.DocumentTemplatePersistence;
 import de.flogehring.peelserver.impl.filestorage.StorageService;
 import de.flogehring.peelserver.impl.printjobs.*;
-import de.flogehring.peelserver.impl.renderconfig.RenderConfigurationPersistence;
-import de.flogehring.peelserver.impl.scripts.PeelScriptPersistence;
 import de.flogehring.peelserver.impl.users.*;
 import de.flogehring.peelserver.api.data.print.jobs.PrintJobStatus;
 import lombok.RequiredArgsConstructor;
@@ -239,7 +237,7 @@ public class ProjectManagementService {
             // Keep records until all object deletion succeeds so a failed cleanup can be retried safely.
             try { for (var job : projectJobs) storage.deleteFilesWithPrefix(PrintJobService.BUCKET_NAME, job.getId()); }
             catch (RuntimeException exception) { throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "File cleanup failed. Retry project deletion."); }
-            for (Class<?> type : new Class<?>[]{PeelScriptPersistence.class, DocumentTemplatePersistence.class, RenderConfigurationPersistence.class, PrintJobPersistence.class})
+            for (Class<?> type : new Class<?>[]{ProjectFile.class, PrintJobPersistence.class})
                 mongo.remove(Query.query(Criteria.where("projectId").is(projectId)), type);
             invitations.deleteByProjectId(projectId);
             projects.deleteById(id);

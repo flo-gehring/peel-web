@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LogOut } from '@lucide/vue'
+import { ChevronRight, Crown, LogOut, User, UserRoundStar } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/adapter/client'
@@ -254,9 +254,15 @@ function deleteProject(): void {
         <h2>Members</h2>
         <ul class="settings-list">
           <li v-for="member in settings.members" :key="member.id">
-            <span
-              >{{ member.email }} <small>{{ member.role }}</small></span
-            >
+            <div class="member-identity">
+              <span class="member-email">{{ member.email }}</span>
+              <span class="role-badge" :class="`role-${member.role?.toLowerCase()}`">
+                <Crown v-if="member.role === 'OWNER'" :size="14" aria-hidden="true" />
+                <UserRoundStar v-else-if="member.role === 'ADMIN'" :size="14" aria-hidden="true" />
+                <User v-else :size="14" aria-hidden="true" />
+                {{ member.role?.toLowerCase() }}
+              </span>
+            </div>
             <div v-if="owner && member.role !== 'OWNER' && active" class="button-row">
               <button
                 :disabled="busy"
@@ -351,88 +357,99 @@ function deleteProject(): void {
           </button>
         </div>
       </section>
-      <section v-if="owner && active && !settings.transfer" class="settings-card">
-        <h2>Transfer ownership</h2>
-        <p>
-          The recipient must already be a member and explicitly accept. You will then become an
-          admin.
-        </p>
-        <form @submit.prevent="requestTransfer">
-          <fieldset :disabled="busy">
-            <label for="transfer-target">New owner</label
-            ><select id="transfer-target" v-model="targetEmail" required>
-              <option value="">Select a member</option>
-              <option v-for="member in otherMembers" :key="member.id" :value="member.email">
-                {{ member.email }}
-              </option>
-            </select>
-            <label for="transfer-email">Type the new owner's email</label
-            ><input
-              id="transfer-email"
-              v-model="confirmedEmail"
-              type="email"
-              autocomplete="off"
-              required
-            />
-            <label for="transfer-confirmation">Type TRANSFER {{ settings.name }}</label
-            ><input
-              id="transfer-confirmation"
-              v-model="transferConfirmation"
-              autocomplete="off"
-              required
-            />
+      <details v-if="owner" class="danger-zone">
+        <summary><ChevronRight :size="18" aria-hidden="true" /><span>Danger Zone</span></summary>
+        <div class="danger-zone-content">
+          <section v-if="active && !settings.transfer" class="settings-card">
+            <h2>Transfer ownership</h2>
+            <p>
+              The recipient must already be a member and explicitly accept. You will then become an
+              admin.
+            </p>
+            <form @submit.prevent="requestTransfer">
+              <fieldset :disabled="busy">
+                <label for="transfer-target">New owner</label
+                ><select id="transfer-target" v-model="targetEmail" required>
+                  <option value="">Select a member</option>
+                  <option v-for="member in otherMembers" :key="member.id" :value="member.email">
+                    {{ member.email }}
+                  </option>
+                </select>
+                <label for="transfer-email">Type the new owner's email</label
+                ><input
+                  id="transfer-email"
+                  v-model="confirmedEmail"
+                  type="email"
+                  autocomplete="off"
+                  required
+                />
+                <label for="transfer-confirmation">Type TRANSFER {{ settings.name }}</label
+                ><input
+                  id="transfer-confirmation"
+                  v-model="transferConfirmation"
+                  autocomplete="off"
+                  required
+                />
+                <button
+                  class="primary-button"
+                  :disabled="
+                    !targetEmail ||
+                    confirmedEmail.trim().toLowerCase() !== targetEmail.toLowerCase() ||
+                    transferConfirmation !== `TRANSFER ${settings.name}`
+                  "
+                >
+                  Request transfer
+                </button>
+              </fieldset>
+            </form>
+          </section>
+          <section class="settings-card">
+            <h2>Project lifecycle</h2>
             <button
-              class="primary-button"
-              :disabled="
-                !targetEmail ||
-                confirmedEmail.trim().toLowerCase() !== targetEmail.toLowerCase() ||
-                transferConfirmation !== `TRANSFER ${settings.name}`
-              "
+              v-if="active"
+              class="danger-button archive-project-button"
+              :disabled="busy"
+              @click="lifecycle(true)"
             >
-              Request transfer
+              Archive project
             </button>
-          </fieldset>
-        </form>
-      </section>
-      <section v-if="owner" class="settings-card danger-card">
-        <h2>Project lifecycle</h2>
-        <button v-if="active" class="quiet-button" :disabled="busy" @click="lifecycle(true)">
-          Archive project
-        </button>
-        <template v-else>
-          <button
-            v-if="settings.state === 'ARCHIVED'"
-            class="quiet-button"
-            :disabled="busy"
-            @click="lifecycle(false)"
-          >
-            Restore project
-          </button>
-          <p>
-            Permanently delete this project, scripts, templates, render configurations, invitations,
-            print jobs, uploaded CSVs and generated PDFs. This cannot be undone. Running jobs must
-            finish first.
-          </p>
-          <form @submit.prevent="deleteProject">
-            <fieldset :disabled="busy">
-              <label for="delete-confirmation">Type {{ settings.name }} to confirm deletion</label
-              ><input
-                id="delete-confirmation"
-                v-model="deleteConfirmation"
-                autocomplete="off"
-                required
-              />
-              <button class="danger-button" :disabled="deleteConfirmation !== settings.name">
-                {{
-                  settings.state === 'DELETING'
-                    ? 'Retry permanent deletion'
-                    : 'Permanently delete project'
-                }}
+            <template v-else>
+              <button
+                v-if="settings.state === 'ARCHIVED'"
+                class="quiet-button"
+                :disabled="busy"
+                @click="lifecycle(false)"
+              >
+                Restore project
               </button>
-            </fieldset>
-          </form>
-        </template>
-      </section>
+              <p>
+                Permanently delete this project, scripts, templates, render configurations,
+                invitations, print jobs, uploaded CSVs and generated PDFs. This cannot be undone.
+                Running jobs must finish first.
+              </p>
+              <form @submit.prevent="deleteProject">
+                <fieldset :disabled="busy">
+                  <label for="delete-confirmation"
+                    >Type {{ settings.name }} to confirm deletion</label
+                  ><input
+                    id="delete-confirmation"
+                    v-model="deleteConfirmation"
+                    autocomplete="off"
+                    required
+                  />
+                  <button class="danger-button" :disabled="deleteConfirmation !== settings.name">
+                    {{
+                      settings.state === 'DELETING'
+                        ? 'Retry permanent deletion'
+                        : 'Permanently delete project'
+                    }}
+                  </button>
+                </fieldset>
+              </form>
+            </template>
+          </section>
+        </div>
+      </details>
     </template>
   </main>
 </template>
@@ -523,6 +540,41 @@ small {
   color: var(--peel-muted);
   margin-top: 4px;
 }
+.member-identity {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+.member-email {
+  overflow-wrap: anywhere;
+}
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.role-owner {
+  color: #e5bd52;
+  background: #e5bd5218;
+}
+.role-admin {
+  color: #83ce98;
+  background: #83ce9818;
+}
+.role-member {
+  color: #a5abb3;
+  background: #a5abb318;
+}
 .button-row {
   display: flex;
   gap: 10px;
@@ -545,21 +597,59 @@ small {
   border: 1px solid var(--peel-border);
   border-radius: 8px;
 }
-.danger-card {
-  border-color: var(--peel-error);
+.danger-zone {
+  margin: 20px 0;
+  border: 1px solid var(--peel-error);
+  border-radius: 12px;
+  background: var(--peel-surface);
+}
+.danger-zone > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 24px;
+  color: var(--peel-error);
+  font-size: 20px;
+  cursor: pointer;
+  list-style: none;
+}
+.danger-zone > summary::-webkit-details-marker {
+  display: none;
+}
+.danger-zone > summary:focus-visible {
+  outline: 2px solid var(--peel-error);
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+.danger-zone[open] > summary svg {
+  transform: rotate(90deg);
+}
+.danger-zone-content {
+  border-top: 1px solid var(--peel-border);
+}
+.danger-zone-content > .settings-card {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.danger-zone-content > .settings-card + .settings-card {
+  border-top: 1px solid var(--peel-border);
 }
 .leave-project-actions {
   margin-top: 20px;
   padding-top: 20px;
   border-top: 1px solid var(--peel-border);
 }
-.danger-button.leave-project-button {
+.danger-button.leave-project-button,
+.danger-button.archive-project-button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   background: color-mix(in srgb, var(--peel-error) 12%, transparent);
 }
-.leave-project-button:hover:not(:disabled) {
+.leave-project-button:hover:not(:disabled),
+.archive-project-button:hover:not(:disabled) {
   background: color-mix(in srgb, var(--peel-error) 22%, transparent);
 }
 .danger-button {

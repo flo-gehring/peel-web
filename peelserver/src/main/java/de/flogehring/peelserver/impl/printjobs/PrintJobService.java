@@ -5,7 +5,7 @@ import de.flogehring.peelserver.api.data.ProjectIdApi;
 import de.flogehring.peelserver.api.data.print.jobs.*;
 import de.flogehring.peelserver.impl.documenttemplates.DocumentId;
 import de.flogehring.peelserver.impl.documenttemplates.DocumentReferenceService;
-import de.flogehring.peelserver.impl.documenttemplates.PeelDocumentRepository;
+import de.flogehring.peelserver.impl.files.*;
 import de.flogehring.peelserver.impl.filestorage.StorageService;
 import de.flogehring.peelserver.impl.project.ProjectAccessService;
 import de.flogehring.peelserver.impl.users.SpringUserDetails;
@@ -24,17 +24,21 @@ public class PrintJobService implements PrintJobController {
     private final PrintJobRepository jobs;
     private final StorageService storage;
     private final PrintJobRunner runner;
-    private final PeelDocumentRepository documents;
+    private final ProjectFileRepository documents;
     private final DocumentReferenceService references;
     private final ProjectAccessService projectAccess;
 
     @Override
     public PrintJobId initPrintJob(PrintJobInitRequestDto request, SpringUserDetails user) {
-        return projectAccess.active(documents.findById(request.documentId().id()).orElseThrow(ProjectAccessService::notFound).getProjectId(), user.getUserId(), () -> {
-            var document = documents.findById(request.documentId().id()).orElseThrow(ProjectAccessService::notFound);
-            projectAccess.requireProjectAccess(document.getProjectId(), user.getUserId());
+        var initial = documents.findById(request.documentId().id())
+                .filter(value -> value.content() instanceof FileContent.DocumentContent).orElseThrow(ProjectAccessService::notFound);
+        return projectAccess.active(initial.projectId(), user.getUserId(), () -> {
+            var document = documents.findById(request.documentId().id())
+                    .filter(value -> value.projectId().equals(initial.projectId()) && value.content() instanceof FileContent.DocumentContent)
+                    .orElseThrow(ProjectAccessService::notFound);
+            projectAccess.requireProjectAccess(document.projectId(), user.getUserId());
             var id = new PrintJobId(UUID.randomUUID().toString());
-            jobs.insert(PrintJobPersistence.init(id, request.documentId(), document.getProjectId(), request.name()));
+            jobs.insert(PrintJobPersistence.init(id, request.documentId(), document.projectId(), request.name()));
             return id;
         });
     }
@@ -73,7 +77,7 @@ public class PrintJobService implements PrintJobController {
             var status = job.getPrintJobPersistenceData().status();
             if (status != PrintJobStatus.CREATED) return status;
             var document = documents.findById(job.getPrintJobPersistenceData().documentId())
-                    .filter(value -> job.getProjectId().equals(value.getProjectId())).orElseThrow(ProjectAccessService::notFound);
+                    .filter(value -> job.getProjectId().equals(value.projectId()) && value.content() instanceof FileContent.DocumentContent).orElseThrow(ProjectAccessService::notFound);
             // Resolve and authorize before scheduling; the worker does not depend on a request SecurityContext.
             var resolved = references.resolve(document);
             job.updateStatus(PrintJobStatus.CALCULATING);

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { IDockviewHeaderActionsProps } from 'dockview-vue'
 import { computed, ref } from 'vue'
+import { useProjectFileStore } from '@/stores/projectFiles'
 import { api } from '@/adapter/client'
 import { renderConfigurationSchema } from '@/adapter/renderConfigurationSchema'
 import { useEditorDraftStore } from '@/stores/editorDrafts'
@@ -24,6 +25,7 @@ const draftStore = useEditorDraftStore()
 const bindingsStore = useRunBindingsStore()
 const runOutputStore = useRunOutputStore()
 const projectStore = useProjectStore()
+const files = useProjectFileStore()
 
 type EditorPanelParams = {
   filename?: string
@@ -83,72 +85,31 @@ async function handleSave() {
     const content =
       draftStore.getDraftByReference(context.panelId, context.documentId) ?? context.initialContent
 
+    const projectId = projectStore.activeProject?.projectIdApi?.id
+    if (!context.documentId || !projectId)
+      throw new Error('Open a saved project file before saving.')
+    const baseline = files.loaded[context.documentId]
+    if (!baseline) throw new Error('Reopen the file before saving.')
+    let fileContent
     if (context.documentKind === 'renderConfig') {
-      if (!context.documentId) {
-        showSaveError('This render configuration has no document ID and cannot be saved.')
-        return
-      }
-
-      let parsedJson: unknown
-      try {
-        parsedJson = JSON.parse(content)
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Invalid JSON.'
-        showSaveError(`Render configuration must contain valid JSON. ${message}`)
-        return
-      }
-
-      const parsedConfig = renderConfigurationSchema.safeParse(parsedJson)
-      if (!parsedConfig.success) {
-        const issues = parsedConfig.error.issues
-          .map((issue) => `${issue.path.join('.') || 'configuration'}: ${issue.message}`)
-          .join('\n')
-        showSaveError(`Render configuration is invalid.\n${issues}`)
-        return
-      }
-
-      const { error } = await api.PUT('/api/render-config/{id}', {
-        params: { path: { id: context.documentId } },
-        body: {
-          name: context.name,
-          renderConfigurationDto: parsedConfig.data,
-        },
-      })
-      if (error) {
-        showSaveError('The render configuration could not be saved. Please try again.')
-        return
-      }
-
-      draftStore.markSavedByReference(context.panelId, content, context.documentId)
-      return
+      const parsed = renderConfigurationSchema.safeParse(JSON.parse(content))
+      if (!parsed.success) throw new Error(`Invalid render configuration: ${parsed.error.message}`)
+      fileContent = { type: 'render-config' as const, ...parsed.data }
+    } else {
+      fileContent = { type: 'script' as const, source: content }
     }
-
-    if (!context.documentId) {
-      showSaveError('This script has no document ID and cannot be saved.')
-      return
-    }
-
-    const { data, error } = await api.PUT('/api/scripts/{id}', {
-      params: { path: { id: context.documentId } },
-      body: { name: context.name, scriptContent: content },
+    const saved = await files.save(projectId, context.documentId, {
+      name: baseline.name ?? context.name,
+      description: baseline.description ?? '',
+      content: fileContent,
     })
-    if (error) {
-      showSaveError('The script could not be saved. Please try again.')
-      return
-    }
-
-    const savedId = data?.id ?? context.documentId
-    const savedName = data?.name ?? context.name
-    if (savedId) {
-      draftStore.bindPanelToDocument(context.panelId, savedId)
-      draftStore.markSavedByReference(context.panelId, content, savedId)
-    }
-    if (savedName && props.params.activePanel) {
-      props.params.activePanel.api.setTitle(savedName)
-    }
+    // Edits made while the request was in flight remain dirty.
+    if (draftStore.getDraftByReference(context.panelId, context.documentId) === content)
+      draftStore.markSavedByReference(context.panelId, content, context.documentId)
+    props.params.activePanel?.api.setTitle(saved.name ?? context.name)
   } catch (error) {
     console.error('Unexpected save error:', error)
-    showSaveError('An unexpected error occurred while saving.')
+    showSaveError(error instanceof Error ? error.message : 'The file could not be saved.')
   } finally {
     isSaving.value = false
   }

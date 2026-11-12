@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Check, Copy, Trash2 } from '@lucide/vue'
+import { Check, Copy, Trash2, Pencil, RotateCcw, RefreshCw, Plus, ChevronRight } from '@lucide/vue'
 
+import { useProjectFileStore, type FileState } from '@/stores/projectFiles'
 import { api } from '@/adapter/client'
+import { renderConfigurationSchema } from '@/adapter/renderConfigurationSchema'
 import type { PeelWorkspaceDocument } from '@/adapter/ClientTypeDefinition'
 import { useWorkspaceSelectionStore } from '@/stores/workspaceSelection'
 import { useProjectStore } from '@/stores/projects'
@@ -20,6 +22,17 @@ const renderConfigs = ref<RenderConfigDocument[]>([])
 const documents = ref<DocumentWorkspaceItem[]>([])
 const selectionStore = useWorkspaceSelectionStore()
 const projectStore = useProjectStore()
+const files = useProjectFileStore()
+const versions = ref<Record<string, number>>({})
+const errorMessage = ref<string | null>(null)
+const pendingCreate = ref<{ id: string; state: FileState } | null>(null)
+const newDescription = ref('')
+const editingId = ref<string | null>(null)
+const editName = ref('')
+const editDescription = ref('')
+const isEditing = ref(false)
+const errorText = (error: unknown) =>
+  error instanceof Error ? error.message : 'The request failed.'
 const projectId = computed(() => projectStore.activeProject?.projectIdApi?.id ?? '')
 
 const isLoading = ref(false)
@@ -27,6 +40,16 @@ const activeFileId = ref<string | null>(null)
 const isCreateDialogOpen = ref(false)
 const newDocumentName = ref('')
 const newDocumentKind = ref<CreatableDocumentKind>('peel')
+const expanded = ref<Record<CreatableDocumentKind, boolean>>({
+  peel: true,
+  renderConfig: true,
+  document: true,
+})
+const createTitles: Record<CreatableDocumentKind, string> = {
+  peel: 'New script',
+  renderConfig: 'New render configuration',
+  document: 'New document',
+}
 const newDocumentRenderConfigurationId = ref('')
 const isCreating = ref(false)
 const deletingScriptId = ref<string | null>(null)
@@ -38,27 +61,25 @@ async function fetchFiles() {
   isLoading.value = true
   try {
     if (!projectId.value) return
-    const project = await projectStore.loadProject(projectId.value)
-    scripts.value = (project.scripts ?? []).map((script) => ({
-      kind: 'peel',
-      id: script.id ?? '',
-      name: script.name ?? '',
-      icon: '🍌',
-    }))
-    documents.value = (project.documentTemplates ?? []).map((document) => ({
-      kind: 'document',
-      id: document.id ?? '',
-      name: document.name ?? '',
-      icon: 'DOC',
-    }))
-    renderConfigs.value = (project.renderConfigurations ?? []).map((renderConfig) => ({
-      kind: 'renderConfig',
-      id: renderConfig.id ?? '',
-      name: renderConfig.name ?? '',
-      icon: '{}',
-    }))
+    await projectStore.loadProject(projectId.value)
+    const summaries = await files.list(projectId.value)
+    versions.value = Object.fromEntries(summaries.map((file) => [file.id ?? '', file.version ?? 0]))
+    scripts.value = summaries
+      .filter((file) => file.type === 'script')
+      .map((file) => ({ kind: 'peel', id: file.id ?? '', name: file.name ?? '', icon: '🍌' }))
+    renderConfigs.value = summaries
+      .filter((file) => file.type === 'render-config')
+      .map((file) => ({
+        kind: 'renderConfig',
+        id: file.id ?? '',
+        name: file.name ?? '',
+        icon: '{}',
+      }))
+    documents.value = summaries
+      .filter((file) => file.type === 'document')
+      .map((file) => ({ kind: 'document', id: file.id ?? '', name: file.name ?? '', icon: 'DOC' }))
   } catch (error) {
-    console.error('Unexpected workspace item fetch error:', error)
+    errorMessage.value = errorText(error)
   } finally {
     isLoading.value = false
   }
@@ -69,10 +90,14 @@ function selectDocument(file: PeelScriptDocument | RenderConfigDocument | Docume
   selectionStore.selectDocument(file)
 }
 
-function openCreateDialog() {
+function openCreateDialog(kind: CreatableDocumentKind) {
   if (projectStore.isReadOnly) return
+  pendingCreate.value = null
+  errorMessage.value = null
+  newDescription.value = ''
   newDocumentName.value = ''
-  newDocumentKind.value = 'peel'
+  newDocumentKind.value = kind
+  expanded.value[kind] = true
   newDocumentRenderConfigurationId.value = ''
   isCreateDialogOpen.value = true
 }
@@ -86,84 +111,52 @@ async function createDocument() {
 
   isCreating.value = true
 
+  errorMessage.value = null
   try {
-    if (newDocumentKind.value === 'peel') {
-      const { data, error } = await api.POST('/api/scripts', {
-        body: { projectIdApi: { id: projectId.value }, name, script: '' },
-      })
-
-      if (error || !data?.id) {
-        console.error('Failed to create script:', error)
-        return
-      }
-
-      const file: PeelScriptDocument = {
-        kind: 'peel',
-        id: data.id,
-        name: data.name ?? name,
-        icon: '🍌',
-      }
-      await fetchFiles()
-      isCreateDialogOpen.value = false
-      selectDocument(file)
-      return
-    }
-
-    if (newDocumentKind.value === 'document') {
-      if (!newDocumentRenderConfigurationId.value) {
-        console.error('A render configuration is required to create a document.')
-        return
-      }
-      const { data, error } = await api.POST('/api/documents', {
-        body: {
-          projectId: { id: projectId.value },
-          name,
+    if (!pendingCreate.value) {
+      let content: FileState['content']
+      if (newDocumentKind.value === 'peel') content = { type: 'script', source: '' }
+      else if (newDocumentKind.value === 'document') {
+        if (!newDocumentRenderConfigurationId.value)
+          throw new Error('Select a render configuration.')
+        content = {
+          type: 'document',
           scriptNameTags: {},
           templateHtml: '<p></p>',
           editorStateJson: '{"type":"doc","content":[{"type":"paragraph"}]}',
           renderConfigurationId: newDocumentRenderConfigurationId.value,
-        },
-      })
-      if (error || !data?.id) {
-        console.error('Failed to create document:', error)
-        return
+        }
+      } else {
+        const { data, error } = await api.GET('/api/render-config/default')
+        if (error || !data) throw new Error('The default configuration could not be loaded.')
+        content = { type: 'render-config', ...renderConfigurationSchema.parse(data) }
       }
-      const file: DocumentWorkspaceItem = { kind: 'document', id: data.id, name, icon: 'DOC' }
-      await fetchFiles()
-      isCreateDialogOpen.value = false
-      selectDocument(file)
-      return
+      pendingCreate.value = {
+        id: crypto.randomUUID(),
+        state: { name, description: newDescription.value, content },
+      }
     }
-
-    const { data: defaultConfig, error: defaultError } = await api.GET('/api/render-config/default')
-    if (defaultError || !defaultConfig) {
-      console.error('Failed to load default render configuration:', defaultError)
-      return
-    }
-
-    const { data, error } = await api.POST('/api/render-config/', {
-      body: {
-        name,
-        projectIdApi: { id: projectId.value },
-        renderConfigurationDto: defaultConfig,
-      },
-    })
-    if (error || !data?.id) {
-      console.error('Failed to create render configuration:', error)
-      return
-    }
-
-    const file: RenderConfigDocument = {
-      kind: 'renderConfig',
-      id: data.id,
-      name,
-      icon: '{}',
-    }
-    await fetchFiles()
+    const created = await files.create(
+      projectId.value,
+      pendingCreate.value.id,
+      pendingCreate.value.state,
+    )
+    pendingCreate.value = null
     isCreateDialogOpen.value = false
-    selectDocument(file)
+    await fetchFiles()
+    selectDocument({
+      kind:
+        created.content?.type === 'script'
+          ? 'peel'
+          : created.content?.type === 'render-config'
+            ? 'renderConfig'
+            : 'document',
+      id: created.id ?? '',
+      name: created.name ?? name,
+      icon: '',
+    })
   } catch (error) {
-    console.error('Unexpected workspace item creation error:', error)
+    errorMessage.value = errorText(error)
   } finally {
     isCreating.value = false
   }
@@ -181,78 +174,65 @@ async function copyId(file: PeelWorkspaceDocument): Promise<void> {
   }
 }
 
-async function deletePeelScript(file: PeelScriptDocument) {
-  if (projectStore.isReadOnly) return
-  if (deletingScriptId.value || !window.confirm(`Delete "${file.name}"?`)) {
-    return
-  }
-
-  deletingScriptId.value = file.id
-
+async function deleteFile(file: PeelWorkspaceDocument, busy: { value: string | null }) {
+  if (projectStore.isReadOnly || busy.value || !window.confirm(`Delete "${file.name}"?`)) return
+  busy.value = file.id
+  errorMessage.value = null
   try {
-    const { error } = await api.DELETE('/api/scripts/{id}', {
-      params: {
-        path: { id: file.id },
-      },
-    })
-
-    if (error) {
-      console.error('Failed to delete script:', error)
-      return
-    }
-
+    const version = Math.max(versions.value[file.id] ?? 0, files.loaded[file.id]?.version ?? 0)
+    await files.remove(projectId.value, file.id, version)
     scripts.value = scripts.value.filter((item) => item.id !== file.id)
-    selectionStore.deleteDocument(file)
-  } catch (error) {
-    console.error('Unexpected script deletion error:', error)
-  } finally {
-    deletingScriptId.value = null
-  }
-}
-
-async function deleteRenderConfig(file: RenderConfigDocument) {
-  if (projectStore.isReadOnly) return
-  if (deletingRenderConfigId.value || !window.confirm(`Delete "${file.name}"?`)) {
-    return
-  }
-
-  deletingRenderConfigId.value = file.id
-  try {
-    const { error } = await api.DELETE('/api/render-config/{id}', {
-      params: { path: { id: file.id } },
-    })
-    if (error) {
-      console.error('Failed to delete render configuration:', error)
-      return
-    }
     renderConfigs.value = renderConfigs.value.filter((item) => item.id !== file.id)
-    selectionStore.deleteDocument(file)
-  } catch (error) {
-    console.error('Unexpected render configuration deletion error:', error)
-  } finally {
-    deletingRenderConfigId.value = null
-  }
-}
-
-async function deleteDocument(file: DocumentWorkspaceItem) {
-  if (projectStore.isReadOnly) return
-  if (deletingDocumentId.value || !window.confirm(`Delete "${file.name}"?`)) {
-    return
-  }
-
-  deletingDocumentId.value = file.id
-  try {
-    const { error } = await api.DELETE('/api/documents/{id}', { params: { path: { id: file.id } } })
-    if (error) {
-      console.error('Failed to delete document:', error)
-      return
-    }
     documents.value = documents.value.filter((item) => item.id !== file.id)
     selectionStore.deleteDocument(file)
+    await projectStore.loadProject(projectId.value)
   } catch (error) {
-    console.error('Unexpected document deletion error:', error)
+    errorMessage.value = errorText(error)
   } finally {
-    deletingDocumentId.value = null
+    busy.value = null
+  }
+}
+const deletePeelScript = (file: PeelScriptDocument) => deleteFile(file, deletingScriptId)
+const deleteRenderConfig = (file: RenderConfigDocument) => deleteFile(file, deletingRenderConfigId)
+const deleteDocument = (file: DocumentWorkspaceItem) => deleteFile(file, deletingDocumentId)
+function reloadFile(file: PeelWorkspaceDocument) {
+  if (window.confirm('Discard local edits to this file and load the latest server version?'))
+    selectionStore.reloadDocument(file)
+}
+async function editMetadata(file: PeelWorkspaceDocument) {
+  errorMessage.value = null
+  try {
+    const baseline = await files.load(projectId.value, file.id)
+    editingId.value = file.id
+    editName.value = baseline.name ?? ''
+    editDescription.value = baseline.description ?? ''
+  } catch (error) {
+    errorMessage.value = errorText(error)
+  }
+}
+async function saveMetadata() {
+  const id = editingId.value
+  if (!id || isEditing.value || projectStore.isReadOnly) return
+  isEditing.value = true
+  errorMessage.value = null
+  try {
+    const baseline = files.loaded[id]
+    if (!baseline?.content) throw new Error('Reopen the file before saving.')
+    await files.save(projectId.value, id, {
+      name: editName.value,
+      description: editDescription.value,
+      content: baseline.content,
+    })
+    editingId.value = null
+    await fetchFiles()
+    const updated = [...scripts.value, ...renderConfigs.value, ...documents.value].find(
+      (file) => file.id === id,
+    )
+    if (updated) selectDocument(updated)
+  } catch (error) {
+    errorMessage.value = errorText(error)
+  } finally {
+    isEditing.value = false
   }
 }
 
@@ -263,19 +243,43 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
     <div class="panel-header">
       <span>Project files</span>
       <button
-        class="create-button"
-        title="New workspace item"
-        aria-label="New workspace item"
-        :disabled="projectStore.isReadOnly"
-        @click="openCreateDialog"
+        class="header-icon-button"
+        title="Refresh files"
+        aria-label="Refresh files"
+        :disabled="isLoading"
+        @click="fetchFiles"
       >
-        +
+        <RefreshCw :size="16" aria-hidden="true" />
       </button>
     </div>
+    <p v-if="errorMessage" role="alert" class="file-error">{{ errorMessage }}</p>
     <div v-if="isLoading" class="loading">Loading...</div>
     <section class="document-section">
-      <h2>Scripts</h2>
-      <ul class="file-list">
+      <div class="section-header">
+        <h2>
+          <button
+            class="section-toggle"
+            :aria-expanded="expanded.peel"
+            aria-controls="files-peel"
+            @click="expanded.peel = !expanded.peel"
+            title="Scripts"
+          >
+            <ChevronRight :size="14" :class="{ expanded: expanded.peel }" aria-hidden="true" /><span
+              >Scripts</span
+            >
+          </button>
+        </h2>
+        <button
+          class="header-icon-button"
+          title="New script"
+          aria-label="New script"
+          :disabled="projectStore.isReadOnly"
+          @click="openCreateDialog('peel')"
+        >
+          <Plus :size="16" aria-hidden="true" />
+        </button>
+      </div>
+      <ul v-show="expanded.peel" id="files-peel" class="file-list">
         <li
           v-for="file in scripts"
           :key="`peel-${file.id}`"
@@ -284,6 +288,23 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
         >
           <span class="file-icon">{{ file.icon }}</span>
           <button class="file-name" @click.stop="selectDocument(file)">{{ file.name }}</button>
+          <button
+            class="copy-id-button"
+            title="Reload file"
+            aria-label="Reload file"
+            @click.stop="reloadFile(file)"
+          >
+            <RotateCcw :size="14" />
+          </button>
+          <button
+            class="copy-id-button"
+            title="Edit name and description"
+            aria-label="Edit name and description"
+            :disabled="projectStore.isReadOnly"
+            @click.stop="editMetadata(file)"
+          >
+            <Pencil :size="14" />
+          </button>
           <button
             class="delete-button"
             :disabled="projectStore.isReadOnly || deletingScriptId === file.id"
@@ -312,8 +333,33 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
       </ul>
     </section>
     <section class="document-section">
-      <h2>Render configurations</h2>
-      <ul class="file-list">
+      <div class="section-header">
+        <h2>
+          <button
+            class="section-toggle"
+            :aria-expanded="expanded.renderConfig"
+            aria-controls="files-renderConfig"
+            @click="expanded.renderConfig = !expanded.renderConfig"
+            title="Render configurations"
+          >
+            <ChevronRight
+              :size="14"
+              :class="{ expanded: expanded.renderConfig }"
+              aria-hidden="true"
+            /><span>Render configurations</span>
+          </button>
+        </h2>
+        <button
+          class="header-icon-button"
+          title="New render configuration"
+          aria-label="New render configuration"
+          :disabled="projectStore.isReadOnly"
+          @click="openCreateDialog('renderConfig')"
+        >
+          <Plus :size="16" aria-hidden="true" />
+        </button>
+      </div>
+      <ul v-show="expanded.renderConfig" id="files-renderConfig" class="file-list">
         <li
           v-for="file in renderConfigs"
           :key="`renderConfig-${file.id}`"
@@ -322,6 +368,23 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
         >
           <span class="file-icon">{{ file.icon }}</span>
           <button class="file-name" @click.stop="selectDocument(file)">{{ file.name }}</button>
+          <button
+            class="copy-id-button"
+            title="Reload file"
+            aria-label="Reload file"
+            @click.stop="reloadFile(file)"
+          >
+            <RotateCcw :size="14" />
+          </button>
+          <button
+            class="copy-id-button"
+            title="Edit name and description"
+            aria-label="Edit name and description"
+            :disabled="projectStore.isReadOnly"
+            @click.stop="editMetadata(file)"
+          >
+            <Pencil :size="14" />
+          </button>
           <button
             class="delete-button"
             :disabled="projectStore.isReadOnly || deletingRenderConfigId === file.id"
@@ -350,8 +413,33 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
       </ul>
     </section>
     <section class="document-section">
-      <h2>Documents</h2>
-      <ul class="file-list">
+      <div class="section-header">
+        <h2>
+          <button
+            class="section-toggle"
+            :aria-expanded="expanded.document"
+            aria-controls="files-document"
+            @click="expanded.document = !expanded.document"
+            title="Documents"
+          >
+            <ChevronRight
+              :size="14"
+              :class="{ expanded: expanded.document }"
+              aria-hidden="true"
+            /><span>Documents</span>
+          </button>
+        </h2>
+        <button
+          class="header-icon-button"
+          title="New document"
+          aria-label="New document"
+          :disabled="projectStore.isReadOnly"
+          @click="openCreateDialog('document')"
+        >
+          <Plus :size="16" aria-hidden="true" />
+        </button>
+      </div>
+      <ul v-show="expanded.document" id="files-document" class="file-list">
         <li
           v-for="file in documents"
           :key="`document-${file.id}`"
@@ -375,6 +463,23 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
             <Copy v-else :size="16" aria-hidden="true" />
           </button>
           <button
+            class="copy-id-button"
+            title="Reload file"
+            aria-label="Reload file"
+            @click.stop="reloadFile(file)"
+          >
+            <RotateCcw :size="14" />
+          </button>
+          <button
+            class="copy-id-button"
+            title="Edit name and description"
+            aria-label="Edit name and description"
+            :disabled="projectStore.isReadOnly"
+            @click.stop="editMetadata(file)"
+          >
+            <Pencil :size="14" />
+          </button>
+          <button
             class="delete-button"
             :disabled="projectStore.isReadOnly || deletingDocumentId === file.id"
             title="Delete document"
@@ -392,18 +497,28 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
     <div
       v-if="isCreateDialogOpen"
       class="create-dialog-backdrop"
-      @click.self="isCreateDialogOpen = false"
+      @click.self="!isCreating && (isCreateDialogOpen = false)"
     >
       <form class="create-dialog" @submit.prevent="createDocument">
-        <h2>New Workspace Item</h2>
-        <label for="workspace-item-type">Type</label>
-        <select id="workspace-item-type" v-model="newDocumentKind">
-          <option value="peel">PEEL Script</option>
-          <option value="renderConfig">Render Config</option>
-          <option value="document">Document</option>
-        </select>
+        <h2>{{ createTitles[newDocumentKind] }}</h2>
+        <p v-if="errorMessage" role="alert" class="file-error">{{ errorMessage }}</p>
+        <p v-if="pendingCreate">
+          Retry sends the same file. Cancel and refresh to check its status.
+        </p>
         <label for="new-document-name">Name</label>
-        <input id="new-document-name" v-model="newDocumentName" autofocus placeholder="Name" />
+        <input
+          id="new-document-name"
+          v-model="newDocumentName"
+          :disabled="!!pendingCreate || isCreating"
+          autofocus
+          placeholder="Name"
+        />
+        <label for="new-description">Description</label
+        ><input
+          id="new-description"
+          v-model="newDescription"
+          :disabled="!!pendingCreate || isCreating"
+        />
         <label v-if="newDocumentKind === 'document'" for="new-document-render-config"
           >Render Config</label
         >
@@ -411,6 +526,7 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
           v-if="newDocumentKind === 'document'"
           id="new-document-render-config"
           v-model="newDocumentRenderConfigurationId"
+          :disabled="!!pendingCreate || isCreating"
         >
           <option value="">Select a render config</option>
           <option v-for="config in renderConfigs" :key="config.id" :value="config.id">
@@ -418,7 +534,9 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
           </option>
         </select>
         <div class="dialog-actions">
-          <button type="button" @click="isCreateDialogOpen = false">Cancel</button>
+          <button type="button" :disabled="isCreating" @click="isCreateDialogOpen = false">
+            Cancel
+          </button>
           <button
             type="submit"
             :disabled="
@@ -427,8 +545,22 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
               (newDocumentKind === 'document' && !newDocumentRenderConfigurationId)
             "
           >
-            {{ isCreating ? 'Creating...' : 'Create' }}
+            {{ isCreating ? 'Creating...' : pendingCreate ? 'Retry' : 'Create' }}
           </button>
+        </div>
+      </form>
+    </div>
+    <div v-if="editingId" class="create-dialog-backdrop">
+      <form class="create-dialog" @submit.prevent="saveMetadata">
+        <h2>File details</h2>
+        <p v-if="errorMessage" role="alert" class="file-error">{{ errorMessage }}</p>
+        <label for="edit-name">Name</label
+        ><input id="edit-name" v-model="editName" required :disabled="isEditing" />
+        <label for="edit-description">Description</label
+        ><input id="edit-description" v-model="editDescription" :disabled="isEditing" />
+        <div class="dialog-actions">
+          <button type="button" :disabled="isEditing" @click="editingId = null">Cancel</button
+          ><button :disabled="isEditing || !editName.trim()">Save</button>
         </div>
       </form>
     </div>
@@ -436,6 +568,11 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
 </template>
 
 <style scoped>
+.file-error {
+  color: #f48771;
+  padding: 0 12px;
+  white-space: pre-wrap;
+}
 .file-tree-container {
   height: 100%;
   background-color: var(--peel-surface);
@@ -455,31 +592,79 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
   color: var(--peel-muted);
   border-bottom: 1px solid var(--peel-border);
 }
-.create-button {
-  border: 0;
-  background: var(--peel-raised);
-  color: #cccccc;
-  font-size: 18px;
-  line-height: 24px;
-  width: 28px;
-  height: 28px;
+.header-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
   padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--peel-muted);
   cursor: pointer;
 }
-.create-button:hover {
-  color: #ffffff;
+.header-icon-button:hover:not(:disabled) {
+  background: var(--peel-raised);
+  color: var(--peel-text);
+}
+.header-icon-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 12px 8px 2px;
+}
+.section-header h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 12px;
+}
+.section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 2px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--peel-muted);
+  font: inherit;
+  font-weight: bold;
+  text-align: left;
+  cursor: pointer;
+}
+.section-toggle:hover {
+  color: var(--peel-text);
+}
+.section-toggle span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.section-toggle svg {
+  flex-shrink: 0;
+}
+.section-toggle svg.expanded {
+  transform: rotate(90deg);
+}
+.header-icon-button:focus-visible,
+.section-toggle:focus-visible {
+  outline: 2px solid var(--peel-accent);
+  outline-offset: 2px;
 }
 .file-list {
   list-style: none;
   margin: 0;
   padding: 0;
-}
-.document-section h2 {
-  margin: 0;
-  padding: 20px 14px 8px;
-  color: var(--peel-muted);
-  font-size: 12px;
-  font-weight: bold;
 }
 .loading {
   padding: 8px 12px;

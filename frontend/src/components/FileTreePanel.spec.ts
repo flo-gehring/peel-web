@@ -36,6 +36,14 @@ describe('FileTreePanel', () => {
           error: undefined,
         })
       }
+      if (path === '/api/projects/{projectId}/files')
+        return Promise.resolve({
+          data: [
+            { id: 'script-1', name: 'Script', type: 'script', version: 2 },
+            { id: 'config-1', name: 'Config', type: 'render-config', version: 3 },
+            { id: 'document-1', name: 'Document', type: 'document', version: 0 },
+          ],
+        })
       return Promise.resolve({ data: undefined, error: undefined })
     })
     mockApi.DELETE.mockResolvedValue({ data: undefined, error: undefined })
@@ -57,7 +65,7 @@ describe('FileTreePanel', () => {
     })
   })
 
-  it('deletes a render config using only its endpoint and publishes the deletion', async () => {
+  it('deletes with the last known version and publishes the deletion', async () => {
     const selectionStore = useWorkspaceSelectionStore()
     const projectStore = useProjectStore()
     projectStore.activeProject = { projectIdApi: { id: 'project-1' } }
@@ -69,8 +77,11 @@ describe('FileTreePanel', () => {
     await flushPromises()
 
     expect(mockApi.DELETE).toHaveBeenCalledTimes(1)
-    expect(mockApi.DELETE).toHaveBeenCalledWith('/api/render-config/{id}', {
-      params: { path: { id: 'config-1' } },
+    expect(mockApi.DELETE).toHaveBeenCalledWith('/api/projects/{projectId}/files/{fileId}', {
+      params: {
+        path: { projectId: 'project-1', fileId: 'config-1' },
+        query: { expectedVersion: 3 },
+      },
     })
     expect(wrapper.text()).not.toContain('Config')
     expect(wrapper.text()).toContain('Document')
@@ -97,4 +108,76 @@ describe('FileTreePanel', () => {
     expect(mockApi.DELETE).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('Config')
   })
+
+  it('retries creation with the same ID and payload after a network failure', async () => {
+    useProjectStore().activeProject = { projectIdApi: { id: 'project-1' } }
+    mockApi.POST.mockRejectedValueOnce(new TypeError('Connection lost'))
+    mockApi.POST.mockImplementationOnce(
+      async (_path: unknown, options: unknown) =>
+        ({
+          data: {
+            ...(options as { body: Record<string, unknown> }).body,
+            projectId: { id: 'project-1' },
+            version: 0,
+          },
+        }) as never,
+    )
+    const wrapper = mount(FileTreePanel)
+    await flushPromises()
+    await wrapper.get('[title="New script"]').trigger('click')
+    await wrapper.get('#new-document-name').setValue('Created')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Connection lost')
+    expect(wrapper.get('#new-document-name').attributes('disabled')).toBeDefined()
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(mockApi.POST).toHaveBeenCalledTimes(2)
+    expect(mockApi.POST.mock.calls[0]).toEqual(mockApi.POST.mock.calls[1])
+    expect(mockApi.POST.mock.calls[0]?.[0]).toBe('/api/projects/{projectId}/files')
+    expect(useWorkspaceSelectionStore().selectedDocument?.name).toBe('Created')
+  })
+
+  it('shows blocking usages instead of removing a referenced file', async () => {
+    useProjectStore().activeProject = { projectIdApi: { id: 'project-1' } }
+    mockApi.DELETE.mockResolvedValueOnce({
+      error: { error: { message: 'File in use.', details: { usages: [{ name: 'Invoice' }] } } },
+    } as never)
+    const wrapper = mount(FileTreePanel)
+    await flushPromises()
+    await wrapper.get('.document-section:nth-of-type(2) [title="Delete"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('Invoice')
+    expect(wrapper.text()).toContain('Config')
+    expect(useWorkspaceSelectionStore().deletedDocument).toBeNull()
+  })
+
+  it('collapses groups independently without selecting a file', async () => {
+    useProjectStore().activeProject = { projectIdApi: { id: 'project-1' } }
+    const wrapper = mount(FileTreePanel)
+    await flushPromises()
+    const toggle = wrapper.get('[aria-controls="files-peel"]')
+    await toggle.trigger('click')
+    expect(toggle.attributes('aria-expanded')).toBe('false')
+    expect((wrapper.get('#files-peel').element as HTMLElement).style.display).toBe('none')
+    expect((wrapper.get('#files-renderConfig').element as HTMLElement).style.display).not.toBe(
+      'none',
+    )
+    expect(useWorkspaceSelectionStore().selectedDocument).toBeNull()
+    await toggle.trigger('click')
+    expect((wrapper.get('#files-peel').element as HTMLElement).style.display).not.toBe('none')
+  })
+
+  it.each(['New script', 'New render configuration', 'New document'])(
+    'opens the matching creation form from %s',
+    async (title) => {
+      useProjectStore().activeProject = { projectIdApi: { id: 'project-1' } }
+      const wrapper = mount(FileTreePanel)
+      await flushPromises()
+      await wrapper.get(`[title="${title}"]`).trigger('click')
+      expect(wrapper.get('.create-dialog h2').text()).toBe(title)
+      expect(wrapper.find('#workspace-item-type').exists()).toBe(false)
+      expect(wrapper.find('#new-document-render-config').exists()).toBe(title === 'New document')
+    },
+  )
 })

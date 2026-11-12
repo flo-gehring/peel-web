@@ -36,7 +36,7 @@ The Vite alias `@/` resolves to `frontend/src/`. The Vite dev server proxies `/a
 ### API Client
 
 - Use `api` from `frontend/src/adapter/client.ts`.
-- The client base URL is `/api`; call paths without the prefix, e.g. `api.GET('/scripts')`, `api.POST('/run')`.
+- The client base URL is empty; call generated paths including `/api`, e.g. `api.GET('/api/projects/{projectId}/files', ...)`.
 - Use generated endpoint types. When a backend OpenAPI endpoint is added, update/regenerate `frontend/src/types/api.ts` before using it; the root `src/types/api.ts` may already contain the new definition.
 
 ### Workspace Documents
@@ -47,7 +47,7 @@ The Vite alias `@/` resolves to `frontend/src/`. The Vite dev server proxies `/a
 
 ### Dockview
 
-- `App.vue` owns the `DockviewApi`, panel registry, initial layout, and editor group id.
+- `ProjectView.vue` owns the `DockviewApi`, panel registry, initial layout, and editor group id.
 - Script editor panel ids use `editor-script-${scriptId}`. Use script id, not name, as identity.
 - New script tabs must be added to `editor-group`, not the active group.
 - The output panel id is `output-console`; the global bindings panel id is `bindings-json`.
@@ -62,18 +62,20 @@ The Vite alias `@/` resolves to `frontend/src/`. The Vite dev server proxies `/a
 - `runOutput.ts`: latest run request, status, error, and response shared with `OutputPanel`.
 - Pinia state is intentionally session-only; no persistence is implemented.
 
-### Script Lifecycle
+### File Lifecycle
 
-- File tree fetches `GET /scripts`; clicking a script selects it through `workspaceSelection`.
-- `App.vue` watches selection changes, loads `GET /scripts/{id}` only for first tab open, and uses cached drafts on re-focus/re-open.
-- Creating a script should call `POST /scripts` immediately with initial name and empty content, then add/select the returned script so its tab is bound to the returned id.
-- Saving calls `POST /scripts` with `{ id?, name, script }`. A missing id means create; a present id means update.
-- Deleting calls `DELETE /scripts/{id}` only after confirmation. On success remove the explorer item, clear the related draft, clear selection if needed, and close `editor-script-${id}` if open.
+- Scripts, render configurations and document templates use the common `project-files` collection and `/api/projects/{projectId}/files` API; see `peelserver/docs/FILE_MANAGEMENT.md`.
+- Use `projectFiles.ts` for loading, creating, saving and deleting files. It retains the acknowledged server version; never fetch a newer version implicitly before saving an existing draft.
+- Create using `POST /files` with a client-generated UUID, name, description and typed `content`. Retain the ID and exact payload for retries. Creation never updates an existing file.
+- Update with `PUT /files/{fileId}` and `expectedVersion`. Identical target states succeed without writing; other stale updates return `409`. Keep drafts and their baseline on failure.
+- Delete after confirmation with the last known version. Referenced files return blocking usages; remove explorer items, drafts and tabs only after success.
+- Lists contain metadata and derived `type`; details contain `content.type` (`script`, `render-config`, `document`). Common name/description editing is in the explorer.
+- `ProjectView.vue` owns Dockview and initial loads. Cached drafts survive tab changes. Explicit reload confirms discarding that file's draft before loading the server version.
 
 ### Running Scripts
 
 - The ▶ button in `GroupActions.vue` runs the currently active editor's latest draft.
-- Call `POST /run` with `{ script, bindings }`.
+- Call `PUT /api/scripts/run` with `{ projectId: { id }, script, bindings }`.
 - Bindings come from the global bindings store and must be valid JSON with an object top level; each value is currently required to be an object, matching generated `RunRequest` typing.
 - Send run state to `runOutput.ts`; `OutputPanel.vue` renders request, error, trace, and result as read-only formatted JSON.
 - Keep OutputPanel scrollable for large results.
@@ -82,7 +84,7 @@ The Vite alias `@/` resolves to `frontend/src/`. The Vite dev server proxies `/a
 
 - Preserve the current dark Dockview/Monaco visual language.
 - Use Monaco (`@guolao/vue-monaco-editor`) for script and JSON editing.
-- Explorer creation uses the plus button and a prompt with a type selector. Only `PEEL Script` is enabled now; retain the selector structure for future render configs/documents.
+- Explorer sections are collapsible and each has its own plus button. Creation opens the matching script, render-configuration or document form without a type selector. Refresh is an icon in the Project files header.
 - Destructive explorer actions require confirmation and should stop click propagation so they do not also select/open the file.
 
 ## Editing and Validation

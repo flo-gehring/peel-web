@@ -84,22 +84,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/scripts/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["getScript"];
-        put: operations["updateScript"];
-        post?: never;
-        delete: operations["deleteScript"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/scripts/run": {
         parameters: {
             query?: never;
@@ -116,17 +100,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/render-config/{id}": {
+    "/api/projects/{projectId}/files/{fileId}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["getById"];
-        put: operations["updateRenderConfiguration"];
+        get: operations["get"];
+        /**
+         * Replace a file state using its expected version
+         * @description An identical target succeeds without writing at any expected version. Other updates atomically require the expected version and increment it.
+         */
+        put: operations["update"];
         post?: never;
-        delete: operations["deleteById"];
+        /**
+         * Delete an unreferenced file using its expected version
+         * @description Already absent files succeed. Changed files or blocking document references return 409.
+         */
+        delete: operations["delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -140,7 +132,7 @@ export interface paths {
             cookie?: never;
         };
         get: operations["settings"];
-        put: operations["update"];
+        put: operations["update_1"];
         post?: never;
         delete?: never;
         options?: never;
@@ -180,48 +172,20 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/documents/{id}": {
+    "/api/projects/{projectId}/files": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["getDocument"];
-        put: operations["updateDocument"];
-        post?: never;
-        delete: operations["deleteDocument"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scripts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
+        get: operations["list"];
         put?: never;
-        post: operations["saveScript"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/render-config/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["createRenderConfiguration"];
+        /**
+         * Create a file at version 0
+         * @description A repeated creation succeeds only for an identical file still at version 0. Never overwrites an existing file.
+         */
+        post: operations["create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -468,22 +432,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/documents": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["saveDocument"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/documents/preview": {
         parameters: {
             query?: never;
@@ -638,7 +586,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["delete"];
+        delete: operations["delete_1"];
         options?: never;
         head?: never;
         patch?: never;
@@ -719,15 +667,6 @@ export interface components {
         ApiErrorResponse: {
             error?: components["schemas"]["ApiError"];
         };
-        ScriptUpdateRequest: {
-            name?: string;
-            scriptContent?: string;
-        };
-        ScriptDtoResponse: {
-            id?: string;
-            name?: string;
-            script?: string;
-        };
         ProjectIdApi: {
             id: string;
         };
@@ -746,19 +685,67 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        RenderConfigurationDto: {
-            renderConfigurations?: {
+        DocumentContent: {
+            scriptNameTags: {
                 [key: string]: string;
             };
-            namedOverrides?: {
+            templateHtml: string;
+            editorStateJson: string;
+            renderConfigurationId: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "document";
+        };
+        FileContent: {
+            type: string;
+        } & (components["schemas"]["ScriptContent"] | components["schemas"]["RenderConfigContent"] | components["schemas"]["DocumentContent"]);
+        RenderConfigContent: {
+            renderConfigurations: {
+                [key: string]: string;
+            };
+            namedOverrides: {
                 [key: string]: {
                     [key: string]: string;
                 };
             };
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "render-config";
         };
-        RenderConfigurationUpdateRequest: {
+        ScriptContent: {
+            source: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "script";
+        };
+        UpdateFile: {
+            /** Format: int64 */
+            expectedVersion: number;
+            name: string;
+            description?: string;
+            content: components["schemas"]["FileContent"];
+        };
+        ProjectFile: {
+            id?: string;
+            projectId?: components["schemas"]["ProjectId"];
             name?: string;
-            renderConfigurationDto?: components["schemas"]["RenderConfigurationDto"];
+            description?: string;
+            /** Format: int64 */
+            version?: number;
+            content?: components["schemas"]["FileContent"];
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ProjectId: {
+            id?: string;
         };
         ProjectUpdate: {
             name: string;
@@ -767,36 +754,12 @@ export interface components {
         AdminRequest: {
             admin?: boolean;
         };
-        DocumentTemplateUpdateRequest: {
-            name?: string;
-            scriptNameTags: {
-                [key: string]: string;
-            };
-            templateHtml?: string;
-            editorStateJson?: string;
-            renderConfigurationId?: string;
-        };
-        DocumentTemplateSaveResponse: {
-            id?: string;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
-            /** @enum {string} */
-            type?: "CREATED" | "UPDATED";
-        };
-        CreateScriptRequest: {
-            projectIdApi: components["schemas"]["ProjectIdApi"];
-            name?: string;
-            script?: string;
-        };
-        RenderConfigurationPersistenceDto: {
-            name?: string;
-            projectIdApi: components["schemas"]["ProjectIdApi"];
-            renderConfigurationDto?: components["schemas"]["RenderConfigurationDto"];
-        };
-        RenderConfigurationCreateResponse: {
-            id?: string;
+        CreateFile: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            description?: string;
+            content: components["schemas"]["FileContent"];
         };
         ProjectSummary: {
             projectIdApi?: components["schemas"]["ProjectIdApi"];
@@ -821,16 +784,6 @@ export interface components {
         };
         PrintJobId: {
             id?: string;
-        };
-        DocumentTemplateSaveRequest: {
-            projectId: components["schemas"]["ProjectIdApi"];
-            name?: string;
-            scriptNameTags: {
-                [key: string]: string;
-            };
-            templateHtml?: string;
-            editorStateJson?: string;
-            renderConfigurationId?: string;
         };
         DocumentPreviewRequest: {
             projectId: components["schemas"]["ProjectIdApi"];
@@ -867,6 +820,28 @@ export interface components {
         };
         ValidationResponse: {
             diagnostics?: components["schemas"]["ValidationDiagnostic"][];
+        };
+        RenderConfigurationDto: {
+            renderConfigurations?: {
+                [key: string]: string;
+            };
+            namedOverrides?: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+        };
+        FileSummary: {
+            id?: string;
+            name?: string;
+            description?: string;
+            /** Format: int64 */
+            version?: number;
+            type?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
         };
         DocumentTemplateSummaryResponse: {
             id?: string;
@@ -942,20 +917,6 @@ export interface components {
             invitedByEmail?: string;
             /** Format: date-time */
             expiresAt?: string;
-        };
-        DocumentTemplateDto: {
-            id?: string;
-            name?: string;
-            scriptNameTags?: {
-                [key: string]: string;
-            };
-            templateHtml?: string;
-            editorStateJson?: string;
-            renderConfigurationId?: string;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
         };
         Confirmation: {
             confirmation: string;
@@ -1235,74 +1196,6 @@ export interface operations {
             };
         };
     };
-    getScript: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScriptDtoResponse"];
-                };
-            };
-        };
-    };
-    updateScript: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ScriptUpdateRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScriptDtoResponse"];
-                };
-            };
-        };
-    };
-    deleteScript: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     run: {
         parameters: {
             query?: never;
@@ -1327,69 +1220,211 @@ export interface operations {
             };
         };
     };
-    getById: {
+    get: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                id: string;
+                projectId: string;
+                fileId: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
+            /** @description Current file */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RenderConfigurationPersistenceDto"];
+                    "*/*": components["schemas"]["ProjectFile"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Invalid CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Resource unavailable */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Version, name, creation or reference conflict; or archived project */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
                 };
             };
         };
     };
-    updateRenderConfiguration: {
+    update: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                id: string;
+                projectId: string;
+                fileId: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RenderConfigurationUpdateRequest"];
+                "application/json": components["schemas"]["UpdateFile"];
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Updated or identical current file */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "*/*": components["schemas"]["ProjectFile"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Invalid CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Resource unavailable */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Version, name, creation or reference conflict; or archived project */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
             };
         };
     };
-    deleteById: {
+    delete: {
         parameters: {
-            query?: never;
+            query: {
+                expectedVersion: number;
+            };
             header?: never;
             path: {
-                id: string;
+                projectId: string;
+                fileId: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Invalid CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Resource unavailable */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Version, name, creation or reference conflict; or archived project */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
             };
         };
     };
@@ -1415,7 +1450,7 @@ export interface operations {
             };
         };
     };
-    update: {
+    update_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -1514,118 +1549,142 @@ export interface operations {
             };
         };
     };
-    getDocument: {
+    list: {
         parameters: {
-            query?: never;
+            query?: {
+                type?: string;
+            };
             header?: never;
             path: {
-                id: string;
+                projectId: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
+            /** @description File metadata */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DocumentTemplateDto"];
+                    "*/*": components["schemas"]["FileSummary"][];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Invalid CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Resource unavailable */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Version, name, creation or reference conflict; or archived project */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
                 };
             };
         };
     };
-    updateDocument: {
+    create: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                id: string;
+                projectId: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DocumentTemplateUpdateRequest"];
+                "application/json": components["schemas"]["CreateFile"];
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Created or identical version-0 file */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DocumentTemplateSaveResponse"];
+                    "*/*": components["schemas"]["ProjectFile"];
                 };
             };
-        };
-    };
-    deleteDocument: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    saveScript: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateScriptRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
+            /** @description Invalid request */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ScriptDtoResponse"];
+                    "*/*": components["schemas"]["ApiErrorResponse"];
                 };
             };
-        };
-    };
-    createRenderConfiguration: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RenderConfigurationPersistenceDto"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
+            /** @description Authentication required */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RenderConfigurationCreateResponse"];
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Invalid CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Resource unavailable */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Version, name, creation or reference conflict; or archived project */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
                 };
             };
         };
@@ -1971,30 +2030,6 @@ export interface operations {
             };
         };
     };
-    saveDocument: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DocumentTemplateSaveRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DocumentTemplateSaveResponse"];
-                };
-            };
-        };
-    };
     previewDocument: {
         parameters: {
             query?: never;
@@ -2197,7 +2232,7 @@ export interface operations {
             };
         };
     };
-    delete: {
+    delete_1: {
         parameters: {
             query?: never;
             header?: never;

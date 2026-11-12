@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { api, clearCsrf, cancelWorkspaceRequests } from '@/adapter/client'
 import { useEditorDraftStore } from './editorDrafts'
+import { useProjectFileStore } from './projectFiles'
 import { useDocumentDraftStore } from './documentDrafts'
 import { useProjectStore } from './projects'
 import { useWorkspaceSelectionStore } from './workspaceSelection'
@@ -25,6 +26,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   function clearWorkspace(): void {
     cancelWorkspaceRequests()
+    useProjectFileStore().clear()
     useEditorDraftStore().clear()
     useDocumentDraftStore().clear()
     useProjectStore().clear()

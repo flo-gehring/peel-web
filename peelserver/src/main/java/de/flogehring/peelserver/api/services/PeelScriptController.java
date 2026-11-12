@@ -15,22 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 @RequestMapping(path = "/api/scripts", produces = MediaType.APPLICATION_JSON_VALUE)
 public interface PeelScriptController {
-
-    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    ScriptDtoResponse saveScript(@Valid @RequestBody CreateScriptRequest request, @AuthenticationPrincipal SpringUserDetails user);
-
-    @PutMapping("/{id}")
-    ScriptDtoResponse updateScript(@PathVariable String id, @RequestBody ScriptUpdateRequest request, @AuthenticationPrincipal SpringUserDetails user);
-
-    @GetMapping("/{id}")
-    ScriptDtoResponse getScript(@PathVariable String id, @AuthenticationPrincipal SpringUserDetails user);
-
-    @DeleteMapping("/{id}")
-    void deleteScript(@PathVariable String id, @AuthenticationPrincipal SpringUserDetails user);
-
     @PutMapping(path = "/run", consumes = MediaType.APPLICATION_JSON_VALUE)
     RunResponse run(@Valid @RequestBody RunRequest request, @AuthenticationPrincipal SpringUserDetails user);
-
     @GetMapping("/validate")
     ValidationResponse validate(@RequestBody ValidationRequest request);
 }

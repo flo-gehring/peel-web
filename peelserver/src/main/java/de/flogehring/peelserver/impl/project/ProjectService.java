@@ -1,4 +1,5 @@
 package de.flogehring.peelserver.impl.project;
+import de.flogehring.peelserver.impl.files.ProjectFileService;
 
 import de.flogehring.peelserver.api.data.ProjectIdApi;
 import de.flogehring.peelserver.api.data.projects.ProjectData;
@@ -7,9 +8,6 @@ import de.flogehring.peelserver.api.data.renderconfig.RenderConfigurationSummary
 import de.flogehring.peelserver.api.data.scripts.ScriptSummaryResponse;
 import de.flogehring.peelserver.api.data.template.DocumentTemplateSummaryResponse;
 import de.flogehring.peelserver.api.services.ProjectController;
-import de.flogehring.peelserver.impl.documenttemplates.PeelDocumentRepository;
-import de.flogehring.peelserver.impl.renderconfig.RenderConfigurationRepository;
-import de.flogehring.peelserver.impl.scripts.PeelScriptRepository;
 import de.flogehring.peelserver.impl.users.SpringUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,10 +18,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProjectService implements ProjectController {
 
-    private final PeelScriptRepository peelScriptRepository;
+    private final ProjectFileService files;
     private final ProjectRepository projectRepository;
-    private final RenderConfigurationRepository renderConfigurationRepository;
-    private final PeelDocumentRepository peelDocumentRepository;
     private final ProjectAccessService projectAccess;
 
 
@@ -54,31 +50,10 @@ public class ProjectService implements ProjectController {
     @Override
     public ProjectData getProject(String projectId, SpringUserDetails springUserDetails) {
         ProjectPersistence projectPersistence = projectAccess.requireProjectAccess(new ProjectId(projectId), springUserDetails.getUserId());
-        ProjectId projectIdDomainValue = new ProjectId(projectPersistence.getId());
-        return new ProjectData(
-                new ProjectIdApi(projectPersistence.getId()),
-                projectPersistence.getPersistenceData().projectName(),
-                projectPersistence.getState(),
-                peelScriptRepository.findByProjectId(projectIdDomainValue).stream()
-                        .map(script -> new ScriptSummaryResponse(
-                                script.getId(),
-                                script.getPeelScript().description()
-                        ))
-                        .toList(),
-                peelDocumentRepository.findByProjectId(projectIdDomainValue).stream()
-                        .map(document -> new DocumentTemplateSummaryResponse(
-                                document.getId(),
-                                document.getData().name(),
-                                document.getUpdatedAt()
-                        ))
-                        .toList(),
-                renderConfigurationRepository.findByProjectId(projectIdDomainValue).stream()
-                        .map(renderConfig -> new RenderConfigurationSummaryResponse(
-                                renderConfig.getId(),
-                                renderConfig.getName()
-                        ))
-                        .toList()
-        );
+        var summaries = files.list(projectId, null, springUserDetails);
+        return new ProjectData(new ProjectIdApi(projectId), projectPersistence.getPersistenceData().projectName(), projectPersistence.getState(),
+                summaries.stream().filter(file -> file.type().equals("script")).map(file -> new ScriptSummaryResponse(file.id(), file.name())).toList(),
+                summaries.stream().filter(file -> file.type().equals("document")).map(file -> new DocumentTemplateSummaryResponse(file.id(), file.name(), file.updatedAt())).toList(),
+                summaries.stream().filter(file -> file.type().equals("render-config")).map(file -> new RenderConfigurationSummaryResponse(file.id(), file.name())).toList());
     }
-
 }

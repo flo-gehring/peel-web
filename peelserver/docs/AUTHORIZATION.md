@@ -6,7 +6,7 @@ Status: Implementiert. Die Regeln werden serverseitig in den Ressourcen-Services
 
 Jeder API-Zugriff auf gespeicherte Inhalte wird anhand des angemeldeten Benutzers und des zugehörigen Projekts geprüft. Eine gefilterte Projektübersicht ersetzt diese Prüfung nicht: Auch direkte Aufrufe mit fremden Ressourcen-IDs müssen geschützt sein.
 
-Benutzer-ID und Identität stammen ausschließlich aus der serverseitigen Session. Das bestehende Projektmodell mit Eigentümer und Mitgliedern bildet die Grundlage. Eigentümer und Mitglieder dürfen zunächst alle Projektinhalte lesen, erstellen, bearbeiten und löschen. Abgestufte Inhaltsrechte kommen später. Die im [Projektmanagement](PROJECT_MANAGEMENT.md) geplante Admin-Rolle erweitert die Einladungsrechte; die hier implementierten Inhaltsrechte bleiben gleich.
+Benutzer-ID und Identität stammen ausschließlich aus der serverseitigen Session. Das bestehende Projektmodell mit Eigentümer und Mitgliedern bildet die Grundlage. Eigentümer und Mitglieder dürfen zunächst alle Projektinhalte lesen, erstellen, bearbeiten und löschen. Abgestufte Inhaltsrechte kommen später. Die im [Projektmanagement](PROJECT_MANAGEMENT.md) implementierte Admin-Rolle erweitert die Einladungsrechte; die hier implementierten Inhaltsrechte bleiben gleich.
 
 ## Prüfungen
 
@@ -14,7 +14,7 @@ Benutzer-ID und Identität stammen ausschließlich aus der serverseitigen Sessio
 - **Skripte, Dokumentvorlagen und Render-Konfigurationen:** Vor Lesen, Ändern und Löschen wird die Ressource geladen und ihr gespeichertes Projekt geprüft. Beim Erstellen wird das angegebene Zielprojekt geprüft. Die Projektzuordnung ist über normale Inhalts-Updates nicht änderbar.
 - **Verknüpfungen und Vorschauen:** Jede referenzierte Skript- und Render-Konfigurations-ID muss zum selben Projekt wie die Vorlage gehören. Projektübergreifende Verknüpfungen sind auch bei Zugriff auf beide Projekte verboten. Ungespeicherte Vorschauen erhalten dazu einen expliziten Projektkontext.
 - **Print Jobs:** Jeder Auftrag erhält beim Anlegen eine eigene, unveränderliche `projectId`. Das Backend leitet sie aus der geprüften Dokumentvorlage ab. Alle Auftrags- und Dateizugriffe werden direkt über dieses Projekt autorisiert. Eine Ergebnisdatei muss zusätzlich zum angegebenen Auftrag gehören. Nach Löschen der Vorlage bleiben bestehende Aufträge und Ergebnisse ihrem Projekt zugeordnet; eine Ausführung ohne benötigte Vorlage wird mit einem verständlichen Fehler abgelehnt.
-- **Freie Skriptausführung und Validierung:** Benötigen eine Anmeldung; bei rein mitgesendetem Quelltext ohne gespeicherte Referenzen ist keine zusätzliche Projektprüfung nötig.
+- **Freie Skriptausführung und Validierung:** Benötigen eine Anmeldung; Ausführungen tragen außerdem den aktiven Projektkontext.
 
 ## Umsetzung und Fehlerverhalten
 
@@ -32,7 +32,7 @@ Die üblichen `_id`-Indizes unterstützen Einzelzugriffe. Für Listen werden gez
 
 Zunächst kein Cache über Requests hinweg: Änderungen an Eigentümer/Mitgliedschaft werden beim nächsten Request geprüft. Laufende Druckaufträge benötigen eine Prüfung beim Start, nicht pro Datensatz; spätere Downloads werden erneut autorisiert. Ein sofortiger Abbruch bereits laufender Aktionen bei Rechteentzug ist damit nicht zugesagt. Bei Bedarf später anhand von Messungen optimieren. Kein allgemeines ACL-Framework und keine Datenmigration für das Vorproduktionssystem.
 
-`ProjectAccessService` bündelt die Prüfung, `DocumentReferenceService` löst Skripte gesammelt auf und erzwingt Projektgrenzen für Render-Konfiguration und Skripte. `ProjectIndexConfiguration` erstellt gezielt die Listen-Indizes; globale automatische Indexerstellung bleibt deaktiviert. Listen sind aktuell gefiltert, aber noch nicht paginiert.
+`ProjectAccessService` bündelt die Prüfung; `ProjectFileService` verwaltet alle Dateitypen gemeinsam. `DocumentReferenceService` löst Skripte gesammelt auf und erzwingt Projektgrenzen für Render-Konfiguration und Skripte. `ProjectIndexConfiguration` erstellt gezielt die Listen-Indizes; globale automatische Indexerstellung bleibt deaktiviert. Listen sind aktuell gefiltert, aber noch nicht paginiert.
 
 Bestehende Print Jobs ohne `projectId` werden nicht migriert und geben keinen Zugriff frei. Bei neuen Aufträgen wird die Zuordnung ausschließlich aus der geprüften Vorlage übernommen. Der Hintergrund-Worker erhält die bereits geprüfte, aufgelöste Vorlage als Snapshot und benötigt keinen Session-Kontext.
 
@@ -43,3 +43,5 @@ Einladungen, Mitgliederverwaltung, Admin-Rechte und der Lebenszyklus sind im [Pr
 Tests mit zwei Benutzern und getrennten Projekten belegen, dass fremde IDs weder Inhalte oder Dateien offenlegen noch Änderungen, Verknüpfungen oder Druckaufträge erlauben. Ergänzend werden erlaubte Eigentümer-/Mitgliederzugriffe sowie fehlende und gelöschte Referenzen geprüft. Abgelehnte Aktionen dürfen keine Seiteneffekte haben.
 
 Die HTTP- und MongoDB-Integrationstests liegen in `ProjectAuthorizationTest`. Der Vorschau-Request im Frontend wird in `DocumentPanel.spec.ts` geprüft. Die OpenAPI-Typen in `src/types/api.ts` und `frontend/src/types/api.ts` sind synchronisiert.
+
+Dateien verwenden seit der gemeinsamen [Dateiverwaltung](FILE_MANAGEMENT.md) dieselbe Collection und dieselben projektbezogenen Verwaltungsendpunkte. Namenskonflikte, Versionsprüfung, Löschschutz und Referenzvalidierung gelten einheitlich.

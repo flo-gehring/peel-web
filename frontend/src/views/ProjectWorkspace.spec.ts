@@ -12,13 +12,21 @@ vi.mock('@/adapter/client', () => ({
   api: {
     GET: vi.fn(async (path: string) => ({
       data:
-        path === '/api/scripts/{id}'
-          ? { id: 'script-1', name: 'Customer', script: 'customer' }
-          : {
-              projectIdApi: { id: 'invoices' },
-              name: 'Invoices',
-              scripts: [{ id: 'script-1', name: 'Customer' }],
-            },
+        path === '/api/projects/{projectId}/files/{fileId}'
+          ? {
+              id: 'script-1',
+              projectId: { id: 'invoices' },
+              version: 0,
+              name: 'Customer',
+              content: { type: 'script', source: 'customer' },
+            }
+          : path === '/api/projects/{projectId}/files'
+            ? [{ id: 'script-1', name: 'Customer', type: 'script', version: 0 }]
+            : {
+                projectIdApi: { id: 'invoices' },
+                name: 'Invoices',
+                scripts: [{ id: 'script-1', name: 'Customer' }],
+              },
     })),
   },
 }))
