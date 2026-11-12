@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '@/i18n'
 import { ref, computed, shallowRef, watch } from 'vue'
 import FileToolbar from './FileToolbar.vue'
 import FileSettings from './FileSettings.vue'
@@ -48,7 +49,7 @@ const initialContent = computed(
   () =>
     props.params?.params?.content ??
     props.params?.content ??
-    `Trouble loading content for ${filename.value}`,
+    t('troubleLoadingContentForName', { name: filename.value }),
 )
 
 if (panelId.value && documentId.value) {

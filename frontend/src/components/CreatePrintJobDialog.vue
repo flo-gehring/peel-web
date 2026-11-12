@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '@/i18n'
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { api } from '@/adapter/client'
 import { apiErrorMessage } from '@/adapter/apiError'
@@ -18,10 +19,10 @@ const nameInput = ref<HTMLInputElement | null>(null)
 let alive = true
 const submitLabel = computed(() =>
   busy.value
-    ? 'Wird angelegt…'
+    ? t('creating')
     : props.saveRequired
-      ? 'Speichern und Auftrag anlegen'
-      : 'Auftrag anlegen',
+      ? t('saveAndCreatePrintJob')
+      : t('createPrintJob'),
 )
 onMounted(async () => {
   await nextTick()
@@ -48,11 +49,10 @@ async function create(): Promise<void> {
       body: { name: jobName, documentId: { id: documentId } },
     })
     if (failure || !data?.id)
-      throw new Error(apiErrorMessage(failure, 'Druckauftrag konnte nicht angelegt werden.'))
+      throw new Error(apiErrorMessage(failure, t('thePrintJobCouldNotBeCreated')))
     if (alive) emit('created', data.id)
   } catch (failure) {
-    error.value =
-      failure instanceof Error ? failure.message : 'Der Server konnte nicht erreicht werden.'
+    error.value = failure instanceof Error ? failure.message : t('theServerCouldNotBeReached')
   } finally {
     busy.value = false
   }
@@ -94,22 +94,19 @@ function trapFocus(event: KeyboardEvent): void {
         @keydown.esc.stop.prevent="cancel"
         @keydown="trapFocus"
       >
-        <h2 id="create-print-job-title">Druckauftrag anlegen</h2>
+        <h2 id="create-print-job-title">{{ t('createPrintJob') }}</h2>
         <p>
-          Dokumentvorlage: <strong>{{ documentName }}</strong>
+          {{ t('documentTemplate') }}<strong>{{ documentName }}</strong>
         </p>
         <p v-if="saveRequired" class="save-notice">
-          Die Dokumentvorlage hat ungespeicherte Änderungen. Sie wird vor dem Anlegen gespeichert.
+          {{ t('theDocumentTemplateHasUnsavedChangesItWillBe') }}
         </p>
         <p v-if="error" role="alert" class="dialog-error">{{ error }}</p>
-        <label for="print-job-name">Name des Druckauftrags</label>
+        <label for="print-job-name">{{ t('printJobName') }}</label>
         <input id="print-job-name" ref="nameInput" v-model="name" required :disabled="busy" />
-        <p class="hint">
-          Der Auftrag verwendet die beim Start gespeicherte Vorlage. Auf der nächsten Seite lädst du
-          die CSV-Datei hoch und startest den Auftrag.
-        </p>
+        <p class="hint">{{ t('theJobUsesTheTemplateSavedWhenItStarts') }}</p>
         <div class="dialog-actions">
-          <button type="button" :disabled="busy" @click="cancel">Abbrechen</button
+          <button type="button" :disabled="busy" @click="cancel">{{ t('cancel') }}</button
           ><button class="primary-button" :disabled="busy || !name.trim()">
             {{ submitLabel }}
           </button>

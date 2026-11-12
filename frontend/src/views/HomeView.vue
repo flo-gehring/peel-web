@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '@/i18n'
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Printer, Settings } from '@lucide/vue'
@@ -31,7 +32,7 @@ async function loadProjects(): Promise<void> {
   try {
     await projectStore.loadProjects()
   } catch {
-    loadError.value = 'Projects could not be loaded. Check your connection and try again.'
+    loadError.value = t('projectsCouldNotBeLoadedCheckYourConnectionAnd')
   } finally {
     isLoading.value = false
   }
@@ -57,10 +58,10 @@ async function createProject(): Promise<void> {
   try {
     const project = await projectStore.createProject(name)
     const id = project.projectIdApi?.id
-    if (!id) throw new Error('Missing project ID')
+    if (!id) throw new Error(t('missingProjectId'))
     await router.push({ name: 'project', params: { projectId: id } })
   } catch {
-    createError.value = 'The project could not be created. Please try again.'
+    createError.value = t('theProjectCouldNotBeCreatedPleaseTryAgain')
   } finally {
     isCreating.value = false
   }
@@ -72,10 +73,16 @@ onMounted(loadProjects)
   <main class="home-view">
     <section class="projects-section" aria-labelledby="projects-title">
       <div class="projects-heading">
-        <img :src="peelLogo" alt="Peel banana logo" class="welcome-logo" width="112" height="96" />
+        <img
+          :src="peelLogo"
+          :alt="t('peelBananaLogo')"
+          class="welcome-logo"
+          width="112"
+          height="96"
+        />
         <div class="projects-intro">
-          <h1 id="projects-title">Projects</h1>
-          <p>Your documents, scripts and render configurations.</p>
+          <h1 id="projects-title">{{ t('projects') }}</h1>
+          <p>{{ t('yourDocumentsScriptsAndRenderConfigurations') }}</p>
         </div>
         <button
           ref="createButton"
@@ -84,16 +91,16 @@ onMounted(loadProjects)
           aria-controls="new-project-form"
           @click="openCreate"
         >
-          <span aria-hidden="true">＋</span> New project
+          <span aria-hidden="true">＋</span>{{ t('newProject') }}
         </button>
       </div>
       <ReceivedInvitations />
       <div class="project-collection" :aria-busy="isLoading">
         <label class="project-filter"
-          >Show
-          <select v-model="projectFilter" aria-label="Project status">
-            <option value="active">Active projects</option>
-            <option value="archived">Archived projects</option>
+          >{{ t('show')
+          }}<select v-model="projectFilter" :aria-label="t('projectStatus')">
+            <option value="active">{{ t('activeProjects') }}</option>
+            <option value="archived">{{ t('archivedProjects') }}</option>
           </select></label
         >
         <form
@@ -104,13 +111,13 @@ onMounted(loadProjects)
           @keydown.esc.prevent="cancelCreate"
         >
           <span class="new-project-icon" aria-hidden="true">＋</span>
-          <label class="sr-only" for="new-project-name">New project name</label>
+          <label class="sr-only" for="new-project-name">{{ t('newProjectName') }}</label>
           <input
             id="new-project-name"
             ref="nameInput"
             v-model="newProjectName"
             :disabled="isCreating"
-            placeholder="New project name"
+            :placeholder="t('newProjectName')"
             required
             :aria-invalid="!!createError"
             :aria-describedby="createError ? 'create-project-error' : undefined"
@@ -121,25 +128,27 @@ onMounted(loadProjects)
               type="submit"
               :disabled="!newProjectName.trim() || isCreating"
             >
-              {{ isCreating ? 'Creating…' : 'Create' }}
+              {{ isCreating ? t('creating') : t('create') }}
             </button>
             <button type="button" class="quiet-button" :disabled="isCreating" @click="cancelCreate">
-              Cancel
+              {{ t('cancel') }}
             </button>
           </div>
           <p v-if="createError" id="create-project-error" role="alert" class="project-error">
             {{ createError }}
           </p>
         </form>
-        <div v-if="isLoading" class="collection-message" role="status">Loading projects…</div>
+        <div v-if="isLoading" class="collection-message" role="status">
+          {{ t('loadingProjects') }}
+        </div>
         <div v-else-if="loadError" class="collection-message">
           <p role="alert" class="project-error">{{ loadError }}</p>
-          <button class="quiet-button" @click="loadProjects">Try again</button>
+          <button class="quiet-button" @click="loadProjects">{{ t('tryAgain') }}</button>
         </div>
         <div v-else-if="!visibleProjects.length" class="collection-message">
-          <p>No projects yet. Create your first project to get started.</p>
+          <p>{{ t('noProjectsYetCreateYourFirstProjectToGet') }}</p>
         </div>
-        <nav v-else aria-label="Projects" class="project-list">
+        <nav v-else :aria-label="t('projects')" class="project-list">
           <div
             v-for="project in visibleProjects"
             :key="project.projectIdApi?.id"
@@ -164,23 +173,23 @@ onMounted(loadProjects)
               </svg>
               <strong>{{ project.name }}</strong
               ><span class="project-description"
-                >{{ project.description || 'Documents, scripts & render configurations'
-                }}{{ project.state === 'DELETING' ? ' — Cleanup incomplete' : '' }}</span
+                >{{ project.description || t('documentsScriptsRenderConfigurations')
+                }}{{ project.state === 'DELETING' ? t('cleanupIncomplete') : '' }}</span
               ><span class="open-arrow" aria-hidden="true">→</span>
             </RouterLink>
             <RouterLink
               v-if="project.state !== 'DELETING'"
               class="manage-project project-print-jobs"
               :to="`/projects/${project.projectIdApi?.id}/print-jobs`"
-              title="Print jobs"
-              aria-label="Print jobs"
+              :title="t('printJobs')"
+              :aria-label="t('printJobs')"
               ><Printer :size="18" aria-hidden="true"
             /></RouterLink>
             <RouterLink
               class="manage-project"
               :to="`/projects/${project.projectIdApi?.id}/settings`"
-              title="Settings"
-              aria-label="Settings"
+              :title="t('settings')"
+              :aria-label="t('settings')"
               ><Settings :size="18" aria-hidden="true"
             /></RouterLink>
           </div>

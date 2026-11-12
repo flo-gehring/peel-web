@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { t } from '@/i18n'
 import { computed, onUnmounted, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/adapter/client'
 import { safeAuthRedirect } from '@/adapter/authRedirect'
+import { apiErrorMessage } from '@/adapter/apiError'
 
 const props = defineProps<{ redirect?: unknown; initiallySent?: boolean }>()
 const emit = defineEmits<{ sent: [] }>()
@@ -35,8 +37,7 @@ async function send(): Promise<void> {
       if (response.status === 429) {
         auth.linkRetryAt = Date.now() + Number(response.headers.get('Retry-After') || 60) * 1000
       }
-      error.value =
-        apiError.error?.message ?? 'The sign-in email could not be sent. Please try again.'
+      error.value = apiErrorMessage(apiError, t('theSignInEmailCouldNotBeSentPlease'))
       return
     }
     auth.linkEmail = email.value.trim()
@@ -44,7 +45,7 @@ async function send(): Promise<void> {
     sent.value = true
     emit('sent')
   } catch {
-    error.value = 'The server could not be reached. Check your connection and try again.'
+    error.value = t('theServerCouldNotBeReachedCheckYourConnection')
   } finally {
     busy.value = false
   }
@@ -55,25 +56,21 @@ async function send(): Promise<void> {
   <section class="login-card">
     <p class="eyebrow">PEEL WEB</p>
     <template v-if="sent">
-      <h1>Check your inbox</h1>
-      <p v-if="auth.linkEmail">A sign-in link has been sent to {{ auth.linkEmail }}.</p>
-      <p v-else>Open your sign-in email, or request another link.</p>
-      <p>
-        The link is valid for 15 minutes and can be used once. Check your spam folder if it does not
-        arrive.
+      <h1>{{ t('checkYourInbox') }}</h1>
+      <p v-if="auth.linkEmail">
+        {{ t('aSignInLinkHasBeenSentToEmail', { email: auth.linkEmail }) }}
       </p>
+      <p v-else>{{ t('openYourSignInEmailOrRequestAnotherLink') }}</p>
+      <p>{{ t('theLinkIsValidFor15MinutesAndCan') }}</p>
     </template>
     <template v-else>
-      <h1>Sign in</h1>
-      <p>
-        Enter your email address to receive a one-time sign-in link. Your first sign-in creates your
-        account.
-      </p>
+      <h1>{{ t('signIn') }}</h1>
+      <p>{{ t('enterYourEmailAddressToReceiveAOneTime') }}</p>
     </template>
     <form v-if="!sent || !auth.linkEmail" @submit.prevent="send">
       <label
-        >Email
-        <input
+        >{{ t('email')
+        }}<input
           v-model="email"
           name="email"
           type="email"
@@ -84,22 +81,20 @@ async function send(): Promise<void> {
         />
       </label>
       <button type="submit" :disabled="busy || waitSeconds > 0">
-        {{ busy ? 'Sending…' : 'Send sign-in link' }}
+        {{ busy ? t('sending') : t('sendSignInLink') }}
       </button>
     </form>
     <template v-else>
       <button :disabled="busy || waitSeconds > 0" @click="send">
-        {{ busy ? 'Sending…' : 'Send another link' }}
+        {{ busy ? t('sending') : t('sendAnotherLink') }}
       </button>
-      <button
-        class="secondary"
-        :disabled="busy"
-        @click="useAnotherEmail"
-      >
-        Use another email
+      <button class="secondary" :disabled="busy" @click="useAnotherEmail">
+        {{ t('useAnotherEmail') }}
       </button>
     </template>
-    <p v-if="waitSeconds > 0">You can request another link in {{ waitSeconds }} seconds.</p>
+    <p v-if="waitSeconds > 0">
+      {{ t('youCanRequestAnotherLinkInSecondsSeconds', { seconds: waitSeconds }) }}
+    </p>
     <p v-if="error" role="alert" class="auth-error">{{ error }}</p>
   </section>
 </template>

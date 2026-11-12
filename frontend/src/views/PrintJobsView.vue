@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatDateTime, t } from '@/i18n'
 import { computed, ref, watch } from 'vue'
 import { ChevronRight, FileText, Plus, RefreshCw } from '@lucide/vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -27,11 +28,11 @@ function statusLabel(status: string | undefined): string {
   return (
     (
       {
-        CREATED: 'Erstellt',
-        CALCULATING: 'Wird verarbeitet',
-        PRINTING: 'Wird gedruckt',
-        COMPLETED: 'Abgeschlossen',
-        FAILED: 'Fehlgeschlagen',
+        CREATED: t('created'),
+        CALCULATING: t('processing'),
+        PRINTING: t('printing'),
+        COMPLETED: t('completed'),
+        FAILED: t('failed'),
       } as Record<string, string>
     )[status ?? 'CREATED'] ??
     status ??
@@ -47,13 +48,11 @@ async function load(): Promise<void> {
       api.GET('/api/projects/{projectId}/print-jobs', { params: { path: { projectId: id } } }),
       projects.loadProject(id),
     ])
-    if (error || !data)
-      throw new Error(apiErrorMessage(error, 'Druckaufträge konnten nicht geladen werden.'))
+    if (error || !data) throw new Error(apiErrorMessage(error, t('printJobsCouldNotBeLoaded')))
     if (projectId.value === id) overview.value = data
   } catch (error) {
     if (projectId.value === id)
-      errorMessage.value =
-        error instanceof Error ? error.message : 'Der Server konnte nicht erreicht werden.'
+      errorMessage.value = error instanceof Error ? error.message : t('theServerCouldNotBeReached')
   } finally {
     if (projectId.value === id) isLoading.value = false
   }
@@ -77,12 +76,12 @@ watch(
     <div class="page-content">
       <header class="page-header">
         <div class="page-intro">
-          <h1>Druckaufträge</h1>
-          <p>{{ overview?.projectName }} · Nach Dokumentvorlage gruppiert</p>
+          <h1>{{ t('printJobs') }}</h1>
+          <p>{{ overview?.projectName }} {{ t('groupedByDocumentTemplate') }}</p>
         </div>
         <button
-          title="Druckaufträge aktualisieren"
-          aria-label="Druckaufträge aktualisieren"
+          :title="t('refreshPrintJobs')"
+          :aria-label="t('refreshPrintJobs')"
           :disabled="isLoading"
           @click="load"
         >
@@ -90,19 +89,18 @@ watch(
         </button>
       </header>
       <p v-if="overview && readOnly" class="status-message">
-        Archiviertes Projekt: Aufträge und Ergebnisse bleiben lesbar. Neue Aufträge, Uploads und
-        Starts sind gesperrt.
+        {{ t('archivedProjectJobsAndResultsRemainReadableNewJobs') }}
       </p>
       <p v-if="errorMessage" class="error-message" role="alert">
-        {{ errorMessage }} <button @click="load">Erneut versuchen</button>
+        {{ errorMessage }} <button @click="load">{{ t('tryAgain') }}</button>
       </p>
-      <p v-if="isLoading" class="status-message" role="status">Druckaufträge werden geladen…</p>
+      <p v-if="isLoading" class="status-message" role="status">{{ t('loadingPrintJobs') }}</p>
       <p v-if="overview && !groups.length" class="status-message">
-        Noch keine Dokumentvorlagen vorhanden. Lege im Workspace eine Dokumentvorlage an.
+        {{ t('noDocumentTemplatesYetCreateADocumentTemplateIn') }}
       </p>
       <template v-for="(group, index) in groups" :key="group.documentId">
         <h2 v-if="group.deleted && !groups[index - 1]?.deleted" class="deleted-heading">
-          Gelöschte Dokumentvorlagen
+          {{ t('deletedDocumentTemplates') }}
         </h2>
         <section class="document-jobs" :class="{ deleted: group.deleted }">
           <details open>
@@ -111,10 +109,10 @@ watch(
                 :size="18"
                 aria-hidden="true"
               /><strong>{{ group.name }}</strong
-              ><span>{{ group.jobs?.length ?? 0 }} Aufträge</span>
+              ><span>{{ group.jobs?.length ?? 0 }} {{ t('jobs') }}</span>
             </summary>
             <div class="print-job-list">
-              <p v-if="!group.jobs?.length" class="empty-group">Noch keine Druckaufträge.</p>
+              <p v-if="!group.jobs?.length" class="empty-group">{{ t('noPrintJobsYet') }}</p>
               <RouterLink
                 v-for="job in group.jobs"
                 :key="job.printJobId?.id"
@@ -122,15 +120,13 @@ watch(
                 :to="{ name: 'print-job-detail', params: { projectId, id: job.printJobId?.id } }"
               >
                 <span class="job-info"
-                  ><strong>{{ job.name || 'Unbenannter Druckauftrag' }}</strong
+                  ><strong>{{ job.name || t('untitledPrintJob') }}</strong
                   ><time>{{
-                    job.createdAt
-                      ? new Date(job.createdAt).toLocaleString()
-                      : 'Zeitpunkt nicht erfasst'
+                    job.createdAt ? formatDateTime(job.createdAt) : t('timeNotRecorded')
                   }}</time></span
                 >
-                <span class="job-file">{{ job.fileName || 'Keine CSV-Datei' }}</span>
-                <span>{{ job.fileIds?.length ?? 0 }} PDFs</span>
+                <span class="job-file">{{ job.fileName || t('noCsvFile') }}</span>
+                <span>{{ job.fileIds?.length ?? 0 }} {{ t('pdfs') }}</span>
                 <span class="status-badge" :class="`status-${job.status?.toLowerCase()}`">{{
                   statusLabel(job.status)
                 }}</span>
@@ -141,10 +137,10 @@ watch(
             v-if="!group.deleted"
             class="create-job"
             :disabled="readOnly"
-            :title="`Druckauftrag für ${group.name} anlegen`"
+            :title="t('createPrintJobForName', { name: group.name })"
             @click="selected = group"
           >
-            <Plus :size="16" aria-hidden="true" /> Neuer Druckauftrag
+            <Plus :size="16" aria-hidden="true" />{{ t('newPrintJob') }}
           </button>
         </section>
       </template>

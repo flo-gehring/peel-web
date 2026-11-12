@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '@/adapter/client'
@@ -13,7 +14,8 @@ export function fileError(error: unknown): Error {
   let message = apiErrorMessage(error)
   const usages = (error as { error?: { details?: { usages?: FileSummary[] } } })?.error?.details
     ?.usages
-  if (usages?.length) message += ` Used by: ${usages.map((file) => file.name).join(', ')}.`
+  if (usages?.length)
+    message += t('usedByNames', { names: usages.map((file) => file.name).join(', ') })
   return new Error(message)
 }
 
@@ -58,13 +60,13 @@ export const useProjectFileStore = defineStore('projectFiles', () => {
     const key = `${projectId}/${fileId}`
     const pending = pendingLoads.get(key)
     if (pending) return pending
-    if (saving.has(fileId)) throw new Error('Wait for the current save before reloading.')
+    if (saving.has(fileId)) throw new Error(t('waitForTheCurrentSaveBeforeReloading'))
     const started = generation
     const request = (async () => {
       const { data, error } = await api.GET('/api/projects/{projectId}/files/{fileId}', {
         params: { path: { projectId, fileId } },
       })
-      if (started !== generation) throw new Error('The workspace changed.')
+      if (started !== generation) throw new Error(t('theWorkspaceChanged'))
       if (error || !data) throw fileError(error)
       loaded.value[fileId] = data
       if (reload) delete metadataDrafts.value[fileId]
@@ -84,7 +86,7 @@ export const useProjectFileStore = defineStore('projectFiles', () => {
       params: { path: { projectId } },
       body: { id, ...state },
     })
-    if (started !== generation) throw new Error('The workspace changed.')
+    if (started !== generation) throw new Error(t('theWorkspaceChanged'))
     if (error || !data) throw fileError(error)
     loaded.value[id] = data
     return data
@@ -93,10 +95,10 @@ export const useProjectFileStore = defineStore('projectFiles', () => {
   async function save(projectId: string, fileId: string, state: FileState): Promise<ProjectFile> {
     const baseline = loaded.value[fileId]
     if (!baseline || baseline.projectId?.id !== projectId || baseline.version === undefined)
-      throw new Error('Reopen the file before saving. Its original version is unavailable.')
-    if (saving.has(fileId)) throw new Error('This file is already being saved. Please wait.')
+      throw new Error(t('reopenTheFileBeforeSavingItsOriginalVersionIs'))
+    if (saving.has(fileId)) throw new Error(t('thisFileIsAlreadyBeingSavedPleaseWait'))
     if (pendingLoads.has(`${projectId}/${fileId}`))
-      throw new Error('Wait for the file to finish loading.')
+      throw new Error(t('waitForTheFileToFinishLoading'))
     const started = generation
     saving.add(fileId)
     try {
@@ -104,7 +106,7 @@ export const useProjectFileStore = defineStore('projectFiles', () => {
         params: { path: { projectId, fileId } },
         body: { expectedVersion: baseline.version, ...state },
       })
-      if (started !== generation) throw new Error('The workspace changed.')
+      if (started !== generation) throw new Error(t('theWorkspaceChanged'))
       if (error || !data) throw fileError(error)
       loaded.value[fileId] = data
       const draft = metadataDrafts.value[fileId]

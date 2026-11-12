@@ -58,7 +58,7 @@ describe('DocumentPanel preview project context', () => {
         global: { plugins: [router], stubs: { Teleport: true } },
       })
       await wrapper.get('[title="Create print job"]').trigger('click')
-      expect(wrapper.get('[role="dialog"]').text()).toContain('Speichern und Auftrag anlegen')
+      expect(wrapper.get('[role="dialog"]').text()).toContain('Save and create print job')
       await wrapper.get('#print-job-name').setValue('Batch')
       await wrapper.get('form').trigger('submit')
       await flushPromises()
@@ -70,7 +70,7 @@ describe('DocumentPanel preview project context', () => {
         expect(router.currentRoute.value.fullPath).toBe('/projects/project/print-jobs/job')
       } else {
         expect(post).not.toHaveBeenCalled()
-        expect(wrapper.get('[role="dialog"]').text()).toContain('konnte nicht gespeichert')
+        expect(wrapper.get('[role="dialog"]').text()).toContain('could not be saved')
         expect(useDocumentDraftStore().getDraft('document')?.dirty).toBe(true)
       }
       wrapper.unmount()

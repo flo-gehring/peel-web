@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { z } from 'zod'
 
 const traceExpressionKinds = [
@@ -25,7 +26,7 @@ const renderTemplatesSchema = z.record(z.string(), z.string()).superRefine((temp
       context.addIssue({
         code: 'custom',
         path: [key],
-        message: `Unknown trace expression kind: ${key}`,
+        message: t('unknownTraceExpressionKindKind', { kind: key }),
       })
     }
   }

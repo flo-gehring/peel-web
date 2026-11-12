@@ -53,7 +53,7 @@ describe('project file requests', () => {
         },
       },
     } as never)
-    await expect(store.save('project', 'file', state)).rejects.toThrow('File changed')
+    await expect(store.save('project', 'file', state)).rejects.toThrow('The file changed')
     expect(store.loaded.file).toEqual(initial)
     expect(mockApi.GET).not.toHaveBeenCalled()
   })

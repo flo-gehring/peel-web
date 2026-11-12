@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatDateTime, t } from '@/i18n'
 import { ChevronRight, Crown, LogOut, User, UserRoundStar } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -21,6 +22,8 @@ const inviteEmail = ref('')
 const targetEmail = ref('')
 const confirmedEmail = ref('')
 const transferConfirmation = ref('')
+// This is an API confirmation token, intentionally identical in every language.
+const transferPhrase = computed(() => `TRANSFER ${settings.value?.name ?? ''}`)
 const deleteConfirmation = ref('')
 const busy = ref(false)
 const loading = ref(true)
@@ -41,7 +44,7 @@ async function load(): Promise<void> {
       params: { path: { id: id.value } },
     })
     if (failure || !data)
-      throw new Error(apiErrorMessage(failure, 'Project settings could not be loaded.'))
+      throw new Error(apiErrorMessage(failure, t('projectSettingsCouldNotBeLoaded')))
     const keepDraft =
       settings.value &&
       (name.value !== settings.value.name || description.value !== settings.value.description)
@@ -51,8 +54,7 @@ async function load(): Promise<void> {
       description.value = data.description ?? ''
     }
   } catch (failure) {
-    error.value =
-      failure instanceof Error ? failure.message : 'Project settings could not be loaded.'
+    error.value = failure instanceof Error ? failure.message : t('projectSettingsCouldNotBeLoaded')
   } finally {
     loading.value = false
   }
@@ -85,7 +87,7 @@ async function perform(
       await router.push('/')
     } else await load()
   } catch (failure) {
-    error.value = failure instanceof Error ? failure.message : 'The server could not be reached.'
+    error.value = failure instanceof Error ? failure.message : t('theServerCouldNotBeReached')
   } finally {
     busy.value = false
   }
@@ -97,7 +99,7 @@ function save(): void {
         params: { path: { id: id.value } },
         body: { name: name.value.trim(), description: description.value },
       }),
-    'Project details saved.',
+    t('projectDetailsSaved'),
   )
 }
 function invite(): void {
@@ -107,7 +109,7 @@ function invite(): void {
         params: { path: { id: id.value } },
         body: { email: inviteEmail.value.trim() },
       }),
-    'Invitation email sent. The recipient must explicitly accept it.',
+    t('invitationEmailSentTheRecipientMustExplicitlyAcceptIt'),
   )
 }
 function setAdmin(memberId: string, enabled: boolean): void {
@@ -117,21 +119,21 @@ function setAdmin(memberId: string, enabled: boolean): void {
         params: { path: { id: id.value, memberId } },
         body: { admin: enabled },
       }),
-    'Member role updated.',
+    t('memberRoleUpdated'),
   )
 }
 function remove(memberId: string): void {
-  if (!window.confirm('Remove this member from the project?')) return
+  if (!window.confirm(t('removeThisMemberFromTheProject'))) return
   void perform(
     () =>
       api.DELETE('/api/projects/{id}/members/{memberId}', {
         params: { path: { id: id.value, memberId } },
       }),
-    'Member removed.',
+    t('memberRemoved'),
   )
 }
 function leave(): void {
-  if (!window.confirm('Leave this project? You will lose access.')) return
+  if (!window.confirm(t('leaveThisProjectYouWillLoseAccess'))) return
   void perform(
     () => api.POST('/api/projects/{id}/leave', { params: { path: { id: id.value } } }),
     '',
@@ -139,19 +141,13 @@ function leave(): void {
   )
 }
 function lifecycle(archive: boolean): void {
-  if (
-    archive &&
-    !window.confirm(
-      'Archive this project? Existing print jobs may finish; further changes and runs will be blocked.',
-    )
-  )
-    return
+  if (archive && !window.confirm(t('archiveThisProjectExistingPrintJobsMayFinishFurther'))) return
   void perform(
     () =>
       archive
         ? api.POST('/api/projects/{id}/archive', { params: { path: { id: id.value } } })
         : api.POST('/api/projects/{id}/restore', { params: { path: { id: id.value } } }),
-    archive ? 'Project archived.' : 'Project restored.',
+    archive ? t('projectArchived') : t('projectRestored'),
   )
 }
 function revoke(invitationId: string): void {
@@ -160,7 +156,7 @@ function revoke(invitationId: string): void {
       api.DELETE('/api/projects/{id}/invitations/{invitationId}', {
         params: { path: { id: id.value, invitationId } },
       }),
-    'Invitation revoked.',
+    t('invitationRevoked'),
   )
 }
 function resend(invitationId: string): void {
@@ -169,17 +165,23 @@ function resend(invitationId: string): void {
       api.POST('/api/projects/{id}/invitations/{invitationId}/resend', {
         params: { path: { id: id.value, invitationId } },
       }),
-    'Invitation sent again. The previous link is no longer valid.',
+    t('invitationSentAgainThePreviousLinkIsNoLonger'),
   )
 }
 function requestTransfer(): void {
+  if (
+    !targetEmail.value ||
+    confirmedEmail.value.trim().toLowerCase() !== targetEmail.value.toLowerCase() ||
+    transferConfirmation.value !== transferPhrase.value
+  )
+    return
   void perform(
     () =>
       api.POST('/api/projects/{id}/transfer', {
         params: { path: { id: id.value } },
         body: { email: confirmedEmail.value.trim(), confirmation: transferConfirmation.value },
       }),
-    'Transfer requested. You remain owner until the recipient accepts.',
+    t('transferRequestedYouRemainOwnerUntilTheRecipientAccepts'),
   )
 }
 function answerTransfer(answer: 'accept' | 'decline' | 'cancel'): void {
@@ -194,8 +196,8 @@ function answerTransfer(answer: 'accept' | 'decline' | 'cancel'): void {
           ? api.POST('/api/projects/{id}/transfer/{requestId}/decline', { params })
           : api.DELETE('/api/projects/{id}/transfer/{requestId}', { params }),
     answer === 'accept'
-      ? 'Ownership transferred. The previous owner is now an admin.'
-      : 'Transfer request closed.',
+      ? t('ownershipTransferredThePreviousOwnerIsNowAnAdmin')
+      : t('transferRequestClosed'),
   )
 }
 function deleteProject(): void {
@@ -215,43 +217,45 @@ function deleteProject(): void {
   <main class="settings-page">
     <header class="settings-heading">
       <div>
-        <RouterLink to="/">← Projects</RouterLink>
-        <h1>Project settings</h1>
+        <RouterLink to="/">{{ t('projects2') }}</RouterLink>
+        <h1>{{ t('projectSettings') }}</h1>
         <p>{{ settings?.name }}</p>
       </div>
       <RouterLink
         v-if="settings && settings.state !== 'DELETING'"
         class="quiet-button"
         :to="{ name: 'project', params: { projectId: id } }"
-        >Open workspace</RouterLink
+        >{{ t('openWorkspace') }}</RouterLink
       >
     </header>
     <p v-if="error" role="alert" class="settings-error">{{ error }}</p>
     <p v-if="notice" role="status" class="settings-notice">{{ notice }}</p>
-    <p v-if="loading && !settings" role="status">Loading project…</p>
-    <button v-if="!settings && !loading" class="quiet-button" @click="load">Try again</button>
+    <p v-if="loading && !settings" role="status">{{ t('loadingProject') }}</p>
+    <button v-if="!settings && !loading" class="quiet-button" @click="load">
+      {{ t('tryAgain') }}
+    </button>
     <template v-if="settings">
       <p v-if="!active" class="state-banner">
         {{
           settings.state === 'DELETING'
-            ? 'Deletion is incomplete. The owner can retry cleanup below.'
-            : 'Archived project: contents are read-only. Existing results remain available.'
+            ? t('deletionIsIncompleteTheOwnerCanRetryCleanupBelow')
+            : t('archivedProjectContentsAreReadOnlyExistingResultsRemain')
         }}
       </p>
       <section class="settings-card">
-        <h2>General</h2>
+        <h2>{{ t('general') }}</h2>
         <form @submit.prevent="save">
           <fieldset :disabled="busy || !active">
-            <label for="project-name">Project name</label
+            <label for="project-name">{{ t('projectName') }}</label
             ><input id="project-name" v-model="name" required maxlength="200" />
-            <label for="project-description">Description</label
+            <label for="project-description">{{ t('description') }}</label
             ><textarea id="project-description" v-model="description" rows="4" maxlength="10000" />
-            <button class="primary-button" :disabled="!name.trim()">Save details</button>
+            <button class="primary-button" :disabled="!name.trim()">{{ t('saveDetails') }}</button>
           </fieldset>
         </form>
       </section>
       <section class="settings-card">
-        <h2>Members</h2>
+        <h2>{{ t('members') }}</h2>
         <ul class="settings-list">
           <li v-for="member in settings.members" :key="member.id">
             <div class="member-identity">
@@ -260,7 +264,13 @@ function deleteProject(): void {
                 <Crown v-if="member.role === 'OWNER'" :size="14" aria-hidden="true" />
                 <UserRoundStar v-else-if="member.role === 'ADMIN'" :size="14" aria-hidden="true" />
                 <User v-else :size="14" aria-hidden="true" />
-                {{ member.role?.toLowerCase() }}
+                {{
+                  member.role === 'OWNER'
+                    ? t('owner')
+                    : member.role === 'ADMIN'
+                      ? t('admin')
+                      : t('member')
+                }}
               </span>
             </div>
             <div v-if="owner && member.role !== 'OWNER' && active" class="button-row">
@@ -269,30 +279,26 @@ function deleteProject(): void {
                 class="quiet-button"
                 @click="setAdmin(member.id!, member.role !== 'ADMIN')"
               >
-                {{ member.role === 'ADMIN' ? 'Remove admin rights' : 'Make admin' }}
+                {{ member.role === 'ADMIN' ? t('removeAdminRights') : t('makeAdmin') }}
               </button>
               <button :disabled="busy" class="quiet-button" @click="remove(member.id!)">
-                Remove member
+                {{ t('removeMember') }}
               </button>
             </div>
           </li>
         </ul>
         <div v-if="!owner && active" class="leave-project-actions">
           <button :disabled="busy" class="danger-button leave-project-button" @click="leave">
-            <LogOut :size="18" aria-hidden="true" />
-            Leave project
+            <LogOut :size="18" aria-hidden="true" />{{ t('leaveProject') }}
           </button>
         </div>
       </section>
       <section v-if="admin && settings.state !== 'DELETING'" class="settings-card">
-        <h2>Invitations</h2>
-        <p>
-          Invite by email. Recipients can register if needed and must accept before joining. Links
-          expire after 7 days.
-        </p>
+        <h2>{{ t('invitations') }}</h2>
+        <p>{{ t('inviteByEmailRecipientsCanRegisterIfNeededAnd') }}</p>
         <form @submit.prevent="invite">
           <fieldset :disabled="busy || !active">
-            <label for="invite-email">Email address</label>
+            <label for="invite-email">{{ t('emailAddress') }}</label>
             <div class="button-row">
               <input
                 id="invite-email"
@@ -300,7 +306,7 @@ function deleteProject(): void {
                 type="email"
                 required
                 maxlength="254"
-              /><button class="primary-button">Send invitation</button>
+              /><button class="primary-button">{{ t('sendInvitation') }}</button>
             </div>
           </fieldset>
         </form>
@@ -309,10 +315,8 @@ function deleteProject(): void {
             <span
               >{{ invitation.email
               }}<small
-                >Expires
-                {{
-                  invitation.expiresAt ? new Date(invitation.expiresAt).toLocaleString() : ''
-                }}</small
+                >{{ t('expires') }}
+                {{ invitation.expiresAt ? formatDateTime(invitation.expiresAt) : '' }}</small
               ></span
             >
             <div class="button-row">
@@ -321,19 +325,18 @@ function deleteProject(): void {
                 :disabled="busy || !active"
                 @click="resend(invitation.id!)"
               >
-                Resend</button
+                {{ t('resend') }}</button
               ><button class="quiet-button" :disabled="busy" @click="revoke(invitation.id!)">
-                Revoke
+                {{ t('revoke') }}
               </button>
             </div>
           </li>
         </ul>
       </section>
       <section v-if="settings.transfer" class="settings-card">
-        <h2>Ownership transfer pending</h2>
+        <h2>{{ t('ownershipTransferPending') }}</h2>
         <p>
-          {{ settings.transfer.email }} has been asked to become the owner. Roles remain unchanged
-          until acceptance.
+          {{ t('emailHasBeenAskedToBecomeTheOwnerRoles', { email: settings.transfer.email }) }}
         </p>
         <div class="button-row">
           <template v-if="settings.transfer.recipientId === auth.userId"
@@ -342,9 +345,9 @@ function deleteProject(): void {
               :disabled="busy || !active"
               @click="answerTransfer('accept')"
             >
-              Accept ownership</button
+              {{ t('acceptOwnership') }}</button
             ><button class="quiet-button" :disabled="busy" @click="answerTransfer('decline')">
-              Decline
+              {{ t('decline') }}
             </button></template
           >
           <button
@@ -353,29 +356,28 @@ function deleteProject(): void {
             :disabled="busy"
             @click="answerTransfer('cancel')"
           >
-            Withdraw request
+            {{ t('withdrawRequest') }}
           </button>
         </div>
       </section>
       <details v-if="owner" class="danger-zone">
-        <summary><ChevronRight :size="18" aria-hidden="true" /><span>Danger Zone</span></summary>
+        <summary>
+          <ChevronRight :size="18" aria-hidden="true" /><span>{{ t('dangerZone') }}</span>
+        </summary>
         <div class="danger-zone-content">
           <section v-if="active && !settings.transfer" class="settings-card">
-            <h2>Transfer ownership</h2>
-            <p>
-              The recipient must already be a member and explicitly accept. You will then become an
-              admin.
-            </p>
+            <h2>{{ t('transferOwnership') }}</h2>
+            <p>{{ t('theRecipientMustAlreadyBeAMemberAndExplicitly') }}</p>
             <form @submit.prevent="requestTransfer">
               <fieldset :disabled="busy">
-                <label for="transfer-target">New owner</label
+                <label for="transfer-target">{{ t('newOwner') }}</label
                 ><select id="transfer-target" v-model="targetEmail" required>
-                  <option value="">Select a member</option>
+                  <option value="">{{ t('selectAMember') }}</option>
                   <option v-for="member in otherMembers" :key="member.id" :value="member.email">
                     {{ member.email }}
                   </option>
                 </select>
-                <label for="transfer-email">Type the new owner's email</label
+                <label for="transfer-email">{{ t('typeTheNewOwnerSEmail') }}</label
                 ><input
                   id="transfer-email"
                   v-model="confirmedEmail"
@@ -383,7 +385,9 @@ function deleteProject(): void {
                   autocomplete="off"
                   required
                 />
-                <label for="transfer-confirmation">Type TRANSFER {{ settings.name }}</label
+                <label for="transfer-confirmation">{{
+                  t('typeConfirmation', { confirmation: transferPhrase })
+                }}</label
                 ><input
                   id="transfer-confirmation"
                   v-model="transferConfirmation"
@@ -395,23 +399,23 @@ function deleteProject(): void {
                   :disabled="
                     !targetEmail ||
                     confirmedEmail.trim().toLowerCase() !== targetEmail.toLowerCase() ||
-                    transferConfirmation !== `TRANSFER ${settings.name}`
+                    transferConfirmation !== transferPhrase
                   "
                 >
-                  Request transfer
+                  {{ t('requestTransfer') }}
                 </button>
               </fieldset>
             </form>
           </section>
           <section class="settings-card">
-            <h2>Project lifecycle</h2>
+            <h2>{{ t('projectLifecycle') }}</h2>
             <button
               v-if="active"
               class="danger-button archive-project-button"
               :disabled="busy"
               @click="lifecycle(true)"
             >
-              Archive project
+              {{ t('archiveProject') }}
             </button>
             <template v-else>
               <button
@@ -420,17 +424,18 @@ function deleteProject(): void {
                 :disabled="busy"
                 @click="lifecycle(false)"
               >
-                Restore project
+                {{ t('restoreProject') }}
               </button>
               <p>
-                Permanently delete this project, scripts, templates, render configurations,
-                invitations, print jobs, uploaded CSVs and generated PDFs. This cannot be undone.
-                Running jobs must finish first.
+                {{
+                  t('permanentlyDeleteThisProjectScriptsTemplatesRenderConfigurationsInvitations')
+                }}
               </p>
               <form @submit.prevent="deleteProject">
                 <fieldset :disabled="busy">
-                  <label for="delete-confirmation"
-                    >Type {{ settings.name }} to confirm deletion</label
+                  <label for="delete-confirmation">{{
+                    t('typeNameToConfirmDeletion', { name: settings.name })
+                  }}</label
                   ><input
                     id="delete-confirmation"
                     v-model="deleteConfirmation"
@@ -440,8 +445,8 @@ function deleteProject(): void {
                   <button class="danger-button" :disabled="deleteConfirmation !== settings.name">
                     {{
                       settings.state === 'DELETING'
-                        ? 'Retry permanent deletion'
-                        : 'Permanently delete project'
+                        ? t('retryPermanentDeletion')
+                        : t('permanentlyDeleteProject')
                     }}
                   </button>
                 </fieldset>

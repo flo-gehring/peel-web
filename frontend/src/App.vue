@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '@/i18n'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { LogOut, Settings } from '@lucide/vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -9,6 +10,7 @@ import { useEditorDraftStore } from '@/stores/editorDrafts'
 import { useDocumentDraftStore } from '@/stores/documentDrafts'
 import { useProjectFileStore } from '@/stores/projectFiles'
 import SessionSignInForm from '@/components/SessionSignInForm.vue'
+import LanguageSelect from '@/components/LanguageSelect.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -18,7 +20,7 @@ const projectName = computed(() =>
   projects.activeProject?.projectIdApi?.id === route.params.projectId
     ? projects.activeProject?.name
     : (projects.projects.find((project) => project.projectIdApi?.id === route.params.projectId)
-        ?.name ?? 'Project'),
+        ?.name ?? t('project')),
 )
 const authStore = useAuthStore()
 const drafts = useEditorDraftStore()
@@ -44,7 +46,7 @@ async function logout(): Promise<void> {
     Object.keys(projectFiles.metadataDrafts).some((id) => projectFiles.metadataDirty(id)) ||
     Object.values(drafts.draftsById).some((draft) => draft.dirty) ||
     Object.values(documents.draftsById).some((draft) => draft.dirty)
-  if (dirty && !window.confirm('Discard unsaved changes and sign out?')) return
+  if (dirty && !window.confirm(t('discardUnsavedChangesAndSignOut'))) return
   signingOut.value = true
   logoutError.value = null
   try {
@@ -54,7 +56,7 @@ async function logout(): Promise<void> {
       invitationReturn ? { name: 'login', query: { redirect: invitationReturn } } : '/login',
     )
   } catch {
-    logoutError.value = 'Sign-out failed. Check your connection and try again.'
+    logoutError.value = t('signOutFailedCheckYourConnectionAndTryAgain')
   } finally {
     signingOut.value = false
   }
@@ -76,39 +78,40 @@ onUnmounted(() => window.removeEventListener('focus', refreshSession))
       v-if="route.meta.requiresAuth || (route.name === 'invitation' && authStore.isAuthenticated)"
       class="app-header"
     >
-      <RouterLink to="/" class="app-brand" aria-label="Peel projects">
+      <RouterLink to="/" class="app-brand" :aria-label="t('peelProjects')">
         <img :src="peelLogo" alt="" width="38" height="32" /><span>peel</span>
       </RouterLink>
-      <nav class="app-navigation" aria-label="Main navigation">
-        <RouterLink to="/" :aria-current="route.name === 'home' ? 'page' : undefined"
-          >Projects</RouterLink
-        >
+      <nav class="app-navigation" :aria-label="t('mainNavigation')">
+        <RouterLink to="/" :aria-current="route.name === 'home' ? 'page' : undefined">{{
+          t('projects')
+        }}</RouterLink>
         <template v-if="inWorkspace"
           ><span class="breadcrumb-divider" aria-hidden="true">/</span
           ><RouterLink
             :to="`/projects/${route.params.projectId}`"
             :aria-current="route.name === 'project' ? 'page' : undefined"
-            >Workspace</RouterLink
+            >{{ t('workspace') }}</RouterLink
           ><RouterLink
             :to="`/projects/${route.params.projectId}/print-jobs`"
             class="header-print-jobs"
             :aria-current="
               route.name === 'print-jobs' || route.name === 'print-job-detail' ? 'page' : undefined
             "
-            >Print jobs</RouterLink
+            >{{ t('printJobs') }}</RouterLink
           ><RouterLink
             :to="`/projects/${route.params.projectId}/settings`"
             class="settings-link"
-            title="Settings"
-            aria-label="Settings"
+            :title="t('settings')"
+            :aria-label="t('settings')"
             ><Settings :size="18" aria-hidden="true" /></RouterLink
           ><strong class="project-breadcrumb">{{ projectName }}</strong></template
         >
       </nav>
+      <LanguageSelect />
       <button
         class="logout-button"
-        title="logout"
-        aria-label="logout"
+        :title="t('logout')"
+        :aria-label="t('logout')"
         :disabled="signingOut"
         :aria-busy="signingOut"
         @click="logout"
@@ -116,6 +119,12 @@ onUnmounted(() => window.removeEventListener('focus', refreshSession))
         <LogOut :size="18" aria-hidden="true" />
       </button>
     </header>
+    <div
+      v-if="!route.meta.requiresAuth && !(route.name === 'invitation' && authStore.isAuthenticated)"
+      class="auth-language"
+    >
+      <LanguageSelect />
+    </div>
     <div class="app-content">
       <RouterView :key="authStore.workspaceVersion" />
     </div>
@@ -128,13 +137,11 @@ onUnmounted(() => window.removeEventListener('focus', refreshSession))
     aria-labelledby="session-title"
   >
     <div class="session-content">
-      <h2 id="session-title">Your session has ended</h2>
-      <p>
-        Your drafts are still here. Request an email and paste its sign-in code below to continue.
-      </p>
+      <h2 id="session-title">{{ t('yourSessionHasEnded') }}</h2>
+      <p>{{ t('yourDraftsAreStillHereRequestAnEmailAnd') }}</p>
       <SessionSignInForm :redirect="router.currentRoute.value.fullPath" />
-      <button @click="refreshSession">Check sign-in</button>
-      <button :disabled="signingOut" @click="logout">Discard drafts and sign out</button>
+      <button @click="refreshSession">{{ t('checkSignIn') }}</button>
+      <button :disabled="signingOut" @click="logout">{{ t('discardDraftsAndSignOut') }}</button>
       <p v-if="authStore.statusError || logoutError" role="alert" class="auth-error">
         {{ authStore.statusError || logoutError }}
       </p>
@@ -142,12 +149,18 @@ onUnmounted(() => window.removeEventListener('focus', refreshSession))
   </div>
   <div v-else-if="authStore.statusError || logoutError" class="session-status" role="alert">
     {{ authStore.statusError || logoutError }}
-    <button v-if="authStore.statusError" @click="refreshSession">Try again</button>
-    <button v-else :disabled="signingOut" @click="logout">Try again</button>
+    <button v-if="authStore.statusError" @click="refreshSession">{{ t('tryAgain') }}</button>
+    <button v-else :disabled="signingOut" @click="logout">{{ t('tryAgain') }}</button>
   </div>
 </template>
 
 <style>
+.auth-language {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 20;
+}
 .workspace-shell {
   display: flex;
   flex-direction: column;

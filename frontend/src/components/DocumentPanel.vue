@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '@/i18n'
 import { computed, ref, watchEffect } from 'vue'
 import type { JSONContent } from '@tiptap/core'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
@@ -42,13 +43,10 @@ const router = useRouter()
 const printJobDialog = ref(false)
 const printJobNeedsSave = computed(() => !!draft.value?.dirty || files.metadataDirty(documentId))
 async function preparePrintJob(): Promise<void> {
-  if (projectStore.isReadOnly) throw new Error('Das Projekt ist schreibgeschützt.')
+  if (projectStore.isReadOnly) throw new Error(t('theProjectIsReadOnly'))
   if (printJobNeedsSave.value && !(await toolbar.value?.save()))
-    throw new Error(
-      'Die Dokumentvorlage konnte nicht gespeichert werden. Prüfe die Dateiangaben und versuche es erneut.',
-    )
-  if (printJobNeedsSave.value)
-    throw new Error('Die Vorlage wurde während des Speicherns geändert. Bitte erneut speichern.')
+    throw new Error(t('theDocumentTemplateCouldNotBeSavedCheckThe'))
+  if (printJobNeedsSave.value) throw new Error(t('theTemplateChangedWhileSavingPleaseSaveAgain'))
 }
 function printJobCreated(id: string): void {
   printJobDialog.value = false
@@ -157,17 +155,17 @@ async function previewDocument(): Promise<void> {
 
   const projectId = projectStore.activeProject?.projectIdApi?.id
   if (!projectId) {
-    saveError.value = 'Open a project before previewing a document.'
+    saveError.value = t('openAProjectBeforePreviewingADocument')
     return
   }
 
   const bindings = bindingsStore.parseBindings()
   if (!bindings) {
-    saveError.value = bindingsStore.parseError || 'Invalid bindings JSON.'
+    saveError.value = bindingsStore.parseError || t('invalidBindingsJson')
     return
   }
   if (!current.renderConfigurationId) {
-    saveError.value = 'Select a render configuration before previewing.'
+    saveError.value = t('selectARenderConfigurationBeforePreviewing')
     return
   }
 
@@ -194,14 +192,11 @@ async function previewDocument(): Promise<void> {
       previewStore.setError(
         documentId,
         requestId,
-        apiErrorMessage(
-          error,
-          'The document could not be rendered. Check script links and template content.',
-        ),
+        apiErrorMessage(error, t('theDocumentCouldNotBeRenderedCheckScriptLinks')),
       )
     } else {
       if (!data?.pdfData) {
-        previewStore.setError(documentId, requestId, 'The document preview did not contain a PDF.')
+        previewStore.setError(documentId, requestId, t('theDocumentPreviewDidNotContainAPdf'))
       } else {
         previewStore.setPreview(documentId, requestId, data.pdfData)
       }
@@ -210,7 +205,7 @@ async function previewDocument(): Promise<void> {
     previewStore.setError(
       documentId,
       requestId,
-      'An unexpected error occurred while rendering the document.',
+      t('anUnexpectedErrorOccurredWhileRenderingTheDocument'),
     )
   }
 }
@@ -229,16 +224,18 @@ async function previewDocument(): Promise<void> {
       @preview="previewDocument"
     >
       <template #views
-        ><div class="view-switch" role="group" aria-label="Document view">
-          <button :aria-pressed="view === 'edit'" @click="view = 'edit'">Edit</button
-          ><button :aria-pressed="view === 'preview'" @click="view = 'preview'">Preview</button>
+        ><div class="view-switch" role="group" :aria-label="t('documentView')">
+          <button :aria-pressed="view === 'edit'" @click="view = 'edit'">{{ t('edit') }}</button
+          ><button :aria-pressed="view === 'preview'" @click="view = 'preview'">
+            {{ t('preview') }}
+          </button>
         </div></template
       >
       <template #configuration>
         <div class="setup-actions">
           <button
-            title="Script links"
-            aria-label="Script links"
+            :title="t('scriptLinks')"
+            :aria-label="t('scriptLinks')"
             :aria-expanded="setupOpen === 'scripts'"
             :aria-controls="`document-setup-${documentId}`"
             @click="toggleSetup('scripts')"
@@ -246,8 +243,8 @@ async function previewDocument(): Promise<void> {
             <Banana :size="16" aria-hidden="true" />
           </button>
           <button
-            title="Render configuration"
-            aria-label="Render configuration"
+            :title="t('renderConfiguration')"
+            :aria-label="t('renderConfiguration')"
             :aria-expanded="setupOpen === 'renderConfig'"
             :aria-controls="`document-setup-${documentId}`"
             @click="toggleSetup('renderConfig')"
@@ -255,8 +252,8 @@ async function previewDocument(): Promise<void> {
             <Palette :size="16" aria-hidden="true" />
           </button>
           <button
-            title="Create print job"
-            aria-label="Create print job"
+            :title="t('createPrintJob')"
+            :aria-label="t('createPrintJob')"
             :disabled="projectStore.isReadOnly"
             @click="printJobDialog = true"
           >
@@ -281,35 +278,37 @@ async function previewDocument(): Promise<void> {
         v-if="setupOpen"
         :document-id="documentId"
         :panel-id="`document-setup-${documentId}`"
-        :title="setupOpen === 'scripts' ? 'Script links' : 'Render configuration'"
+        :title="setupOpen === 'scripts' ? t('scriptLinks') : t('renderConfiguration')"
         :show-details="false"
         @close="setupOpen = null"
       >
         <div v-if="draft" class="document-links">
           <template v-if="setupOpen === 'scripts'">
             <div class="links-heading">
-              <strong>Script Links</strong>
-              <button @click="addScriptLink">Add Script</button>
+              <strong>{{ t('scriptLinks2') }}</strong>
+              <button @click="addScriptLink">{{ t('addScript') }}</button>
             </div>
             <div v-for="(scriptId, tag) in draft.scriptNameTags" :key="tag" class="script-link-row">
               <input
                 :value="tag"
-                aria-label="Template tag name"
-                placeholder="Template tag"
+                :aria-label="t('templateTagName')"
+                :placeholder="t('templateTag')"
                 @change="updateScriptLink(tag, ($event.target as HTMLInputElement).value, scriptId)"
               />
               <input
                 :value="scriptId"
-                aria-label="PEEL script ID"
-                placeholder="PEEL script ID"
+                :aria-label="t('peelScriptId')"
+                :placeholder="t('peelScriptId')"
                 @input="updateScriptLink(tag, tag, ($event.target as HTMLInputElement).value)"
               />
-              <button title="Remove script link" @click="removeScriptLink(tag)">Remove</button>
+              <button :title="t('removeScriptLink')" @click="removeScriptLink(tag)">
+                {{ t('remove') }}
+              </button>
             </div>
           </template>
-          <label v-else class="render-config-field">
-            Render Config
-            <select
+          <label v-else class="render-config-field"
+            >{{ t('renderConfig')
+            }}<select
               :value="draft.renderConfigurationId"
               @change="
                 draftStore.updateDraft(documentId, {
@@ -317,7 +316,7 @@ async function previewDocument(): Promise<void> {
                 })
               "
             >
-              <option value="">Select a render config</option>
+              <option value="">{{ t('selectARenderConfig') }}</option>
               <option
                 v-for="config in draft.renderConfigurations"
                 :key="config.id"
@@ -334,43 +333,47 @@ async function previewDocument(): Promise<void> {
           class="editor-toolbar"
           :inert="projectStore.isReadOnly"
           role="toolbar"
-          aria-label="Document formatting"
+          :aria-label="t('documentFormatting')"
         >
           <button
             :class="{ active: editor?.isActive('paragraph') }"
-            title="Paragraph"
+            :title="t('paragraph')"
             @click="editor?.chain().focus().setParagraph().run()"
           >
             P
           </button>
           <button
             :class="{ active: editor?.isActive('heading', { level: 1 }) }"
-            title="Heading 1"
+            :title="t('heading1')"
             @click="toggleHeading(1)"
           >
             H1
           </button>
           <button
             :class="{ active: editor?.isActive('heading', { level: 2 }) }"
-            title="Heading 2"
+            :title="t('heading2')"
             @click="toggleHeading(2)"
           >
             H2
           </button>
           <span class="toolbar-divider"></span>
-          <button :class="{ active: editor?.isActive('bold') }" title="Bold" @click="toggleBold">
+          <button
+            :class="{ active: editor?.isActive('bold') }"
+            :title="t('bold')"
+            @click="toggleBold"
+          >
             <strong>B</strong>
           </button>
           <button
             :class="{ active: editor?.isActive('italic') }"
-            title="Italic"
+            :title="t('italic')"
             @click="toggleItalic"
           >
             <em>I</em>
           </button>
           <button
             :class="{ active: editor?.isActive('strike') }"
-            title="Strikethrough"
+            :title="t('strikethrough')"
             @click="editor?.chain().focus().toggleStrike().run()"
           >
             <s>S</s>
@@ -378,39 +381,39 @@ async function previewDocument(): Promise<void> {
           <span class="toolbar-divider"></span>
           <button
             :class="{ active: editor?.isActive('bulletList') }"
-            title="Bullet list"
+            :title="t('bulletList')"
             @click="toggleBulletList"
           >
-            List
+            {{ t('list') }}
           </button>
           <button
             :class="{ active: editor?.isActive('orderedList') }"
-            title="Numbered list"
+            :title="t('numberedList')"
             @click="toggleOrderedList"
           >
             1.
           </button>
           <button
             :class="{ active: editor?.isActive('blockquote') }"
-            title="Quote"
+            :title="t('quote')"
             @click="toggleBlockquote"
           >
-            Quote
+            {{ t('quote') }}
           </button>
           <span class="toolbar-divider"></span>
           <button
-            title="Undo"
+            :title="t('undo')"
             :disabled="!editor?.can().undo()"
             @click="editor?.chain().focus().undo().run()"
           >
-            Undo
+            {{ t('undo') }}
           </button>
           <button
-            title="Redo"
+            :title="t('redo')"
             :disabled="!editor?.can().redo()"
             @click="editor?.chain().focus().redo().run()"
           >
-            Redo
+            {{ t('redo') }}
           </button>
         </div>
         <div class="document-canvas">

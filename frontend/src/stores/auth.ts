@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { api, clearCsrf, cancelWorkspaceRequests } from '@/adapter/client'
@@ -53,7 +54,7 @@ export const useAuthStore = defineStore('auth', () => {
       try {
         const { data, error } = await api.GET('/api/whoami')
         if (version !== authVersion) return false
-        if (error || !data) throw new Error('Session status unavailable')
+        if (error || !data) throw new Error(t('sessionStatusUnavailable'))
         statusError.value = null
         isLoaded.value = true
         if (!data.authenticated) {
@@ -71,8 +72,7 @@ export const useAuthStore = defineStore('auth', () => {
         return true
       } catch {
         if (version !== authVersion) return false
-        statusError.value =
-          'Your sign-in status could not be checked. Check your connection and try again.'
+        statusError.value = t('yourSignInStatusCouldNotBeCheckedCheck')
         return false
       }
     })().finally(() => {
@@ -83,7 +83,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout(): Promise<void> {
     const { error, response } = await api.POST('/api/auth/logout')
-    if (error && response.status !== 401) throw new Error('Sign-out failed. Please try again.')
+    if (error && response.status !== 401) throw new Error(t('signOutFailedPleaseTryAgain'))
     authVersion += 1
     clearCsrf()
     clearWorkspace()

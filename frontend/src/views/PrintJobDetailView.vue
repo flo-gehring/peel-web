@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatDateTime, t } from '@/i18n'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
@@ -33,9 +34,7 @@ const readOnly = computed(() => details.value?.projectState !== 'ACTIVE')
 const documentAvailable = computed(() => !!details.value?.currentDocumentName)
 const documentName = computed(
   () =>
-    details.value?.currentDocumentName ??
-    printJob.value?.documentName ??
-    'Dokument nicht verfügbar',
+    details.value?.currentDocumentName ?? printJob.value?.documentName ?? t('documentUnavailable'),
 )
 const canStart = computed(
   () =>
@@ -47,11 +46,11 @@ const canStart = computed(
 
 function statusLabel(status: PrintJobSummary['status']) {
   return {
-    CREATED: 'Erstellt',
-    CALCULATING: 'Wird verarbeitet',
-    PRINTING: 'Wird gedruckt',
-    COMPLETED: 'Abgeschlossen',
-    FAILED: 'Fehlgeschlagen',
+    CREATED: t('created'),
+    CALCULATING: t('processing'),
+    PRINTING: t('printing'),
+    COMPLETED: t('completed'),
+    FAILED: t('failed'),
   }[status ?? 'CREATED']
 }
 
@@ -68,15 +67,13 @@ async function loadPrintJob() {
       }),
       projectStore.loadProject(requestedProject),
     ])
-    if (error || !data?.job)
-      throw new Error(apiErrorMessage(error, 'Druckauftrag wurde nicht gefunden.'))
+    if (error || !data?.job) throw new Error(apiErrorMessage(error, t('printJobNotFound')))
     if (!isCurrent()) return
     details.value = data
     printJob.value = data.job
   } catch (error) {
     if (isCurrent())
-      errorMessage.value =
-        error instanceof Error ? error.message : 'Druckauftrag konnte nicht geladen werden.'
+      errorMessage.value = error instanceof Error ? error.message : t('thePrintJobCouldNotBeLoaded')
   } finally {
     if (isCurrent()) isLoading.value = false
   }
@@ -92,11 +89,10 @@ async function startPrintJob() {
       params: { path: { id: printJobId.value } },
     })
     if (error || !data || !printJob.value)
-      throw new Error(apiErrorMessage(error, 'Druckauftrag konnte nicht gestartet werden.'))
+      throw new Error(apiErrorMessage(error, t('thePrintJobCouldNotBeStarted')))
     if (printJobId.value === requestedId) printJob.value = { ...printJob.value, status: data }
   } catch (error) {
-    errorMessage.value =
-      error instanceof Error ? error.message : 'Der Server konnte nicht erreicht werden.'
+    errorMessage.value = error instanceof Error ? error.message : t('theServerCouldNotBeReached')
   } finally {
     isStarting.value = false
   }
@@ -107,7 +103,7 @@ async function uploadFile(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
   if (!file.name.toLowerCase().endsWith('.csv')) {
-    errorMessage.value = 'Bitte eine CSV-Datei auswählen.'
+    errorMessage.value = t('pleaseSelectACsvFile')
     return
   }
 
@@ -119,19 +115,18 @@ async function uploadFile(event: Event) {
       params: { path: { id: printJobId.value } },
       body: { file: csvFile as unknown as string },
       bodySerializer: (body) => {
-        if (!body?.file) throw new Error('A CSV file is required.')
+        if (!body?.file) throw new Error(t('aCsvFileIsRequired'))
         const formData = new FormData()
         formData.append('file', body.file as unknown as File)
         return formData
       },
     })
 
-    if (error) throw new Error(apiErrorMessage(error, 'Datei konnte nicht hochgeladen werden.'))
+    if (error) throw new Error(apiErrorMessage(error, t('theFileCouldNotBeUploaded')))
 
     await loadPrintJob()
   } catch (error) {
-    errorMessage.value =
-      error instanceof Error ? error.message : 'Der Server konnte nicht erreicht werden.'
+    errorMessage.value = error instanceof Error ? error.message : t('theServerCouldNotBeReached')
   } finally {
     isUploading.value = false
   }
@@ -162,7 +157,7 @@ async function download(
         })
   const { data, error } = response
   if (error || !data) {
-    errorMessage.value = 'Datei konnte nicht heruntergeladen werden.'
+    errorMessage.value = t('theFileCouldNotBeDownloaded')
     return
   }
 
@@ -189,12 +184,12 @@ watch(
   <main class="page">
     <div class="page-content">
       <RouterLink class="back-link" :to="`/projects/${projectId}/print-jobs`"
-        ><ArrowLeft :size="16" aria-hidden="true" /> Zurück zu Druckaufträgen</RouterLink
+        ><ArrowLeft :size="16" aria-hidden="true" />{{ t('backToPrintJobs') }}</RouterLink
       >
       <header class="page-header">
         <div class="page-intro">
-          <p class="eyebrow">Druckauftrag</p>
-          <h1>{{ printJob?.name || 'Druckauftrag' }}</h1>
+          <p class="eyebrow">{{ t('printJob') }}</p>
+          <h1>{{ printJob?.name || t('printJob') }}</h1>
           <p v-if="details" class="document-name">{{ details.projectName }} / {{ documentName }}</p>
         </div>
         <div class="header-actions">
@@ -208,8 +203,8 @@ watch(
           <button
             class="icon-button"
             type="button"
-            title="Status aktualisieren"
-            aria-label="Status aktualisieren"
+            :title="t('refreshStatus')"
+            :aria-label="t('refreshStatus')"
             :disabled="isLoading"
             @click="loadPrintJob"
           >
@@ -223,49 +218,44 @@ watch(
             @click="startPrintJob"
           >
             <Printer :size="17" aria-hidden="true" />{{
-              isStarting ? 'Wird gestartet…' : 'Druckauftrag starten'
+              isStarting ? t('starting') : t('startPrintJob')
             }}
           </button>
         </div>
       </header>
       <p v-if="errorMessage" class="error-message" role="alert">{{ errorMessage }}</p>
       <p v-if="isLoading && !printJob" class="status-message" role="status">
-        Druckauftrag wird geladen…
+        {{ t('loadingPrintJob') }}
       </p>
       <template v-if="printJob">
         <p v-if="!documentAvailable" class="notice deleted-notice">
-          Diese Dokumentvorlage wurde gelöscht. Ergebnisse bleiben verfügbar; der Auftrag kann nicht
-          neu gestartet werden.
+          {{ t('thisDocumentTemplateWasDeletedResultsRemainAvailableThe') }}
         </p>
         <p v-if="readOnly" class="notice">
-          Archiviertes Projekt: Uploads und Starts sind gesperrt.
+          {{ t('archivedProjectUploadsAndJobStartsAreDisabled') }}
         </p>
-        <section class="detail-card metadata-card" aria-label="Auftragsdetails">
+        <section class="detail-card metadata-card" :aria-label="t('jobDetails')">
           <dl>
             <div>
-              <dt>Dokumentvorlage</dt>
+              <dt>{{ t('documentTemplate2') }}</dt>
               <dd>{{ documentName }}</dd>
             </div>
             <div>
-              <dt>Angelegt</dt>
+              <dt>{{ t('created') }}</dt>
               <dd>
-                {{
-                  printJob.createdAt
-                    ? new Date(printJob.createdAt).toLocaleString()
-                    : 'Zeitpunkt nicht erfasst'
-                }}
+                {{ printJob.createdAt ? formatDateTime(printJob.createdAt) : t('timeNotRecorded') }}
               </dd>
             </div>
             <div>
-              <dt>Vorlage beim Anlegen</dt>
-              <dd>{{ printJob.documentName || 'Name nicht erfasst' }}</dd>
+              <dt>{{ t('templateWhenCreated') }}</dt>
+              <dd>{{ printJob.documentName || t('nameNotRecorded') }}</dd>
             </div>
           </dl>
         </section>
         <div class="file-grid">
           <section class="detail-card file-area" aria-labelledby="input-heading">
             <h2 id="input-heading" class="card-heading">
-              <FileSpreadsheet :size="20" aria-hidden="true" /> Eingabedatei
+              <FileSpreadsheet :size="20" aria-hidden="true" />{{ t('inputFile') }}
             </h2>
             <div class="card-body">
               <template v-if="printJob.fileName">
@@ -280,15 +270,15 @@ watch(
                   }}</span
                   ><Download :size="16" aria-hidden="true" />
                 </button>
-                <p class="hint">CSV-Datei für diesen Druckauftrag.</p>
+                <p class="hint">{{ t('csvFileForThisPrintJob') }}</p>
               </template>
               <template v-else>
-                <p class="empty-message">Noch keine CSV-Datei hochgeladen.</p>
+                <p class="empty-message">{{ t('noCsvFileUploadedYet') }}</p>
                 <label
                   class="primary-button upload-button"
                   :class="{ disabled: isUploading || readOnly || !documentAvailable }"
                   ><Upload :size="17" aria-hidden="true" />{{
-                    isUploading ? 'Wird hochgeladen…' : 'CSV-Datei hochladen'
+                    isUploading ? t('uploading') : t('uploadCsvFile')
                   }}<input
                     class="sr-only"
                     type="file"
@@ -296,16 +286,14 @@ watch(
                     :disabled="isUploading || readOnly || !documentAvailable"
                     @change="uploadFile"
                 /></label>
-                <p class="hint">
-                  Lade die Eingabedaten hoch und starte anschließend den Druckauftrag.
-                </p>
+                <p class="hint">{{ t('uploadTheInputDataThenStartThePrintJob') }}</p>
               </template>
             </div>
           </section>
           <details class="detail-card result-files" open>
             <summary class="card-heading">
-              <FileText :size="20" aria-hidden="true" /><span>Ergebnisse</span
-              ><span class="result-count">{{ printJob.fileIds?.length ?? 0 }} PDFs</span
+              <FileText :size="20" aria-hidden="true" /><span>{{ t('results') }}</span
+              ><span class="result-count">{{ printJob.fileIds?.length ?? 0 }} {{ t('pdfs') }}</span
               ><ChevronRight :size="16" class="disclosure-icon" aria-hidden="true" />
             </summary>
             <div class="card-body">
@@ -327,8 +315,8 @@ watch(
               <p v-else class="empty-message">
                 {{
                   printJob.status === 'FAILED'
-                    ? 'Für diesen Auftrag sind keine Ergebnisdateien verfügbar.'
-                    : 'Nach der Verarbeitung erscheinen hier die erzeugten PDF-Dateien.'
+                    ? t('noResultFilesAreAvailableForThisJob')
+                    : t('generatedPdfFilesWillAppearHereAfterProcessing')
                 }}
               </p>
             </div>

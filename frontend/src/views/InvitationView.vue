@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '@/i18n'
 import { ref, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '@/adapter/client'
@@ -25,13 +26,12 @@ watch(
         params: { path: { token: token.value } },
       })
       if (failure || !data) {
-        error.value =
-          'This invitation is expired, revoked or unavailable for your signed-in email address.'
+        error.value = t('thisInvitationIsExpiredRevokedOrUnavailableForYour')
         return
       }
       invitation.value = data
     } catch {
-      error.value = 'The invitation could not be loaded. Check your connection and try again.'
+      error.value = t('theInvitationCouldNotBeLoadedCheckYourConnection')
     }
   },
   { immediate: true },
@@ -50,10 +50,10 @@ async function answer(accept: boolean): Promise<void> {
       error.value = apiErrorMessage(failure)
       return
     }
-    result.value = accept ? 'You have joined the project.' : 'Invitation declined.'
+    result.value = accept ? t('youHaveJoinedTheProject') : t('invitationDeclined')
     invitation.value = null
   } catch {
-    error.value = 'The server could not be reached. Please try again.'
+    error.value = t('theServerCouldNotBeReachedPleaseTryAgain')
   } finally {
     busy.value = false
   }
@@ -63,31 +63,35 @@ async function answer(accept: boolean): Promise<void> {
   <main class="auth-page" :class="{ 'with-header': auth.isAuthenticated }">
     <section class="login-card">
       <p class="eyebrow">PEEL WEB</p>
-      <h1>Project invitation</h1>
+      <h1>{{ t('projectInvitation') }}</h1>
       <p v-if="auth.isAuthenticated">
-        Signed in as {{ auth.email }}. Use the sign-out button to switch accounts.
+        {{ t('signedInAsEmailUseTheSignOutButton', { email: auth.email }) }}
       </p>
       <template v-if="!auth.isAuthenticated"
-        ><p>
-          Sign in or create an account with the email address that received this invitation. Joining
-          requires your explicit acceptance after sign-in.
-        </p>
-        <RouterLink :to="{ name: 'login', query: { redirect: route.fullPath } }"
-          >Sign in or register</RouterLink
-        >
+        ><p>{{ t('signInOrCreateAnAccountWithTheEmail') }}</p>
+        <RouterLink :to="{ name: 'login', query: { redirect: route.fullPath } }">{{
+          t('signInOrRegister')
+        }}</RouterLink>
       </template>
       <template v-else-if="invitation"
-        ><p>You are invited to {{ invitation.projectName }} as {{ invitation.email }}.</p>
-        <p>Accepting gives you access to project contents.</p>
-        <button :disabled="busy" @click="answer(true)">Accept invitation</button
+        ><p>
+          {{
+            t('youAreInvitedToProjectAsEmail', {
+              project: invitation.projectName,
+              email: invitation.email,
+            })
+          }}.
+        </p>
+        <p>{{ t('acceptingGivesYouAccessToProjectContents') }}</p>
+        <button :disabled="busy" @click="answer(true)">{{ t('acceptInvitation') }}</button
         ><button class="secondary" :disabled="busy" @click="answer(false)">
-          Decline invitation
+          {{ t('declineInvitation') }}
         </button>
       </template>
       <p v-else-if="result" role="status">{{ result }}</p>
-      <p v-else-if="!error" role="status">Loading invitation…</p>
+      <p v-else-if="!error" role="status">{{ t('loadingInvitation') }}</p>
       <p v-if="error" role="alert" class="auth-error">{{ error }}</p>
-      <RouterLink v-if="auth.isAuthenticated" to="/">Go to projects</RouterLink>
+      <RouterLink v-if="auth.isAuthenticated" to="/">{{ t('goToProjects') }}</RouterLink>
     </section>
   </main>
 </template>

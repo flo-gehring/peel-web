@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import { t } from '@/i18n'
 import { X } from '@lucide/vue'
 import { useProjectFileStore } from '@/stores/projectFiles'
 import { useProjectStore } from '@/stores/projects'
 withDefaults(
   defineProps<{ documentId: string; title?: string; showDetails?: boolean; panelId?: string }>(),
-  { title: 'File settings', showDetails: true },
+  { showDetails: true },
 )
 const emit = defineEmits<{ close: [] }>()
 const files = useProjectFileStore()
@@ -14,18 +15,18 @@ const projects = useProjectStore()
   <aside
     :id="panelId || `file-settings-${documentId}`"
     class="file-settings"
-    :aria-label="title"
+    :aria-label="title || t('fileSettings')"
     @keydown.esc.stop="emit('close')"
   >
     <header>
-      <h2>{{ title }}</h2>
-      <button title="Close settings" aria-label="Close settings" @click="emit('close')">
+      <h2>{{ title || t('fileSettings') }}</h2>
+      <button :title="t('closeSettings')" :aria-label="t('closeSettings')" @click="emit('close')">
         <X :size="18" />
       </button>
     </header>
     <fieldset :disabled="projects.isReadOnly">
       <template v-if="showDetails">
-        <label :for="`file-name-${documentId}`">Name</label>
+        <label :for="`file-name-${documentId}`">{{ t('name') }}</label>
         <input
           :id="`file-name-${documentId}`"
           :value="files.metadata(documentId).name"
@@ -33,7 +34,7 @@ const projects = useProjectStore()
             files.setMetadata(documentId, { name: ($event.target as HTMLInputElement).value })
           "
         />
-        <label :for="`file-description-${documentId}`">Description</label>
+        <label :for="`file-description-${documentId}`">{{ t('description') }}</label>
         <textarea
           :id="`file-description-${documentId}`"
           rows="3"
@@ -50,8 +51,8 @@ const projects = useProjectStore()
     <p>
       {{
         showDetails
-          ? 'Use Save to save file details and content together.'
-          : 'Use Save to save document changes.'
+          ? t('useSaveToSaveFileDetailsAndContentTogether')
+          : t('useSaveToSaveDocumentChanges')
       }}
     </p>
   </aside>

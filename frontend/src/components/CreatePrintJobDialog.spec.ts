@@ -18,7 +18,7 @@ describe('create project print job', () => {
       ...options,
       props: { ...props, saveRequired: true, prepare },
     })
-    expect(wrapper.text()).toContain('Speichern und Auftrag anlegen')
+    expect(wrapper.text()).toContain('Save and create print job')
     await wrapper.get('input').setValue(' November ')
     await wrapper.get('form').trigger('submit')
     await flushPromises()

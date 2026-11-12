@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatDateTime, t } from '@/i18n'
 import { computed } from 'vue'
 import { useDocumentPreviewStore } from '@/stores/documentPreview'
 
@@ -10,23 +11,21 @@ const preview = computed(() => previewStore.previews[props.documentId])
 <template>
   <div class="render-preview-panel">
     <div class="preview-header">
-      {{ preview?.name || 'Document' }}
-      <span v-if="preview?.renderedAt">
-        · {{ new Date(preview.renderedAt).toLocaleTimeString() }}</span
-      >
+      {{ preview?.name || t('document') }}
+      <span v-if="preview?.renderedAt"> · {{ formatDateTime(preview.renderedAt, true) }}</span>
     </div>
     <p v-if="stale && preview?.pdfUrl" class="stale-notice">
-      The draft changed since this preview. Use Render preview to render the current draft.
+      {{ t('theDraftChangedSinceThisPreviewUseRenderPreview') }}
     </p>
-    <p v-if="preview?.isLoading" class="preview-message">Rendering document...</p>
+    <p v-if="preview?.isLoading" class="preview-message">{{ t('renderingDocument') }}</p>
     <p v-else-if="preview?.error" class="preview-message preview-error">{{ preview?.error }}</p>
     <iframe
       v-else-if="preview?.pdfUrl"
       class="preview-frame"
-      title="Rendered document preview"
+      :title="t('renderedDocumentPreview')"
       :src="preview.pdfUrl"
     ></iframe>
-    <p v-else class="preview-message">Preview a document to see its rendered PDF.</p>
+    <p v-else class="preview-message">{{ t('previewADocumentToSeeItsRenderedPdf') }}</p>
   </div>
 </template>
 

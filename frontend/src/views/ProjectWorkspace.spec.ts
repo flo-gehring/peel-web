@@ -5,6 +5,7 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { DockviewVue, type DockviewReadyEvent } from 'dockview-vue'
 import ProjectView from './ProjectView.vue'
 import { useWorkspaceSelectionStore } from '@/stores/workspaceSelection'
+import { setLocale } from '@/i18n'
 
 vi.mock('@guolao/vue-monaco-editor', () => ({
   VueMonacoEditor: { template: '<div class="test-monaco" />' },
@@ -47,7 +48,10 @@ vi.mock('@/adapter/client', () => ({
 }))
 
 let wrapper: VueWrapper
-afterEach(() => wrapper?.unmount())
+afterEach(() => {
+  wrapper?.unmount()
+  setLocale('en')
+})
 
 describe('Dockview workspace integration', () => {
   it('initializes the real layout and opens explorer files in the editor group', async () => {
@@ -70,6 +74,13 @@ describe('Dockview workspace integration', () => {
       expect.arrayContaining(['workspace-welcome', 'file-tree', 'bindings-json', 'output-console']),
     )
     expect(dock.getPanel('bindings-json')?.group.id).not.toBe('editor-group')
+    setLocale('de')
+    await flushPromises()
+    expect(dock.getPanel('file-tree')?.api.title).toBe('Explorer')
+    expect(dock.getPanel('output-console')?.api.title).toBe('Ausgabe')
+    setLocale('en')
+    await flushPromises()
+    expect(dock.getPanel('output-console')?.api.title).toBe('Output')
     expect(wrapper.find('.dockview-theme-peel').exists()).toBe(true)
     await wrapper.get('.file-name').trigger('click')
     await flushPromises()

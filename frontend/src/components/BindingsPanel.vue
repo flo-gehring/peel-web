@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '@/i18n'
 import { computed } from 'vue'
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
 import { useRunBindingsStore } from '@/stores/runBindings'
@@ -26,8 +27,10 @@ const editorOptions = {
 <template>
   <div class="bindings-container">
     <div class="bindings-status" :class="{ invalid: !!bindingsStore.parseError }">
-      <span v-if="bindingsStore.parseError">Invalid JSON: {{ bindingsStore.parseError }}</span>
-      <span v-else>✓ Valid JSON</span>
+      <span v-if="bindingsStore.parseError"
+        >{{ t('invalidJson') }} {{ bindingsStore.parseError }}</span
+      >
+      <span v-else>{{ t('validJson') }}</span>
     </div>
     <VueMonacoEditor
       v-model:value="bindingsJson"

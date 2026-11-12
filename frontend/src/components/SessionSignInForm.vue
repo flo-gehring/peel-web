@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t } from '@/i18n'
+import { apiErrorMessage } from '@/adapter/apiError'
 import { ref } from 'vue'
 import { api } from '@/adapter/client'
 import { useAuthStore } from '@/stores/auth'
@@ -25,8 +27,7 @@ async function confirm(): Promise<void> {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     })
     if (requestError) {
-      error.value =
-        requestError.error?.message ?? 'Sign-in failed. Request a new email and try again.'
+      error.value = apiErrorMessage(requestError, t('signInFailedRequestANewEmailAndTry'))
       if (response.status === 401) token.value = ''
       return
     }
@@ -34,7 +35,7 @@ async function confirm(): Promise<void> {
     completed.value = true
     await auth.refresh()
   } catch {
-    error.value = 'The server could not be reached. Check your connection and try again.'
+    error.value = t('theServerCouldNotBeReachedCheckYourConnection')
   } finally {
     busy.value = false
   }
@@ -45,7 +46,7 @@ async function confirm(): Promise<void> {
   <div class="session-sign-in">
     <SignInForm :redirect="redirect" />
     <form v-if="!completed" class="login-card code-form" @submit.prevent="confirm">
-      <label for="session-sign-in-code">Sign-in code from your email</label>
+      <label for="session-sign-in-code">{{ t('signInCodeFromYourEmail') }}</label>
       <input
         id="session-sign-in-code"
         v-model="token"
@@ -57,10 +58,10 @@ async function confirm(): Promise<void> {
         required
       />
       <button type="submit" :disabled="busy || !token.trim()">
-        {{ busy ? 'Signing in…' : 'Continue in this tab' }}
+        {{ busy ? t('signingIn') : t('continueInThisTab') }}
       </button>
     </form>
-    <p v-else role="status">Sign-in succeeded. Check sign-in below to restore your session.</p>
+    <p v-else role="status">{{ t('signInSucceededCheckSignInBelowToRestore') }}</p>
     <p v-if="error" role="alert" class="auth-error">{{ error }}</p>
   </div>
 </template>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { locale, t } from '@/i18n'
 import { onUnmounted, shallowRef, watch, type DefineComponent } from 'vue'
 import {
   onBeforeRouteLeave,
@@ -81,12 +82,21 @@ function showOutput(): void {
   dock.addPanel({
     id: 'output-console',
     component: 'output',
-    title: 'Output',
+    title: t('output'),
     initialHeight: Math.max(180, Math.round(window.innerHeight * 0.3)),
     ...(group ? { position: { referenceGroup: group, direction: 'below' as const } } : {}),
   })
 }
 watch(() => selectionStore.outputVersion, showOutput)
+watch(locale, () => {
+  for (const [id, key] of [
+    ['file-tree', 'explorer'],
+    ['workspace-welcome', 'start'],
+    ['output-console', 'output'],
+    ['bindings-json', 'bindings'],
+  ] as const)
+    dockviewApi.value?.getPanel(id)?.api.setTitle(t(key))
+})
 function workspaceShortcut(event: KeyboardEvent): void {
   if (!(event.ctrlKey || event.metaKey) || event.altKey || event.isComposing) return
   const panelId = lastEditorPanel
@@ -164,7 +174,7 @@ async function saveAndSwitch(): Promise<void> {
     for (const [id, draft] of Object.entries(draftStore.draftsById)) {
       if (!draft.dirty) continue
       const baseline = files.loaded[id]
-      if (!baseline) throw new Error('Reopen the file before saving.')
+      if (!baseline) throw new Error(t('reopenTheFileBeforeSaving'))
       const content =
         baseline.content?.type === 'script'
           ? { type: 'script' as const, source: draft.content }
@@ -181,7 +191,7 @@ async function saveAndSwitch(): Promise<void> {
     for (const [id, draft] of Object.entries(documentDraftStore.draftsById)) {
       if (!draft.dirty) continue
       const baseline = files.loaded[id]
-      if (!baseline) throw new Error('Reopen the file before saving.')
+      if (!baseline) throw new Error(t('reopenTheFileBeforeSaving'))
       await files.save(projectId, id, {
         ...files.metadata(id),
         content: {
@@ -197,13 +207,12 @@ async function saveAndSwitch(): Promise<void> {
     for (const id of Object.keys(files.metadataDrafts)) {
       if (!files.metadataDirty(id)) continue
       const baseline = files.loaded[id]
-      if (!baseline?.content) throw new Error('Reopen the file before saving.')
+      if (!baseline?.content) throw new Error(t('reopenTheFileBeforeSaving'))
       await files.save(projectId, id, { ...files.metadata(id), content: baseline.content })
     }
-    if (hasDirtyDrafts())
-      throw new Error('Files changed while saving. Save again before switching.')
+    if (hasDirtyDrafts()) throw new Error(t('filesChangedWhileSavingSaveAgainBeforeSwitching'))
   } catch (error) {
-    switchError.value = error instanceof Error ? error.message : 'The files could not be saved.'
+    switchError.value = error instanceof Error ? error.message : t('theFilesCouldNotBeSaved')
     return
   }
 
@@ -246,7 +255,7 @@ const onReady = (event: DockviewReadyEvent) => {
   dockApi.addPanel({
     id: 'file-tree',
     component: 'fileTree',
-    title: 'Explorer',
+    title: t('explorer'),
     initialWidth: percentageWidth(15),
     position: {
       referenceGroup: leftGroup.id,
@@ -256,14 +265,14 @@ const onReady = (event: DockviewReadyEvent) => {
   dockApi.addPanel({
     id: 'workspace-welcome',
     component: 'welcome',
-    title: 'Start',
+    title: t('start'),
     position: { referenceGroup: editorGroup },
   })
 
   dockApi.addPanel({
     id: 'output-console',
     component: 'output',
-    title: 'Output',
+    title: t('output'),
     initialHeight: Math.max(220, Math.round(window.innerHeight * 0.3)),
     position: {
       referenceGroup: editorGroup,
@@ -274,7 +283,7 @@ const onReady = (event: DockviewReadyEvent) => {
   dockApi.addPanel({
     id: 'bindings-json',
     component: 'bindings',
-    title: 'Bindings',
+    title: t('bindings'),
     initialWidth: percentageWidth(24),
     position: { referenceGroup: editorGroup, direction: 'right' },
   })
@@ -381,7 +390,7 @@ watch(
       dockviewApi.value?.getPanel(`editor-${kind}-${file.id}`)?.api.close()
       await openFileInEditor({ ...file, name: loaded.name ?? file.name })
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'The file could not be reloaded.')
+      window.alert(error instanceof Error ? error.message : t('theFileCouldNotBeReloaded'))
     }
   },
 )
@@ -421,7 +430,7 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
         const projectId = projectStore.activeProject?.projectIdApi?.id
         if (!projectId) return
         const loadedFile = await files.load(projectId, file.id)
-        if (loadedFile.content?.type !== 'document') throw new Error('Unexpected file type.')
+        if (loadedFile.content?.type !== 'document') throw new Error(t('unexpectedFileType'))
         const document = loadedFile.content
         draft = {
           name: loadedFile.name ?? file.name,
@@ -467,7 +476,7 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
       } else if (file.kind === 'renderConfig' && loadedFile.content?.type === 'render-config') {
         const { renderConfigurations, namedOverrides } = loadedFile.content
         content = JSON.stringify({ renderConfigurations, namedOverrides }, null, 2)
-      } else throw new Error('Unexpected file type.')
+      } else throw new Error(t('unexpectedFileType'))
       draftStore.markLoaded(file.id, content)
     }
 
@@ -508,8 +517,10 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
 <template>
   <div class="app-layout" @keydown.capture="workspaceShortcut">
     <div v-if="projectStore.isReadOnly" class="archive-banner" role="status">
-      Archived project — read-only. Existing results can still be downloaded.
-      <RouterLink :to="`/projects/${route.params.projectId}/settings`">Project settings</RouterLink>
+      {{ t('archivedProjectReadOnlyExistingResultsCanStillBe')
+      }}<RouterLink :to="`/projects/${route.params.projectId}/settings`">{{
+        t('projectSettings')
+      }}</RouterLink>
     </div>
     <DockviewVue
       class="dockview-root"
@@ -524,13 +535,13 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
         aria-modal="true"
         aria-labelledby="switch-project-title"
       >
-        <h2 id="switch-project-title">Unsaved changes</h2>
-        <p>Save your changes before switching projects?</p>
+        <h2 id="switch-project-title">{{ t('unsavedChanges') }}</h2>
+        <p>{{ t('saveYourChangesBeforeSwitchingProjects') }}</p>
         <p v-if="switchError" role="alert">{{ switchError }}</p>
         <div>
-          <button @click="saveAndSwitch">Save and switch</button>
-          <button @click="discardAndSwitch">Discard and switch</button>
-          <button @click="pendingProjectRoute = null">Cancel</button>
+          <button @click="saveAndSwitch">{{ t('saveAndSwitch') }}</button>
+          <button @click="discardAndSwitch">{{ t('discardAndSwitch') }}</button>
+          <button @click="pendingProjectRoute = null">{{ t('cancel') }}</button>
         </div>
       </section>
     </div>

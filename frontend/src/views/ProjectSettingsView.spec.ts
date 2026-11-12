@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ProjectSettingsView from './ProjectSettingsView.vue'
+import { setLocale } from '@/i18n'
 const { get, post, put, remove } = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
@@ -23,6 +24,7 @@ const settings = (role = 'OWNER', state = 'ACTIVE') => ({
   invitations: [],
 })
 beforeEach(() => {
+  setLocale('en')
   setActivePinia(createPinia())
   vi.clearAllMocks()
 })
@@ -42,6 +44,45 @@ async function open(role = 'OWNER', state = 'ACTIVE') {
   return wrapper
 }
 describe('Project settings', () => {
+  it.each(['de', 'en'] as const)(
+    'uses the exact API transfer token with a %s interface',
+    async (language) => {
+      setLocale(language)
+      const wrapper = await open()
+      post.mockResolvedValue({})
+      const input = wrapper.get('#transfer-confirmation')
+      const form = wrapper.get('form:has(#transfer-confirmation)')
+      const button = form.get('button')
+      expect(wrapper.get('label[for="transfer-confirmation"]').text()).toBe(
+        language === 'de' ? 'Gib TRANSFER Invoices ein' : 'Type TRANSFER Invoices',
+      )
+      await wrapper.get('#transfer-target').setValue('member@example.test')
+      await wrapper.get('#transfer-email').setValue('wrong@example.test')
+      await input.setValue('TRANSFER Invoices')
+      expect(button.attributes('disabled')).toBeDefined()
+      await wrapper.get('#transfer-email').setValue('member@example.test')
+      for (const invalid of ['ÜBERTRAGEN Invoices', 'TRANSFER invoices', 'TRANSFER Invoices ']) {
+        await input.setValue(invalid)
+        expect(button.attributes('disabled')).toBeDefined()
+        await form.trigger('submit')
+        expect(post).not.toHaveBeenCalled()
+      }
+      await input.setValue('TRANSFER Invoices')
+      expect(button.attributes('disabled')).toBeUndefined()
+      setLocale(language === 'de' ? 'en' : 'de')
+      await flushPromises()
+      expect((input.element as HTMLInputElement).value).toBe('TRANSFER Invoices')
+      expect(button.attributes('disabled')).toBeUndefined()
+      await form.trigger('submit')
+      await flushPromises()
+      expect(post).toHaveBeenCalledWith('/api/projects/{id}/transfer', {
+        params: { path: { id: 'project' } },
+        body: { email: 'member@example.test', confirmation: 'TRANSFER Invoices' },
+      })
+      wrapper.unmount()
+      setLocale('en')
+    },
+  )
   it('groups ownership transfer and lifecycle in a closed danger zone with a red archive button', async () => {
     const wrapper = await open()
     const zone = wrapper.get('details.danger-zone')

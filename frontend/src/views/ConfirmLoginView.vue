@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t } from '@/i18n'
+import { apiErrorMessage } from '@/adapter/apiError'
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/adapter/client'
@@ -11,9 +13,7 @@ const auth = useAuthStore()
 const token = ref(typeof route.query.token === 'string' ? route.query.token : '')
 const redirect = safeAuthRedirect(route.query.redirect)
 const busy = ref(false)
-const error = ref<string | null>(
-  token.value ? null : 'This sign-in link is incomplete. Request a new one.',
-)
+const error = ref<string | null>(token.value ? null : t('thisSignInLinkIsIncompleteRequestANew'))
 const completed = ref(false)
 const canConfirm = computed(() => !!token.value && !completed.value && !busy.value)
 // Keep the credential only in memory, never in history or a referrer.
@@ -29,7 +29,7 @@ async function confirm(): Promise<void> {
       return
     }
     if (auth.isAuthenticated) {
-      error.value = 'You are already signed in. Sign out before using another account.'
+      error.value = t('youAreAlreadySignedInSignOutBeforeUsing')
       return
     }
     const { error: apiError, response } = await api.POST('/api/auth/login', {
@@ -38,7 +38,7 @@ async function confirm(): Promise<void> {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     })
     if (apiError) {
-      error.value = apiError.error?.message ?? 'Sign-in failed. Please request a new link.'
+      error.value = apiErrorMessage(apiError, t('signInFailedPleaseRequestANewLink'))
       if (response.status === 401) token.value = ''
       return
     }
@@ -46,7 +46,7 @@ async function confirm(): Promise<void> {
     completed.value = true
     if (await auth.refresh()) await router.replace(redirect)
   } catch {
-    error.value = 'The server could not be reached. Check your connection and try again.'
+    error.value = t('theServerCouldNotBeReachedCheckYourConnection')
   } finally {
     busy.value = false
   }
@@ -61,28 +61,28 @@ async function continueAfterLogin(): Promise<void> {
   <main class="auth-page">
     <section class="login-card">
       <p class="eyebrow">PEEL WEB</p>
-      <h1>Confirm sign-in</h1>
+      <h1>{{ t('confirmSignIn') }}</h1>
       <template v-if="auth.isAuthenticated">
-        <p>You are signed in as {{ auth.email }}.</p>
-        <RouterLink :to="redirect">Continue to PEEL WEB</RouterLink>
-        <p>To use a different account, sign out first.</p>
+        <p>{{ t('youAreSignedInAsEmail', { email: auth.email }) }}.</p>
+        <RouterLink :to="redirect">{{ t('continueToPeelWeb') }}</RouterLink>
+        <p>{{ t('toUseADifferentAccountSignOutFirst') }}</p>
       </template>
       <template v-else-if="completed">
-        <p>Your sign-in succeeded. Check your connection to continue.</p>
-        <button :disabled="busy" @click="continueAfterLogin">Continue</button>
+        <p>{{ t('yourSignInSucceededCheckYourConnectionToContinue') }}</p>
+        <button :disabled="busy" @click="continueAfterLogin">{{ t('continue') }}</button>
       </template>
       <template v-else>
-        <p>Confirm to sign in with the email address that received this link.</p>
+        <p>{{ t('confirmToSignInWithTheEmailAddressThat') }}</p>
         <button :disabled="!canConfirm" @click="confirm">
-          {{ busy ? 'Signing in…' : 'Sign in to PEEL WEB' }}
+          {{ busy ? t('signingIn') : t('signInToPeelWeb') }}
         </button>
       </template>
       <p v-if="error || auth.statusError" role="alert" class="auth-error">
         {{ error || auth.statusError }}
       </p>
-      <RouterLink :to="{ name: 'login', query: { redirect } }"
-        >Request a new sign-in link</RouterLink
-      >
+      <RouterLink :to="{ name: 'login', query: { redirect } }">{{
+        t('requestANewSignInLink')
+      }}</RouterLink>
     </section>
   </main>
 </template>

@@ -43,7 +43,7 @@ async function open(deleted: boolean, state = 'ACTIVE') {
 describe('project print job details', () => {
   it('keeps results accessible after the source document was deleted and hides Start', async () => {
     const wrapper = await open(true)
-    expect(wrapper.text()).toContain('Dokumentvorlage wurde gelöscht')
+    expect(wrapper.text()).toContain('document template was deleted')
     expect(wrapper.find('.start-button').exists()).toBe(false)
     expect(wrapper.text()).toContain('result.pdf')
     expect(wrapper.get('.back-link').attributes('href')).toBe('/projects/project/print-jobs')
@@ -57,7 +57,7 @@ describe('project print job details', () => {
     expect(mockApi.POST).toHaveBeenCalledWith('/api/print-jobs/{id}/run', {
       params: { path: { id: 'job' } },
     })
-    expect(wrapper.text()).toContain('Wird verarbeitet')
+    expect(wrapper.text()).toContain('Processing')
     wrapper.unmount()
     const archived = await open(false, 'ARCHIVED')
     expect(archived.find('.start-button').exists()).toBe(false)

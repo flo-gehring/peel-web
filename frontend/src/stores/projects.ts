@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '@/adapter/client'
@@ -26,7 +27,7 @@ export const useProjectStore = defineStore('projects', () => {
       const { data, error } = await api.GET('/api/projects/{projectId}', {
         params: { path: { projectId } },
       })
-      if (error || !data) throw error ?? new Error('Project not found.')
+      if (error || !data) throw error ?? new Error(t('projectNotFound'))
       activeProject.value = data
       return data
     } finally {
@@ -38,7 +39,7 @@ export const useProjectStore = defineStore('projects', () => {
     const { data, error } = await api.POST('/api/projects/{projectId}', {
       params: { path: { projectId: name } },
     })
-    if (error || !data) throw error ?? new Error('Project could not be created.')
+    if (error || !data) throw error ?? new Error(t('projectCouldNotBeCreated'))
     projects.value.push(data)
     return data
   }

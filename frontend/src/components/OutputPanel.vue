@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatDateTime, t } from '@/i18n'
 import { computed, ref } from 'vue'
 import { useRunOutputStore } from '@/stores/runOutput'
 
@@ -7,27 +8,25 @@ const activeTab = ref<'Result' | 'Request' | 'Trace'>('Result')
 const tabs = ['Result', 'Request', 'Trace'] as const
 const statusLabel = computed(() =>
   output.isRunning
-    ? 'Running…'
+    ? t('running')
     : output.error
-      ? 'Run failed'
+      ? t('runFailed')
       : output.response
-        ? 'Run completed'
-        : 'Ready to run',
+        ? t('runCompleted')
+        : t('readyToRun'),
 )
 const formattedContent = computed(() => {
   if (activeTab.value === 'Request') return JSON.stringify(output.request ?? {}, null, 2)
   if (activeTab.value === 'Trace') return JSON.stringify(output.response?.trace ?? null, null, 2)
   return JSON.stringify(output.response?.result ?? null, null, 2)
 })
-const lastRun = computed(() =>
-  output.lastRunAt ? new Date(output.lastRunAt).toLocaleTimeString() : '',
-)
+const lastRun = computed(() => (output.lastRunAt ? formatDateTime(output.lastRunAt, true) : ''))
 </script>
 
 <template>
-  <section class="output-panel" aria-label="Run output">
+  <section class="output-panel" :aria-label="t('runOutput')">
     <div class="output-toolbar">
-      <div class="output-tabs" role="group" aria-label="Output view">
+      <div class="output-tabs" role="group" :aria-label="t('outputView')">
         <button
           v-for="tab in tabs"
           :key="tab"
@@ -35,7 +34,7 @@ const lastRun = computed(() =>
           :class="{ selected: activeTab === tab }"
           @click="activeTab = tab"
         >
-          {{ tab }}
+          {{ tab === 'Result' ? t('result') : tab === 'Request' ? t('request') : t('trace') }}
         </button>
       </div>
       <span
@@ -51,11 +50,11 @@ const lastRun = computed(() =>
     </div>
     <div class="output-content">
       <p v-if="output.request" class="output-source">
-        {{ output.request.name }} · {{ lastRun || 'Current run' }}
+        {{ output.request.name }} · {{ lastRun || t('currentRun') }}
       </p>
       <pre v-if="output.error" class="output-error" role="alert">{{ output.error }}</pre>
       <p v-if="!output.request && !output.response" class="output-empty">
-        Run a script to see its result here.
+        {{ t('runAScriptToSeeItsResultHere') }}
       </p>
       <pre v-else class="json-block">{{ formattedContent }}</pre>
     </div>

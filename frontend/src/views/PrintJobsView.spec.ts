@@ -82,8 +82,8 @@ describe('project print jobs', () => {
   it('lists empty and populated document groups, with deleted groups below and no creation there', async () => {
     const { wrapper } = await open()
     expect(wrapper.findAll('.document-jobs')).toHaveLength(3)
-    expect(wrapper.get('.empty-group').text()).toContain('Noch keine')
-    expect(wrapper.get('.deleted-heading').text()).toBe('Gelöschte Dokumentvorlagen')
+    expect(wrapper.get('.empty-group').text()).toContain('No print jobs yet.')
+    expect(wrapper.get('.deleted-heading').text()).toBe('Deleted document templates')
     expect(wrapper.get('.document-jobs.deleted').text()).toContain('October')
     expect(wrapper.get('.document-jobs.deleted').find('.create-job').exists()).toBe(false)
     expect(wrapper.findAll('.create-job')).toHaveLength(2)
@@ -96,7 +96,7 @@ describe('project print jobs', () => {
   })
   it('keeps archived groups readable but disables creation', async () => {
     const { wrapper } = await open('ARCHIVED')
-    expect(wrapper.text()).toContain('Archiviertes Projekt')
+    expect(wrapper.text()).toContain('Archived project')
     expect(wrapper.get('.create-job').attributes('disabled')).toBeDefined()
     expect(wrapper.findAll('a.print-job-row')).toHaveLength(2)
     wrapper.unmount()

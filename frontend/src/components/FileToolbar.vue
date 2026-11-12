@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '@/i18n'
 import { computed, ref, watch } from 'vue'
 import { Eye, Play, Save, Settings, PanelBottom } from '@lucide/vue'
 import { api } from '@/adapter/client'
@@ -43,14 +44,14 @@ const dirty = computed(
 )
 const status = computed(() =>
   projects.isReadOnly
-    ? 'Read-only'
+    ? t('readOnly')
     : saving.value
-      ? 'Saving…'
+      ? t('saving')
       : saveError.value
-        ? 'Save failed'
+        ? t('saveFailed')
         : dirty.value
-          ? 'Unsaved changes'
-          : 'Saved',
+          ? t('unsavedChanges')
+          : t('saved'),
 )
 
 async function save(): Promise<boolean> {
@@ -63,10 +64,10 @@ async function save(): Promise<boolean> {
   saving.value = true
   saveError.value = null
   try {
-    if (!projectId || !files.loaded[id]) throw new Error('Reopen the file before saving.')
+    if (!projectId || !files.loaded[id]) throw new Error(t('reopenTheFileBeforeSaving'))
     let content: FileContent
     if (props.documentKind === 'document') {
-      if (!document) throw new Error('The document draft is unavailable.')
+      if (!document) throw new Error(t('theDocumentDraftIsUnavailable'))
       content = {
         type: 'document',
         scriptNameTags: { ...document.scriptNameTags },
@@ -83,7 +84,7 @@ async function save(): Promise<boolean> {
     } else if (drafts.getDraft(id) === text) drafts.markSaved(id, text)
     return true
   } catch (error) {
-    saveError.value = error instanceof Error ? error.message : 'The file could not be saved.'
+    saveError.value = error instanceof Error ? error.message : t('theFileCouldNotBeSaved')
     return false
   } finally {
     saving.value = false
@@ -101,13 +102,13 @@ async function execute(): Promise<void> {
   const projectId = projects.activeProject?.projectIdApi?.id
   const script = drafts.getDraft(id) ?? props.initialContent
   const parsedBindings = bindings.parseBindings()
-  const name = files.metadata(id).name || 'Script'
+  const name = files.metadata(id).name || t('script')
   selection.requestOutput()
   if (!parsedBindings || !projectId || !script) {
     output.startRun({ panelId: props.panelId, name, script, bindings: parsedBindings ?? {} })
     output.setRunError(
       bindings.parseError ||
-        (!projectId ? 'Open an active project.' : 'No script content available to run.'),
+        (!projectId ? t('openAnActiveProject') : t('noScriptContentAvailableToRun')),
     )
     return
   }
@@ -121,10 +122,10 @@ async function execute(): Promise<void> {
     const { data, error } = await api.PUT('/api/scripts/run', {
       body: { projectId: { id: projectId }, script, bindings: parsedBindings },
     })
-    if (error) output.setRunError(apiErrorMessage(error, 'Run request failed.'), requestId)
+    if (error) output.setRunError(apiErrorMessage(error, t('runRequestFailed')), requestId)
     else output.setRunSuccess({ trace: data?.trace, result: data?.result }, requestId)
   } catch (error) {
-    output.setRunError(error instanceof Error ? error.message : 'Unexpected run error.', requestId)
+    output.setRunError(error instanceof Error ? error.message : t('unexpectedRunError'), requestId)
   }
 }
 
@@ -153,7 +154,7 @@ watch(
 
 <template>
   <div class="file-toolbar-shell">
-    <div class="file-toolbar" role="toolbar" aria-label="File actions">
+    <div class="file-toolbar" role="toolbar" :aria-label="t('fileActions')">
       <span
         class="save-status"
         :class="{ dirty, failed: !!saveError }"
@@ -166,16 +167,16 @@ watch(
         <slot name="configuration" />
         <button
           class="icon-button"
-          title="Show output"
-          aria-label="Show output"
+          :title="t('showOutput')"
+          :aria-label="t('showOutput')"
           @click="selection.requestOutput"
         >
           <PanelBottom :size="16" aria-hidden="true" />
         </button>
         <button
           class="icon-button"
-          title="File settings"
-          aria-label="File settings"
+          :title="t('fileSettings')"
+          :aria-label="t('fileSettings')"
           :aria-expanded="settingsOpen"
           :aria-controls="`file-settings-${documentId}`"
           @click="emit('settings')"
@@ -183,18 +184,18 @@ watch(
           <Settings :size="16" aria-hidden="true" />
         </button>
         <button
-          title="Save file"
-          aria-label="Save file"
+          :title="t('saveFile')"
+          :aria-label="t('saveFile')"
           class="save-button"
           :disabled="saving || projects.isReadOnly"
           @click="save"
         >
-          <Save :size="14" aria-hidden="true" /><span>Save</span>
+          <Save :size="14" aria-hidden="true" /><span>{{ t('save') }}</span>
         </button>
         <button
           v-if="documentKind !== 'renderConfig'"
-          :title="documentKind === 'document' ? 'Render preview' : 'Run script'"
-          :aria-label="documentKind === 'document' ? 'Render preview' : 'Run script'"
+          :title="documentKind === 'document' ? t('renderPreview') : t('runScript')"
+          :aria-label="documentKind === 'document' ? t('renderPreview') : t('runScript')"
           class="primary-action"
           :disabled="
             projects.isReadOnly || (documentKind === 'document' ? previewing : output.isRunning)
@@ -208,11 +209,11 @@ watch(
           /><span class="sr-only">{{
             documentKind === 'document'
               ? previewing
-                ? 'Rendering…'
-                : 'Preview'
+                ? t('rendering')
+                : t('preview')
               : output.isRunning
-                ? 'Running…'
-                : 'Run'
+                ? t('running')
+                : t('run')
           }}</span>
         </button>
       </div>

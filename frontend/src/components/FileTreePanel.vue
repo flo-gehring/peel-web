@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '@/i18n'
 import {
   Banana,
   Palette,
@@ -44,7 +45,7 @@ const editName = ref('')
 const editDescription = ref('')
 const isEditing = ref(false)
 const errorText = (error: unknown) =>
-  error instanceof Error ? error.message : 'The request failed.'
+  error instanceof Error ? error.message : t('theRequestFailed')
 const projectId = computed(() => projectStore.activeProject?.projectIdApi?.id ?? '')
 
 const isLoading = ref(false)
@@ -57,11 +58,11 @@ const expanded = ref<Record<CreatableDocumentKind, boolean>>({
   renderConfig: true,
   document: true,
 })
-const createTitles: Record<CreatableDocumentKind, string> = {
-  peel: 'New script',
-  renderConfig: 'New render configuration',
-  document: 'New document',
-}
+const createTitles = computed<Record<CreatableDocumentKind, string>>(() => ({
+  peel: t('newScript'),
+  renderConfig: t('newRenderConfiguration'),
+  document: t('newDocument'),
+}))
 const newDocumentRenderConfigurationId = ref('')
 const isCreating = ref(false)
 const deletingScriptId = ref<string | null>(null)
@@ -130,7 +131,7 @@ async function createDocument() {
       if (newDocumentKind.value === 'peel') content = { type: 'script', source: '' }
       else if (newDocumentKind.value === 'document') {
         if (!newDocumentRenderConfigurationId.value)
-          throw new Error('Select a render configuration.')
+          throw new Error(t('selectARenderConfiguration'))
         content = {
           type: 'document',
           scriptNameTags: {},
@@ -140,7 +141,7 @@ async function createDocument() {
         }
       } else {
         const { data, error } = await api.GET('/api/render-config/default')
-        if (error || !data) throw new Error('The default configuration could not be loaded.')
+        if (error || !data) throw new Error(t('theDefaultConfigurationCouldNotBeLoaded'))
         content = { type: 'render-config', ...renderConfigurationSchema.parse(data) }
       }
       pendingCreate.value = {
@@ -187,7 +188,12 @@ async function copyId(file: PeelWorkspaceDocument): Promise<void> {
 }
 
 async function deleteFile(file: PeelWorkspaceDocument, busy: { value: string | null }) {
-  if (projectStore.isReadOnly || busy.value || !window.confirm(`Delete "${file.name}"?`)) return
+  if (
+    projectStore.isReadOnly ||
+    busy.value ||
+    !window.confirm(t('deleteName', { name: file.name }))
+  )
+    return
   busy.value = file.id
   errorMessage.value = null
   try {
@@ -208,7 +214,7 @@ const deletePeelScript = (file: PeelScriptDocument) => deleteFile(file, deleting
 const deleteRenderConfig = (file: RenderConfigDocument) => deleteFile(file, deletingRenderConfigId)
 const deleteDocument = (file: DocumentWorkspaceItem) => deleteFile(file, deletingDocumentId)
 function reloadFile(file: PeelWorkspaceDocument) {
-  if (window.confirm('Discard local edits to this file and load the latest server version?'))
+  if (window.confirm(t('discardLocalEditsToThisFileAndLoadThe')))
     selectionStore.reloadDocument(file)
 }
 async function editMetadata(file: PeelWorkspaceDocument) {
@@ -229,7 +235,7 @@ async function saveMetadata() {
   errorMessage.value = null
   try {
     const baseline = files.loaded[id]
-    if (!baseline?.content) throw new Error('Reopen the file before saving.')
+    if (!baseline?.content) throw new Error(t('reopenTheFileBeforeSaving'))
     await files.save(projectId.value, id, {
       name: editName.value,
       description: editDescription.value,
@@ -261,11 +267,11 @@ watch(
 <template>
   <div class="file-tree-container">
     <div class="panel-header">
-      <span>Project files</span>
+      <span>{{ t('projectFiles') }}</span>
       <button
         class="header-icon-button"
-        title="Refresh files"
-        aria-label="Refresh files"
+        :title="t('refreshFiles')"
+        :aria-label="t('refreshFiles')"
         :disabled="isLoading"
         @click="fetchFiles"
       >
@@ -273,7 +279,7 @@ watch(
       </button>
     </div>
     <p v-if="errorMessage" role="alert" class="file-error">{{ errorMessage }}</p>
-    <div v-if="isLoading" class="loading">Loading...</div>
+    <div v-if="isLoading" class="loading">{{ t('loading') }}</div>
     <section class="document-section">
       <div class="section-header">
         <h2>
@@ -282,19 +288,19 @@ watch(
             :aria-expanded="expanded.peel"
             aria-controls="files-peel"
             @click="expanded.peel = !expanded.peel"
-            title="Scripts"
+            :title="t('scripts')"
           >
             <ChevronRight
               :size="14"
               :class="{ expanded: expanded.peel }"
               aria-hidden="true"
-            /><Banana :size="16" aria-hidden="true" /><span>Scripts</span>
+            /><Banana :size="16" aria-hidden="true" /><span>{{ t('scripts') }}</span>
           </button>
         </h2>
         <button
           class="header-icon-button"
-          title="New script"
-          aria-label="New script"
+          :title="t('newScript')"
+          :aria-label="t('newScript')"
           :disabled="projectStore.isReadOnly"
           @click="openCreateDialog('peel')"
         >
@@ -311,16 +317,16 @@ watch(
           <button class="file-name" @click.stop="selectDocument(file)">{{ file.name }}</button>
           <button
             class="copy-id-button"
-            title="Reload file"
-            aria-label="Reload file"
+            :title="t('reloadFile')"
+            :aria-label="t('reloadFile')"
             @click.stop="reloadFile(file)"
           >
             <RotateCcw :size="14" />
           </button>
           <button
             class="copy-id-button"
-            title="Edit name and description"
-            aria-label="Edit name and description"
+            :title="t('editNameAndDescription')"
+            :aria-label="t('editNameAndDescription')"
             :disabled="projectStore.isReadOnly"
             @click.stop="editMetadata(file)"
           >
@@ -329,8 +335,8 @@ watch(
           <button
             class="delete-button"
             :disabled="projectStore.isReadOnly || deletingScriptId === file.id"
-            title="Delete"
-            aria-label="Delete"
+            :title="t('delete')"
+            :aria-label="t('delete')"
             :aria-busy="deletingScriptId === file.id"
             @click.stop="deletePeelScript(file)"
           >
@@ -338,8 +344,8 @@ watch(
           </button>
           <button
             class="copy-id-button"
-            :title="copiedId === `peel-${file.id}` ? 'ID copied' : 'Copy ID'"
-            aria-label="Copy ID"
+            :title="copiedId === `peel-${file.id}` ? t('idCopied') : t('copyId')"
+            :aria-label="t('copyId')"
             @click.stop="copyId(file)"
           >
             <Check
@@ -361,19 +367,19 @@ watch(
             :aria-expanded="expanded.renderConfig"
             aria-controls="files-renderConfig"
             @click="expanded.renderConfig = !expanded.renderConfig"
-            title="Render configurations"
+            :title="t('renderConfigurations')"
           >
             <ChevronRight
               :size="14"
               :class="{ expanded: expanded.renderConfig }"
               aria-hidden="true"
-            /><Palette :size="16" aria-hidden="true" /><span>Render configurations</span>
+            /><Palette :size="16" aria-hidden="true" /><span>{{ t('renderConfigurations') }}</span>
           </button>
         </h2>
         <button
           class="header-icon-button"
-          title="New render configuration"
-          aria-label="New render configuration"
+          :title="t('newRenderConfiguration')"
+          :aria-label="t('newRenderConfiguration')"
           :disabled="projectStore.isReadOnly"
           @click="openCreateDialog('renderConfig')"
         >
@@ -390,16 +396,16 @@ watch(
           <button class="file-name" @click.stop="selectDocument(file)">{{ file.name }}</button>
           <button
             class="copy-id-button"
-            title="Reload file"
-            aria-label="Reload file"
+            :title="t('reloadFile')"
+            :aria-label="t('reloadFile')"
             @click.stop="reloadFile(file)"
           >
             <RotateCcw :size="14" />
           </button>
           <button
             class="copy-id-button"
-            title="Edit name and description"
-            aria-label="Edit name and description"
+            :title="t('editNameAndDescription')"
+            :aria-label="t('editNameAndDescription')"
             :disabled="projectStore.isReadOnly"
             @click.stop="editMetadata(file)"
           >
@@ -408,8 +414,8 @@ watch(
           <button
             class="delete-button"
             :disabled="projectStore.isReadOnly || deletingRenderConfigId === file.id"
-            title="Delete"
-            aria-label="Delete"
+            :title="t('delete')"
+            :aria-label="t('delete')"
             :aria-busy="deletingRenderConfigId === file.id"
             @click.stop="deleteRenderConfig(file)"
           >
@@ -417,8 +423,8 @@ watch(
           </button>
           <button
             class="copy-id-button"
-            :title="copiedId === `renderConfig-${file.id}` ? 'ID copied' : 'Copy ID'"
-            aria-label="Copy ID"
+            :title="copiedId === `renderConfig-${file.id}` ? t('idCopied') : t('copyId')"
+            :aria-label="t('copyId')"
             @click.stop="copyId(file)"
           >
             <Check
@@ -440,19 +446,19 @@ watch(
             :aria-expanded="expanded.document"
             aria-controls="files-document"
             @click="expanded.document = !expanded.document"
-            title="Documents"
+            :title="t('documents')"
           >
             <ChevronRight
               :size="14"
               :class="{ expanded: expanded.document }"
               aria-hidden="true"
-            /><FileText :size="16" aria-hidden="true" /><span>Documents</span>
+            /><FileText :size="16" aria-hidden="true" /><span>{{ t('documents') }}</span>
           </button>
         </h2>
         <button
           class="header-icon-button"
-          title="New document"
-          aria-label="New document"
+          :title="t('newDocument')"
+          :aria-label="t('newDocument')"
           :disabled="projectStore.isReadOnly"
           @click="openCreateDialog('document')"
         >
@@ -469,8 +475,8 @@ watch(
           <button class="file-name" @click.stop="selectDocument(file)">{{ file.name }}</button>
           <button
             class="copy-id-button"
-            :title="copiedId === `document-${file.id}` ? 'ID copied' : 'Copy ID'"
-            aria-label="Copy ID"
+            :title="copiedId === `document-${file.id}` ? t('idCopied') : t('copyId')"
+            :aria-label="t('copyId')"
             @click.stop="copyId(file)"
           >
             <Check
@@ -483,16 +489,16 @@ watch(
           </button>
           <button
             class="copy-id-button"
-            title="Reload file"
-            aria-label="Reload file"
+            :title="t('reloadFile')"
+            :aria-label="t('reloadFile')"
             @click.stop="reloadFile(file)"
           >
             <RotateCcw :size="14" />
           </button>
           <button
             class="copy-id-button"
-            title="Edit name and description"
-            aria-label="Edit name and description"
+            :title="t('editNameAndDescription')"
+            :aria-label="t('editNameAndDescription')"
             :disabled="projectStore.isReadOnly"
             @click.stop="editMetadata(file)"
           >
@@ -501,8 +507,8 @@ watch(
           <button
             class="delete-button"
             :disabled="projectStore.isReadOnly || deletingDocumentId === file.id"
-            title="Delete document"
-            aria-label="Delete document"
+            :title="t('deleteDocument')"
+            :aria-label="t('deleteDocument')"
             @click.stop="deleteDocument(file)"
           >
             <Trash2 :size="16" aria-hidden="true" />
@@ -511,7 +517,7 @@ watch(
       </ul>
     </section>
 
-    <span class="sr-only" role="status">{{ copiedId ? 'ID copied to clipboard.' : '' }}</span>
+    <span class="sr-only" role="status">{{ copiedId ? t('idCopiedToClipboard') : '' }}</span>
 
     <div
       v-if="isCreateDialogOpen"
@@ -521,40 +527,38 @@ watch(
       <form class="create-dialog" @submit.prevent="createDocument">
         <h2>{{ createTitles[newDocumentKind] }}</h2>
         <p v-if="errorMessage" role="alert" class="file-error">{{ errorMessage }}</p>
-        <p v-if="pendingCreate">
-          Retry sends the same file. Cancel and refresh to check its status.
-        </p>
-        <label for="new-document-name">Name</label>
+        <p v-if="pendingCreate">{{ t('retrySendsTheSameFileCancelAndRefreshTo') }}</p>
+        <label for="new-document-name">{{ t('name') }}</label>
         <input
           id="new-document-name"
           v-model="newDocumentName"
           :disabled="!!pendingCreate || isCreating"
           autofocus
-          placeholder="Name"
+          :placeholder="t('name')"
         />
-        <label for="new-description">Description</label
+        <label for="new-description">{{ t('description') }}</label
         ><input
           id="new-description"
           v-model="newDescription"
           :disabled="!!pendingCreate || isCreating"
         />
-        <label v-if="newDocumentKind === 'document'" for="new-document-render-config"
-          >Render Config</label
-        >
+        <label v-if="newDocumentKind === 'document'" for="new-document-render-config">{{
+          t('renderConfig')
+        }}</label>
         <select
           v-if="newDocumentKind === 'document'"
           id="new-document-render-config"
           v-model="newDocumentRenderConfigurationId"
           :disabled="!!pendingCreate || isCreating"
         >
-          <option value="">Select a render config</option>
+          <option value="">{{ t('selectARenderConfig') }}</option>
           <option v-for="config in renderConfigs" :key="config.id" :value="config.id">
             {{ config.name }}
           </option>
         </select>
         <div class="dialog-actions">
           <button type="button" :disabled="isCreating" @click="isCreateDialogOpen = false">
-            Cancel
+            {{ t('cancel') }}
           </button>
           <button
             type="submit"
@@ -564,22 +568,23 @@ watch(
               (newDocumentKind === 'document' && !newDocumentRenderConfigurationId)
             "
           >
-            {{ isCreating ? 'Creating...' : pendingCreate ? 'Retry' : 'Create' }}
+            {{ isCreating ? t('creating2') : pendingCreate ? t('retry') : t('create') }}
           </button>
         </div>
       </form>
     </div>
     <div v-if="editingId" class="create-dialog-backdrop">
       <form class="create-dialog" @submit.prevent="saveMetadata">
-        <h2>File details</h2>
+        <h2>{{ t('fileDetails') }}</h2>
         <p v-if="errorMessage" role="alert" class="file-error">{{ errorMessage }}</p>
-        <label for="edit-name">Name</label
+        <label for="edit-name">{{ t('name') }}</label
         ><input id="edit-name" v-model="editName" required :disabled="isEditing" />
-        <label for="edit-description">Description</label
+        <label for="edit-description">{{ t('description') }}</label
         ><input id="edit-description" v-model="editDescription" :disabled="isEditing" />
         <div class="dialog-actions">
-          <button type="button" :disabled="isEditing" @click="editingId = null">Cancel</button
-          ><button :disabled="isEditing || !editName.trim()">Save</button>
+          <button type="button" :disabled="isEditing" @click="editingId = null">
+            {{ t('cancel') }}</button
+          ><button :disabled="isEditing || !editName.trim()">{{ t('save') }}</button>
         </div>
       </form>
     </div>

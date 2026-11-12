@@ -1,10 +1,14 @@
+<script setup lang="ts">
+import { t } from '@/i18n'
+</script>
+
 <template>
   <div class="editor-welcome">
     <div>
       <span class="welcome-symbol" aria-hidden="true">{ }</span>
-      <h1>Ready when you are</h1>
-      <p>Open a file in the explorer to start editing.</p>
-      <p>Create a script, document or render configuration with <strong>＋</strong>.</p>
+      <h1>{{ t('readyWhenYouAre') }}</h1>
+      <p>{{ t('openAFileInTheExplorerToStartEditing') }}</p>
+      <p>{{ t('createAScriptDocumentOrRenderConfigurationWithSymbol', { symbol: '＋' }) }}</p>
     </div>
   </div>
 </template>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatDateTime, t } from '@/i18n'
 import { onMounted, ref } from 'vue'
 import { api } from '@/adapter/client'
 import { apiErrorMessage } from '@/adapter/apiError'
@@ -20,7 +21,7 @@ async function load(): Promise<void> {
     if (requestError) throw requestError
     invitations.value = data ?? []
   } catch {
-    error.value = 'Invitations could not be loaded. Please try again.'
+    error.value = t('invitationsCouldNotBeLoadedPleaseTryAgain')
   } finally {
     loading.value = false
   }
@@ -38,19 +39,16 @@ async function answer(id: string, accept: boolean): Promise<void> {
     )
     if (requestError) throw requestError
     invitations.value = invitations.value.filter((invitation) => invitation.id !== id)
-    message.value = accept ? 'Invitation accepted.' : 'Invitation declined.'
+    message.value = accept ? t('invitationAccepted') : t('invitationDeclined')
     if (accept) {
       try {
         await projects.loadProjects()
       } catch {
-        error.value = 'Invitation accepted, but projects could not be refreshed. Reload the page.'
+        error.value = t('invitationAcceptedButProjectsCouldNotBeRefreshedReload')
       }
     }
   } catch (cause) {
-    error.value = apiErrorMessage(
-      cause,
-      'The invitation could not be updated. It may have expired or been revoked. Refresh invitations and try again.',
-    )
+    error.value = apiErrorMessage(cause, t('theInvitationCouldNotBeUpdatedItMayHave'))
   } finally {
     busy.value = false
   }
@@ -66,28 +64,28 @@ onMounted(load)
     aria-labelledby="invitations-title"
     :aria-busy="loading || busy"
   >
-    <h2 id="invitations-title">Project invitations</h2>
-    <p v-if="loading" role="status">Loading invitations…</p>
+    <h2 id="invitations-title">{{ t('projectInvitations') }}</h2>
+    <p v-if="loading" role="status">{{ t('loadingInvitations') }}</p>
     <p v-if="message" role="status">{{ message }}</p>
     <div v-if="error" class="invitation-error">
       <p role="alert">{{ error }}</p>
       <button class="quiet-button" :disabled="loading || busy" @click="load">
-        Refresh invitations
+        {{ t('refreshInvitations') }}
       </button>
     </div>
     <ul v-if="!loading && invitations.length">
       <li v-for="invitation in invitations" :key="invitation.id">
         <div class="invitation-details">
           <strong>{{ invitation.projectName }}</strong>
-          <span>Invited by {{ invitation.invitedByEmail }}</span>
-          <span>Expires {{ new Date(invitation.expiresAt!).toLocaleString() }}</span>
+          <span>{{ t('invitedBy') }} {{ invitation.invitedByEmail }}</span>
+          <span>{{ t('expires') }} {{ formatDateTime(invitation.expiresAt!) }}</span>
         </div>
         <div class="invitation-actions">
           <button class="primary-button" :disabled="busy" @click="answer(invitation.id!, true)">
-            Accept
+            {{ t('accept') }}
           </button>
           <button class="quiet-button" :disabled="busy" @click="answer(invitation.id!, false)">
-            Decline
+            {{ t('decline') }}
           </button>
         </div>
       </li>
