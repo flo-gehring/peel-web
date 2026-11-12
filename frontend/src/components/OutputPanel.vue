@@ -50,6 +50,9 @@ const lastRun = computed(() =>
       <time v-if="lastRun" class="run-time">{{ lastRun }}</time>
     </div>
     <div class="output-content">
+      <p v-if="output.request" class="output-source">
+        {{ output.request.name }} · {{ lastRun || 'Current run' }}
+      </p>
       <pre v-if="output.error" class="output-error" role="alert">{{ output.error }}</pre>
       <p v-if="!output.request && !output.response" class="output-empty">
         Run a script to see its result here.
@@ -124,6 +127,11 @@ const lastRun = computed(() =>
   overflow: auto;
   min-height: 0;
   padding: 16px 20px;
+}
+.output-source {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--peel-muted);
 }
 .json-block,
 .output-error {

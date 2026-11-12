@@ -99,6 +99,42 @@ und Print Jobs bleiben fachliche Endpunkte. Ihre bisherigen CRUD-Endpunkte sind
 entfernt. Die Projektübersicht liefert weiterhin nach Typ gruppierte
 Metadatenprojektionen, die ausschließlich auf der gemeinsamen Collection beruhen.
 
+## Einheitlicher Editor
+
+Alle Dateitypen verwenden dieselbe kompakte Aktionsleiste unter den Tabs:
+Speicherstatus, Output, Dateieinstellungen, Save und eine typabhängige Hauptaktion.
+Skripte haben Run, Dokumente Render preview, Renderkonfigurationen ausschließlich
+Save. Fehler beim Speichern erscheinen direkt unter der Leiste. JSON-/Schemafehler
+der Renderkonfiguration werden zusätzlich im Monaco-Modell markiert.
+
+Das Zahnrad öffnet eine seitliche Einstellungsansicht. Name und Beschreibung
+zählen als Entwurf und werden mit dem Inhalt zusammen gespeichert. Dokumente
+öffnen Skriptverknüpfungen und Renderkonfiguration über eigene Banana-/Palette-Buttons
+mit Tooltips in separaten seitlichen Ansichten. Die Hauptaktionen verwenden reine
+Symbole: Play für Skripte, Eye für die Dokumentvorschau. Ein Punkt im
+Tab kennzeichnet ungespeicherte Inhalte oder Metadaten; Navigation und Logout
+berücksichtigen beide.
+
+Dokumente wechseln zwischen Edit und Preview im selben Arbeitsbereich. Der
+Texteditor bleibt dabei gemountet; Formatierungsleiste und Dokumentseite nehmen
+im Bearbeitungsmodus die verfügbare Höhe ein. Output wird beim Wechsel auf einen
+Dokumenttab geschlossen und kann über die Aktionsleiste wieder geöffnet werden.
+Beim Wechsel auf ein Skript wird der Output-Bereich wiederhergestellt. Seine
+Daten bleiben im Store erhalten. Es gibt keine separate PDF-Dockview-Seite mehr.
+
+Ctrl/Cmd+S speichert die zuletzt aktive Editor-Datei, Ctrl/Cmd+Enter startet deren
+Run beziehungsweise Vorschau, auch wenn Bindings oder Output fokussiert sind.
+Run und Vorschau speichern nicht automatisch. Die Vorschau verwendet den aktuellen
+Dokumententwurf; referenzierte Skripte und Renderkonfigurationen werden wie bisher
+aus ihren gespeicherten Ständen aufgelöst.
+
+PDF-Vorschauen sind nach Datei-ID getrennt und zeigen Namen und Erstellungszeit.
+Änderungen am Dokumententwurf oder an den Bindings kennzeichnen eine vorhandene
+Vorschau als veraltet. Später eintreffende Antworten dürfen nach Löschen/Neuladen
+oder Workspace-Wechsel keine alte Vorschau wiederherstellen. Objekt-URLs werden
+beim Ersetzen und Verwerfen freigegeben. Skriptergebnisse zeigen ebenfalls ihre
+Quelle; Ausführen eines weiteren Skripts ist während eines laufenden Runs gesperrt.
+
 ## Performance und Umfang
 
 Einzelzugriffe verwenden den `_id`-Index. Ein eindeutiger zusammengesetzter Index

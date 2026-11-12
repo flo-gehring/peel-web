@@ -9,6 +9,16 @@ export const useWorkspaceSelectionStore = defineStore('workspaceSelection', () =
   const deletionVersion = ref(0)
   const reloadedDocument = ref<PeelWorkspaceDocument | null>(null)
   const reloadVersion = ref(0)
+  const outputVersion = ref(0)
+  function requestOutput(): void {
+    outputVersion.value += 1
+  }
+  const fileAction = ref<{ id: string; action: 'save' | 'execute' } | null>(null)
+  const actionVersion = ref(0)
+  function requestFileAction(id: string, action: 'save' | 'execute'): void {
+    fileAction.value = { id, action }
+    actionVersion.value += 1
+  }
 
   function reloadDocument(document: PeelWorkspaceDocument): void {
     reloadedDocument.value = document
@@ -36,6 +46,7 @@ export const useWorkspaceSelectionStore = defineStore('workspaceSelection', () =
     selectedDocument.value = null
     deletedDocument.value = null
     reloadedDocument.value = null
+    fileAction.value = null
   }
 
   return {
@@ -45,6 +56,11 @@ export const useWorkspaceSelectionStore = defineStore('workspaceSelection', () =
     deletionVersion,
     reloadedDocument,
     reloadVersion,
+    outputVersion,
+    requestOutput,
+    fileAction,
+    actionVersion,
+    requestFileAction,
     reloadDocument,
     selectDocument,
     clearSelection,

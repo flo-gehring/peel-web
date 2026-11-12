@@ -4,22 +4,37 @@ import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { DockviewVue, type DockviewReadyEvent } from 'dockview-vue'
 import ProjectView from './ProjectView.vue'
+import { useWorkspaceSelectionStore } from '@/stores/workspaceSelection'
 
 vi.mock('@guolao/vue-monaco-editor', () => ({
   VueMonacoEditor: { template: '<div class="test-monaco" />' },
 }))
 vi.mock('@/adapter/client', () => ({
   api: {
-    GET: vi.fn(async (path: string) => ({
+    GET: vi.fn(async (path: string, options?: { params?: { path?: { fileId?: string } } }) => ({
       data:
         path === '/api/projects/{projectId}/files/{fileId}'
-          ? {
-              id: 'script-1',
-              projectId: { id: 'invoices' },
-              version: 0,
-              name: 'Customer',
-              content: { type: 'script', source: 'customer' },
-            }
+          ? options?.params?.path?.fileId === 'document-1'
+            ? {
+                id: 'document-1',
+                projectId: { id: 'invoices' },
+                version: 0,
+                name: 'Invoice',
+                content: {
+                  type: 'document',
+                  templateHtml: '<p>Invoice</p>',
+                  editorStateJson: '{}',
+                  scriptNameTags: {},
+                  renderConfigurationId: 'config',
+                },
+              }
+            : {
+                id: 'script-1',
+                projectId: { id: 'invoices' },
+                version: 0,
+                name: 'Customer',
+                content: { type: 'script', source: 'customer' },
+              }
           : path === '/api/projects/{projectId}/files'
             ? [{ id: 'script-1', name: 'Customer', type: 'script', version: 0 }]
             : {
@@ -41,9 +56,10 @@ describe('Dockview workspace integration', () => {
       routes: [{ path: '/projects/:projectId', component: ProjectView }],
     })
     await router.push('/projects/invoices')
+    const pinia = createPinia()
     wrapper = mount(ProjectView, {
       attachTo: document.body,
-      global: { plugins: [createPinia(), router] },
+      global: { plugins: [pinia, router] },
     })
     await flushPromises()
     const ready = wrapper
@@ -61,5 +77,18 @@ describe('Dockview workspace integration', () => {
     expect(wrapper.text()).toContain('Run')
     expect(dock.getPanel('bindings-json')).toBeDefined()
     expect(dock.getPanel('output-console')).toBeDefined()
+    const selection = useWorkspaceSelectionStore(pinia)
+    selection.selectDocument({ kind: 'document', id: 'document-1', name: 'Invoice', icon: 'DOC' })
+    await flushPromises()
+    expect(dock.getPanel('editor-document-document-1')).toBeDefined()
+    expect(dock.getPanel('output-console')).toBeUndefined()
+    expect(wrapper.findAll('.file-toolbar').length).toBeGreaterThan(0)
+    selection.requestOutput()
+    await flushPromises()
+    expect(dock.getPanel('output-console')).toBeDefined()
+    dock.getPanel('editor-script-script-1')?.api.setActive()
+    dock.getPanel('editor-document-document-1')?.api.setActive()
+    await flushPromises()
+    expect(dock.getPanel('output-console')).toBeUndefined()
   })
 })

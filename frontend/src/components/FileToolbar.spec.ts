@@ -1,7 +1,8 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import GroupActions from './GroupActions.vue'
+import FileToolbar from './FileToolbar.vue'
+import { useWorkspaceSelectionStore } from '@/stores/workspaceSelection'
 import { api } from '@/adapter/client'
 import { useEditorDraftStore } from '@/stores/editorDrafts'
 import { useRunBindingsStore } from '@/stores/runBindings'
@@ -21,25 +22,23 @@ vi.mock('@/adapter/client', () => ({
 const mockApi = vi.mocked(api)
 
 function mountActions(documentKind: 'peel' | 'renderConfig' = 'peel') {
-  const outputPanel = { api: { setActive: vi.fn() } }
-  const params = {
-    activePanel: { id: 'editor-script-1', api: { setTitle: vi.fn() } },
-    containerApi: {
-      toJSON: () => ({
-        panels: {
-          'editor-script-1': {
-            title: 'Example',
-            params: { documentId: 'script-1', documentKind, content: 'saved script' },
-          },
-        },
-      }),
-      getPanel: vi.fn(() => outputPanel),
-    },
+  const outputPanel = {
+    api: { setActive: vi.spyOn(useWorkspaceSelectionStore(), 'requestOutput') },
   }
-  return { wrapper: mount(GroupActions, { props: { params: params as never } }), outputPanel }
+  return {
+    wrapper: mount(FileToolbar, {
+      props: {
+        documentId: 'script-1',
+        documentKind,
+        panelId: 'editor-script-1',
+        initialContent: 'saved script',
+      },
+    }),
+    outputPanel,
+  }
 }
 
-describe('GroupActions', () => {
+describe('shared file toolbar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setActivePinia(createPinia())
@@ -129,7 +128,7 @@ describe('GroupActions', () => {
     const { wrapper } = mountActions()
     await wrapper.get('[title="Save file"]').trigger('click')
     await flushPromises()
-    expect(wrapper.get('[role="alertdialog"]').text()).toContain('Reload and merge')
+    expect(wrapper.get('[role="alert"]').text()).toContain('Reload and merge')
     expect(useEditorDraftStore().draftsById['script-1']?.dirty).toBe(true)
     expect(files.loaded['script-1']?.version).toBe(7)
   })

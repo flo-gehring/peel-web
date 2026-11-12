@@ -1,6 +1,18 @@
 <script setup lang="ts">
+import {
+  Banana,
+  Palette,
+  FileText,
+  Check,
+  Copy,
+  Trash2,
+  Pencil,
+  RotateCcw,
+  RefreshCw,
+  Plus,
+  ChevronRight,
+} from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
-import { Check, Copy, Trash2, Pencil, RotateCcw, RefreshCw, Plus, ChevronRight } from '@lucide/vue'
 
 import { useProjectFileStore, type FileState } from '@/stores/projectFiles'
 import { api } from '@/adapter/client'
@@ -237,6 +249,14 @@ async function saveMetadata() {
 }
 
 watch(projectId, () => void fetchFiles(), { immediate: true })
+watch(
+  () => Object.values(files.loaded).map((file) => [file.id, file.name]),
+  () => {
+    for (const items of [scripts.value, renderConfigs.value, documents.value]) {
+      for (const item of items) item.name = files.loaded[item.id]?.name ?? item.name
+    }
+  },
+)
 </script>
 <template>
   <div class="file-tree-container">
@@ -264,9 +284,11 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
             @click="expanded.peel = !expanded.peel"
             title="Scripts"
           >
-            <ChevronRight :size="14" :class="{ expanded: expanded.peel }" aria-hidden="true" /><span
-              >Scripts</span
-            >
+            <ChevronRight
+              :size="14"
+              :class="{ expanded: expanded.peel }"
+              aria-hidden="true"
+            /><Banana :size="16" aria-hidden="true" /><span>Scripts</span>
           </button>
         </h2>
         <button
@@ -286,7 +308,6 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
           :class="{ active: activeFileId === `peel-${file.id}` }"
           @click="selectDocument(file)"
         >
-          <span class="file-icon">{{ file.icon }}</span>
           <button class="file-name" @click.stop="selectDocument(file)">{{ file.name }}</button>
           <button
             class="copy-id-button"
@@ -346,7 +367,7 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
               :size="14"
               :class="{ expanded: expanded.renderConfig }"
               aria-hidden="true"
-            /><span>Render configurations</span>
+            /><Palette :size="16" aria-hidden="true" /><span>Render configurations</span>
           </button>
         </h2>
         <button
@@ -366,7 +387,6 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
           :class="{ active: activeFileId === `renderConfig-${file.id}` }"
           @click="selectDocument(file)"
         >
-          <span class="file-icon">{{ file.icon }}</span>
           <button class="file-name" @click.stop="selectDocument(file)">{{ file.name }}</button>
           <button
             class="copy-id-button"
@@ -426,7 +446,7 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
               :size="14"
               :class="{ expanded: expanded.document }"
               aria-hidden="true"
-            /><span>Documents</span>
+            /><FileText :size="16" aria-hidden="true" /><span>Documents</span>
           </button>
         </h2>
         <button
@@ -446,7 +466,6 @@ watch(projectId, () => void fetchFiles(), { immediate: true })
           :class="{ active: activeFileId === `document-${file.id}` }"
           @click="selectDocument(file)"
         >
-          <span class="file-icon">{{ file.icon }}</span>
           <button class="file-name" @click.stop="selectDocument(file)">{{ file.name }}</button>
           <button
             class="copy-id-button"

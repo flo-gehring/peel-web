@@ -80,7 +80,7 @@ describe('authentication state', () => {
     expect(useEditorDraftStore().draftsById).toEqual({})
     expect(auth.linkEmail).toBe('')
     expect(useProjectStore().projects).toEqual([])
-    expect(useDocumentPreviewStore().pdfUrl).toBeNull()
+    expect(useDocumentPreviewStore().previews).toEqual({})
   })
 
   it('ignores a session check that finishes after logout', async () => {

@@ -1,51 +1,55 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
+type Preview = {
+  pdfUrl: string | null
+  error: string | null
+  isLoading: boolean
+  name: string
+  signature: string
+  renderedAt: number | null
+  requestId: number
+}
 export const useDocumentPreviewStore = defineStore('documentPreview', () => {
-  const pdfUrl = ref<string | null>(null)
-  const error = ref<string | null>(null)
-  const isLoading = ref(false)
-  const previewVersion = ref(0)
-
-  function start(): void {
-    isLoading.value = true
-    error.value = null
+  const previews = ref<Record<string, Preview>>({})
+  let sequence = 0
+  function start(id: string, name: string, signature: string): number {
+    const previous = previews.value[id]
+    if (previous?.pdfUrl) URL.revokeObjectURL(previous.pdfUrl)
+    const requestId = ++sequence
+    previews.value[id] = {
+      pdfUrl: null,
+      error: null,
+      isLoading: true,
+      name,
+      signature,
+      renderedAt: null,
+      requestId,
+    }
+    return requestId
   }
-
-  function setPreview(pdfData: string): void {
-    if (pdfUrl.value) URL.revokeObjectURL(pdfUrl.value)
-    const binary = atob(pdfData)
-    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0))
-    pdfUrl.value = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }))
-    error.value = null
-    isLoading.value = false
+  function setPreview(id: string, requestId: number, pdfData: string): void {
+    const preview = previews.value[id]
+    if (preview?.requestId !== requestId) return
+    const bytes = Uint8Array.from(atob(pdfData), (character) => character.charCodeAt(0))
+    preview.pdfUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }))
+    preview.isLoading = false
+    preview.error = null
+    preview.renderedAt = Date.now()
   }
-
-  function setError(message: string): void {
-    error.value = message
-    isLoading.value = false
+  function setError(id: string, requestId: number, error: string): void {
+    const preview = previews.value[id]
+    if (preview?.requestId !== requestId) return
+    preview.error = error
+    preview.isLoading = false
   }
-
-  function requestOpen(): void {
-    previewVersion.value += 1
+  function remove(id: string): void {
+    const preview = previews.value[id]
+    if (preview?.pdfUrl) URL.revokeObjectURL(preview.pdfUrl)
+    delete previews.value[id]
   }
-
   function clear(): void {
-    if (pdfUrl.value) URL.revokeObjectURL(pdfUrl.value)
-    pdfUrl.value = null
-    error.value = null
-    isLoading.value = false
+    Object.keys(previews.value).forEach(remove)
   }
-
-  return {
-    pdfUrl,
-    error,
-    isLoading,
-    previewVersion,
-    start,
-    setPreview,
-    setError,
-    requestOpen,
-    clear,
-  }
+  return { previews, start, setPreview, setError, remove, clear }
 })

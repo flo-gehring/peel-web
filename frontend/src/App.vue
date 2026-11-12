@@ -7,6 +7,7 @@ import peelLogo from '@/assets/peel-logo.png'
 import { useAuthStore } from '@/stores/auth'
 import { useEditorDraftStore } from '@/stores/editorDrafts'
 import { useDocumentDraftStore } from '@/stores/documentDrafts'
+import { useProjectFileStore } from '@/stores/projectFiles'
 import SessionSignInForm from '@/components/SessionSignInForm.vue'
 
 const router = useRouter()
@@ -21,6 +22,7 @@ const projectName = computed(() =>
 const authStore = useAuthStore()
 const drafts = useEditorDraftStore()
 const documents = useDocumentDraftStore()
+const projectFiles = useProjectFileStore()
 const signingOut = ref(false)
 const logoutError = ref<string | null>(null)
 
@@ -38,6 +40,7 @@ async function refreshSession(): Promise<void> {
 
 async function logout(): Promise<void> {
   const dirty =
+    Object.keys(projectFiles.metadataDrafts).some((id) => projectFiles.metadataDirty(id)) ||
     Object.values(drafts.draftsById).some((draft) => draft.dirty) ||
     Object.values(documents.draftsById).some((draft) => draft.dirty)
   if (dirty && !window.confirm('Discard unsaved changes and sign out?')) return

@@ -11,7 +11,12 @@ describe('run output', () => {
 
   it('tracks successful execution state', () => {
     const store = useRunOutputStore()
-    const request = { panelId: 'editor-script-1', name: 'Example', script: 'return 1', bindings: {} }
+    const request = {
+      panelId: 'editor-script-1',
+      name: 'Example',
+      script: 'return 1',
+      bindings: {},
+    }
 
     store.startRun(request)
     store.setRunSuccess({ trace: { step: 1 }, result: { value: 1 } })
@@ -26,7 +31,12 @@ describe('run output', () => {
   it('clears all state', () => {
     const store = useRunOutputStore()
 
-    store.startRun({ panelId: 'editor-script-1', name: 'Example', script: 'return 1', bindings: {} })
+    store.startRun({
+      panelId: 'editor-script-1',
+      name: 'Example',
+      script: 'return 1',
+      bindings: {},
+    })
     store.setRunError('Execution failed')
     store.clearRun()
 
@@ -35,5 +45,19 @@ describe('run output', () => {
     expect(store.response).toBeNull()
     expect(store.error).toBeNull()
     expect(store.lastRunAt).toBeNull()
+  })
+  it('ignores late responses after clearing the workspace', () => {
+    const store = useRunOutputStore()
+    const requestId = store.startRun({
+      panelId: 'editor-script-1',
+      name: 'Old',
+      script: '1',
+      bindings: {},
+    })
+    store.clearRun()
+    store.setRunSuccess({ result: 'late' }, requestId)
+    store.setRunError('late failure', requestId)
+    expect(store.response).toBeNull()
+    expect(store.error).toBeNull()
   })
 })

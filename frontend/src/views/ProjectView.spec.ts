@@ -7,6 +7,7 @@ import ProjectView from './ProjectView.vue'
 
 const { dockviewApi } = vi.hoisted(() => ({
   dockviewApi: {
+    onDidActivePanelChange: vi.fn(() => ({ dispose: vi.fn() })),
     addGroup: vi.fn(() => ({ id: 'editor-group' })),
     addEdgeGroup: vi.fn(() => ({ id: 'left-group' })),
     addPanel: vi.fn(),

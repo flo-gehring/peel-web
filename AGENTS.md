@@ -74,7 +74,7 @@ The Vite alias `@/` resolves to `frontend/src/`. The Vite dev server proxies `/a
 
 ### Running Scripts
 
-- The ▶ button in `GroupActions.vue` runs the currently active editor's latest draft.
+- The shared `FileToolbar.vue` below each file tab saves all file types, runs script drafts, and triggers document previews. Settings are in `FileSettings.vue`; Ctrl+S and Ctrl+Enter work within the editor.
 - Call `PUT /api/scripts/run` with `{ projectId: { id }, script, bindings }`.
 - Bindings come from the global bindings store and must be valid JSON with an object top level; each value is currently required to be an object, matching generated `RunRequest` typing.
 - Send run state to `runOutput.ts`; `OutputPanel.vue` renders request, error, trace, and result as read-only formatted JSON.
@@ -94,3 +94,11 @@ The Vite alias `@/` resolves to `frontend/src/`. The Vite dev server proxies `/a
 - Run `git diff --check` after edits.
 - Do not introduce Bun lockfiles or switch package managers; this project uses npm.
 - When type-checking is blocked by the current Vue-module issue, still inspect relevant imports, generated API types, and `git diff --check`.
+
+### Compact editor layout
+
+- `EditorPanel.vue` and `DocumentPanel.vue` embed the same `FileToolbar.vue`; do not add save/run controls to Dockview headers.
+- Document script links and render configuration have dedicated Banana/Palette toolbar buttons and separate side panels. The gear opens only file metadata. Edit/Preview share the document area; keep the Tiptap instance mounted when switching.
+- Document previews are keyed by file ID in `documentPreview.ts`. Ignore superseded/cleared requests and revoke old object URLs.
+- Opening a document hides Output; the toolbar can reopen it via `workspaceSelection.requestOutput()`. Script output is restored when returning to a script.
+- Metadata drafts live in `projectFiles.ts` and count as unsaved changes for tabs, navigation and logout.
