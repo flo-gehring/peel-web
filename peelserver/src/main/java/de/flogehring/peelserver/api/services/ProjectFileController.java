@@ -30,6 +30,20 @@ import java.util.List;
 })
 public class ProjectFileController {
     private final ProjectFileService files;
+    private final de.flogehring.peelserver.impl.run.ValidationService validation;
+    @GetMapping("/{fileId}/blocks")
+    @Operation(summary = "List named blocks in a saved script without executing it")
+    public List<String> blocks(@PathVariable String projectId, @PathVariable String fileId,
+                              @AuthenticationPrincipal SpringUserDetails user) {
+        var file = files.get(projectId, fileId, user);
+        if (!(file.content() instanceof FileContent.ScriptContent script))
+            throw new IllegalArgumentException("Block selection requires a script");
+        if (!script.source().isBlank()) {
+            var diagnostics = validation.validate(new de.flogehring.peelserver.api.data.scripts.ValidationRequest(script.source())).diagnostics();
+            if (!diagnostics.isEmpty()) throw new IllegalArgumentException(diagnostics.getFirst().message());
+        }
+        return de.flogehring.peel.parse.PeelGrammar.parseWithBlocks(script.source()).blockNames();
+    }
     @GetMapping
     @ApiResponse(responseCode = "200", description = "File metadata", content = @Content(array = @ArraySchema(schema = @Schema(implementation = FileSummary.class))))
     public List<FileSummary> list(@PathVariable String projectId, @RequestParam(required = false) String type,

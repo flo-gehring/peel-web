@@ -1,0 +1,94 @@
+package de.flogehring.peelserver.impl.documenttemplates;
+
+import de.flogehring.peel.parse.PeelGrammar;
+import de.flogehring.peelserver.api.data.template.DocumentNode;
+import de.flogehring.peelserver.impl.run.*;
+import de.flogehring.peelserver.impl.scripts.PeelScript;
+import de.flogehring.peelserver.impl.renderconfig.ExpressionRenderConfiguration;
+import org.junit.jupiter.api.Test;
+import java.util.*;
+import static de.flogehring.peelserver.DocumentFixtures.*;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+class StructuredDocumentTest {
+    final PeelExecutionService execution = spy(new PeelExecutionService(new BindingsMapper()));
+    final DocumentTemplateRenderService renderer = new DocumentTemplateRenderService(execution);
+
+    @Test void repeatsCalculationsWithTheirOwnLoopBindingAndProducesPdf() {
+        String source = "for (bauteil in bauteile) nachweis: { var spannung = bauteil[\"kraft\"] / bauteil[\"flaeche\"]; }";
+        var body = doc(node("peelRepeat", Map.of("scriptId", "script", "scope", "script", "block", "nachweis"),
+                node("paragraph", Map.of(), text("Bauteil "), node("peelValue", Map.of("scope", "current", "binding", "bauteil.name"))),
+                node("peelCalculation", Map.of("scope", "current", "mode", "detailed"))));
+        var document = document(source, body);
+        Map<String,Object> bindings = Map.of("bauteile", List.of(
+                Map.of("name", "A & <A>", "kraft", 12, "flaeche", 3), Map.of("name", "B", "kraft", 30, "flaeche", 5)));
+        String html = renderer.render(document, bindings);
+        assertThat(html).contains("Bauteil A &amp; &lt;A&gt;", "Bauteil B", "(12 / 3)", "(30 / 5)");
+        assertThat(html.indexOf("(12 / 3)")).isLessThan(html.indexOf("Bauteil B"));
+        verify(execution, times(1)).execute(source, bindings);
+        var preview = renderer.preview(document, bindings);
+        assertThat(preview.pdfData()).startsWith((byte)'%', (byte)'P', (byte)'D', (byte)'F');
+        assertThat(preview.warnings()).isEmpty();
+    }
+
+    @Test void nestedRepetitionsStayWithinTheirParentOccurrence() {
+        String source = "for (outer in [1, 2]) parent: { for (inner in [3, 4]) child: { outer * inner; } }";
+        var document = document(source, doc(node("peelRepeat", Map.of("scope", "script", "scriptId", "script", "block", "parent"),
+                node("peelRepeat", Map.of("scope", "current", "block", "child"),
+                        node("paragraph", Map.of(), node("peelValue", Map.of("scope", "current")))))));
+        String html = renderer.render(document, Map.of());
+        assertThat(html).containsSubsequence("<p>3</p>", "<p>4</p>", "<p>6</p>", "<p>8</p>");
+        assertThat(html.split("<p>", -1)).hasSize(5);
+    }
+
+    @Test void differentiatesUnexecutedUnknownAndAmbiguousBlocks() {
+        String source = "if (False) absent: {} for (x in [1,2]) repeated: { x; }";
+        assertThatThrownBy(() -> renderer.render(document(source, doc(selected("absent"))), Map.of()))
+                .hasMessageContaining("found 0").hasMessageContaining("document/0");
+        assertThatThrownBy(() -> renderer.render(document(source, doc(selected("missing"))), Map.of()))
+                .hasMessageContaining("Unknown block");
+        assertThatThrownBy(() -> renderer.render(document(source, doc(selected("repeated"))), Map.of()))
+                .hasMessageContaining("found 2");
+        var empty = document(source, doc(node("peelRepeat", Map.of("scope", "script", "scriptId", "script", "block", "absent"),
+                node("paragraph", Map.of(), text("SHOULD NOT APPEAR")))));
+        var preview = renderer.preview(empty, Map.of());
+        assertThat(preview.warnings()).singleElement().asString().contains("absent");
+        assertThat(renderer.render(empty, Map.of())).doesNotContain("SHOULD NOT APPEAR");
+    }
+
+    @Test void wholeScriptIncludesUnnamedBlocksAndEveryLoopIteration() {
+        var document = document("var sum = 0; for (x in [1,2]) { sum = sum + x; } if (True) { sum * 2; }", doc(calculation("script")));
+        assertThat(renderer.render(document, Map.of())).contains("x = 1", "x = 2", "(sum * 2)", " = 6");
+    }
+
+    @Test void functionOccurrencesKeepParameterBindingsAndDoNotDuplicateArgumentTraces() {
+        String source = "fun double(x) body: { return x * 2; } double(2); double(5);";
+        var document = document(source, doc(node("peelRepeat", Map.of("scope", "script", "scriptId", "script", "block", "body"),
+                node("paragraph", Map.of(), node("peelValue", Map.of("scope", "current", "binding", "x")),
+                        text(":"), node("peelValue", Map.of("scope", "current"))))));
+        assertThat(renderer.render(document, Map.of())).containsSubsequence("<p>2:4</p>", "<p>5:10</p>");
+    }
+
+    @Test void validatesStructureBeforeSavingAndRequiresAnEnclosingRepeat() {
+        assertThatThrownBy(() -> doc(node("peelCalculation", Map.of("scope", "current", "mode", "detailed"))).validateDocument())
+                .hasMessageContaining("requires a repetition");
+        assertThatThrownBy(() -> doc(node("script", Map.of())).validateDocument()).hasMessageContaining("Unsupported");
+        assertThat(doc(node("peelRepeat", Map.of("scope", "script", "scriptId", "s"),
+                node("peelCalculation", Map.of("scope", "current", "scriptId", "unused", "mode", "result")))).scriptIds()).containsExactly("s");
+    }
+
+    @Test void detailedWholeScriptShowsUnnamedFunctionBodiesAndFormatsValuesWithoutChangingResults() {
+        var document = document("fun f(x) { return x / 3; } f(1);", doc(calculation("script")));
+        assertThat(renderer.render(document, Map.of())).contains("peel-function", "return (x / 3)");
+        var value = node("peelValue", Map.of("scope", "script", "scriptId", "script", "decimals", 2));
+        assertThat(renderer.render(document("1 / 3;", doc(node("paragraph", Map.of(), value))), Map.of())).contains("<p>0.33</p>");
+    }
+
+    private Document document(String source, DocumentNode root) {
+        return new Document("Test", Map.of("script", new PeelScript("Script", source)), root, ExpressionRenderConfiguration.defaultConfig());
+    }
+    private DocumentNode selected(String block) { return node("peelCalculation", Map.of("scope", "script", "scriptId", "script", "block", block, "mode", "detailed")); }
+    private DocumentNode text(String text) { return new DocumentNode("text", Map.of(), List.of(), text, List.of()); }
+    private DocumentNode node(String type, Map<String,Object> attrs, DocumentNode... children) { return new DocumentNode(type, attrs, List.of(children), null, List.of()); }
+}

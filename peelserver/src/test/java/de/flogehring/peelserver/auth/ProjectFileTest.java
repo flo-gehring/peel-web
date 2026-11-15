@@ -1,4 +1,5 @@
 package de.flogehring.peelserver.auth;
+import static de.flogehring.peelserver.DocumentFixtures.*;
 
 import de.flogehring.peelserver.config.PeelModuleTest;
 import de.flogehring.peelserver.impl.files.*;
@@ -230,9 +231,31 @@ class ProjectFileTest {
     }
 
     private String base(){return "/api/projects/"+project+"/files";}
+    @Test void listsBlocksWithoutExecutingAndUsesDocumentReferencesForDeletion() throws Exception {
+        create(id, "Script", script("if (False) absent: {} report: { 1 / 0; }"));
+        mvc.perform(get(base()+"/"+id+"/blocks").with(user(member))).andExpect(status().isOk())
+                .andExpect(jsonPath("$[0]").value("absent")).andExpect(jsonPath("$[1]").value("report"));
+        mvc.perform(get(base()+"/"+id+"/blocks").with(user(outsider))).andExpect(status().isNotFound());
+        String doc = UUID.randomUUID().toString();
+        create(doc, "Document", Map.of("type", "document", "document", doc(calculation(id))));
+        mvc.perform(get(base()+"/"+doc).with(user(member))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.document.content[0].attrs.scriptId").value(id))
+                .andExpect(jsonPath("$.content.templateHtml").doesNotExist());
+        mvc.perform(delete(base()+"/"+id).param("expectedVersion","0").with(user(member)).with(csrf()))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.details.usages[0].id").value(doc));
+    }
+    @Test void blockCatalogReportsInvalidScriptsAndAcceptsAnEmptyScript() throws Exception {
+        create(id, "Script", script(""));
+        mvc.perform(get(base()+"/"+id+"/blocks").with(user(member))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+        update(id,0,"Script","",script("broken: { var x = ; }"),200);
+        mvc.perform(get(base()+"/"+id+"/blocks").with(user(member))).andExpect(status().isBadRequest());
+        update(id,1,"Script","",script("same: {} same: {}"),200);
+        mvc.perform(get(base()+"/"+id+"/blocks").with(user(member))).andExpect(status().isBadRequest());
+    }
     private Map<String,Object> script(String source){return Map.of("type","script","source",source);}
     private Map<String,Object> config(){return Map.of("type","render-config","renderConfigurations",Map.of(),"namedOverrides",Map.of());}
-    private Map<String,Object> document(String script,String config){return Map.of("type","document","templateHtml","<p>Test</p>","editorStateJson","{}","scriptNameTags",Map.of("calculation",script),"renderConfigurationId",config);}
+    private Map<String,Object> document(String script,String config){return Map.of("type","document","document",doc(calculation(script)),"renderConfigurationId",config);}
     private void create(String id,String name,Object content)throws Exception{
         mvc.perform(body(post(base()),Map.of("id",id,"name",name,"content",content)).with(user(member))).andExpect(status().isOk());
     }

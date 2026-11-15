@@ -91,7 +91,7 @@ public class ProjectFileService {
             if (existing.isEmpty()) return null;
             if (existing.get().version() != expectedVersion) throw versionConflict(existing.get());
             var uses = files.findByProjectId(project).stream().filter(file -> file.content() instanceof FileContent.DocumentContent document
-                    && (document.renderConfigurationId().equals(id) || document.scriptNameTags().containsValue(id)))
+                    && (id.equals(document.renderConfigurationId()) || document.document().scriptIds().contains(id)))
                     .map(FileSummary::of).toList();
             if (!uses.isEmpty()) throw new FileConflictException("file_in_use", "Remove file references before deleting this file.", Map.of("usages", uses));
             var result = mongo.remove(Query.query(Criteria.where("id").is(id).and("projectId").is(project)
@@ -116,9 +116,11 @@ public class ProjectFileService {
 
     private void validateReferences(ProjectId project, FileContent content) {
         if (content instanceof FileContent.DocumentContent document) {
-            if (!(requireFile(project, document.renderConfigurationId()).content() instanceof FileContent.RenderConfigContent))
+            document.document().validateDocument();
+            if (document.renderConfigurationId() != null && !document.renderConfigurationId().isBlank()
+                    && !(requireFile(project, document.renderConfigurationId()).content() instanceof FileContent.RenderConfigContent))
                 throw new IllegalArgumentException("The render configuration reference must point to a render configuration");
-            var ids = new HashSet<>(document.scriptNameTags().values());
+            var ids = document.document().scriptIds();
             var referenced = files.findAllById(ids);
             if (referenced.size() != ids.size()) throw ProjectAccessService.notFound();
             for (var file : referenced) {

@@ -10,6 +10,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.annotation.TypeAlias;
 import java.util.Map;
+import de.flogehring.peelserver.api.data.template.DocumentNode;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
 @JsonSubTypes({
@@ -46,9 +47,7 @@ public sealed interface FileContent {
 
     @TypeAlias("document")
     record DocumentContent(
-            @NotNull Map<@NotBlank String, @NotBlank String> scriptNameTags,
-            @NotBlank String templateHtml,
-            @NotNull String editorStateJson,
-            @NotBlank String renderConfigurationId
+            @NotNull DocumentNode document,
+            String renderConfigurationId
     ) implements FileContent {}
 }

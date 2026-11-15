@@ -1,4 +1,5 @@
 package de.flogehring.peelserver.auth;
+import static de.flogehring.peelserver.DocumentFixtures.*;
 
 import de.flogehring.peelserver.impl.printjobs.*;
 import de.flogehring.peelserver.impl.documenttemplates.*;
@@ -27,7 +28,7 @@ class ProjectPrintJobCompletionTest {
             verifyNoInteractions(jobs);
             throw new IllegalStateException("stream close failed");
         }).when(storage).processFile(anyString(), anyString(), any());
-        runner.run(job, new Document("Template", Map.of(), "<p>Test</p>", ExpressionRenderConfiguration.defaultConfig()));
+        runner.run(job, new Document("Template", Map.of(), textDocument(), ExpressionRenderConfiguration.defaultConfig()));
         verify(jobs, times(1)).save(job);
         assertThat(job.getPrintJobPersistenceData().status()).isEqualTo(PrintJobStatus.FAILED);
     }

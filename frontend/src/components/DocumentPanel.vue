@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { t } from '@/i18n'
-import { computed, ref, watchEffect } from 'vue'
-import type { JSONContent } from '@tiptap/core'
+import { computed, ref, watch } from 'vue'
+import { documentFromEditor, emptyDocument } from '@/adapter/documentModel'
+import { peelNodes } from './document/peelNodes'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import { Banana, Palette, Printer } from '@lucide/vue'
@@ -70,8 +71,7 @@ const preview = computed(() => previewStore.previews[documentId])
 const isPreviewing = computed(() => !!preview.value?.isLoading)
 const signature = computed(() =>
   JSON.stringify({
-    template: draft.value?.templateHtml,
-    tags: draft.value?.scriptNameTags,
+    document: draft.value?.document,
     config: draft.value?.renderConfigurationId,
     bindings: bindingsStore.rawJson,
   }),
@@ -79,16 +79,19 @@ const signature = computed(() =>
 
 const editor = useEditor({
   editable: !projectStore.isReadOnly,
-  extensions: [StarterKit],
-  content: parseEditorState(draft.value?.editorStateJson),
+  extensions: [StarterKit, ...peelNodes],
+  content: draft.value?.document ?? emptyDocument(),
   onUpdate: ({ editor }) => {
     draftStore.updateDraft(documentId, {
-      editorStateJson: JSON.stringify(editor.getJSON()),
-      templateHtml: editor.getHTML(),
+      document: documentFromEditor(editor.getJSON()),
     })
   },
 })
-watchEffect(() => editor?.value?.setEditable(!projectStore.isReadOnly))
+watch(
+  [editor, () => projectStore.isReadOnly],
+  ([instance, readOnly]) => instance?.setEditable(!readOnly, false),
+  { immediate: true },
+)
 
 function toggleHeading(level: 1 | 2 | 3): void {
   editor.value?.chain().focus().toggleHeading({ level }).run()
@@ -114,38 +117,28 @@ function toggleBlockquote(): void {
   editor.value?.chain().focus().toggleBlockquote().run()
 }
 
-function parseEditorState(editorStateJson: string | undefined): JSONContent {
-  if (!editorStateJson) return { type: 'doc', content: [{ type: 'paragraph' }] }
-  try {
-    return JSON.parse(editorStateJson) as JSONContent
-  } catch {
-    return { type: 'doc', content: [{ type: 'paragraph' }] }
+function insertTraceBlock(type: 'peelCalculation' | 'peelRepeat' | 'peelValue'): void {
+  const instance = editor.value
+  if (!instance || projectStore.isReadOnly) return
+  const relative = instance.isActive('peelRepeat')
+  const attrs = {
+    scriptId: relative ? '' : (projectStore.activeProject?.scripts?.[0]?.id ?? ''),
+    block: '',
+    scope: relative ? 'current' : 'script',
+    mode: 'detailed',
   }
-}
-
-function addScriptLink(): void {
-  const current = draft.value
-  if (!current) return
-  draftStore.updateDraft(documentId, {
-    scriptNameTags: { ...current.scriptNameTags, [`script-${Date.now()}`]: '' },
-  })
-}
-
-function updateScriptLink(previousTag: string, tag: string, scriptId: string): void {
-  const current = draft.value
-  if (!current) return
-  const scriptNameTags = { ...current.scriptNameTags }
-  delete scriptNameTags[previousTag]
-  scriptNameTags[tag] = scriptId
-  draftStore.updateDraft(documentId, { scriptNameTags })
-}
-
-function removeScriptLink(tag: string): void {
-  const current = draft.value
-  if (!current) return
-  const scriptNameTags = { ...current.scriptNameTags }
-  delete scriptNameTags[tag]
-  draftStore.updateDraft(documentId, { scriptNameTags })
+  const content =
+    type === 'peelRepeat'
+      ? [
+          { type: 'paragraph' },
+          { type: 'peelCalculation', attrs: { scope: 'current', mode: 'detailed' } },
+        ]
+      : undefined
+  instance
+    .chain()
+    .focus()
+    .insertContent({ type, attrs, ...(content ? { content } : {}) })
+    .run()
 }
 
 async function previewDocument(): Promise<void> {
@@ -164,10 +157,6 @@ async function previewDocument(): Promise<void> {
     saveError.value = bindingsStore.parseError || t('invalidBindingsJson')
     return
   }
-  if (!current.renderConfigurationId) {
-    saveError.value = t('selectARenderConfigurationBeforePreviewing')
-    return
-  }
 
   view.value = 'preview'
   saveError.value = null
@@ -180,12 +169,9 @@ async function previewDocument(): Promise<void> {
     const { data, error } = await api.POST('/api/documents/preview', {
       body: {
         projectId: { id: projectId },
-        scriptTags: Object.fromEntries(
-          Object.entries(current.scriptNameTags).map(([tag, id]) => [tag, { id }]),
-        ),
+        document: current.document,
         bindings,
         renderConfigId: current.renderConfigurationId,
-        template: current.templateHtml,
       },
     })
     if (error) {
@@ -198,7 +184,7 @@ async function previewDocument(): Promise<void> {
       if (!data?.pdfData) {
         previewStore.setError(documentId, requestId, t('theDocumentPreviewDidNotContainAPdf'))
       } else {
-        previewStore.setPreview(documentId, requestId, data.pdfData)
+        previewStore.setPreview(documentId, requestId, data.pdfData, data.warnings ?? [])
       }
     }
   } catch {
@@ -283,29 +269,22 @@ async function previewDocument(): Promise<void> {
         @close="setupOpen = null"
       >
         <div v-if="draft" class="document-links">
-          <template v-if="setupOpen === 'scripts'">
-            <div class="links-heading">
-              <strong>{{ t('scriptLinks2') }}</strong>
-              <button @click="addScriptLink">{{ t('addScript') }}</button>
-            </div>
-            <div v-for="(scriptId, tag) in draft.scriptNameTags" :key="tag" class="script-link-row">
-              <input
-                :value="tag"
-                :aria-label="t('templateTagName')"
-                :placeholder="t('templateTag')"
-                @change="updateScriptLink(tag, ($event.target as HTMLInputElement).value, scriptId)"
-              />
-              <input
-                :value="scriptId"
-                :aria-label="t('peelScriptId')"
-                :placeholder="t('peelScriptId')"
-                @input="updateScriptLink(tag, tag, ($event.target as HTMLInputElement).value)"
-              />
-              <button :title="t('removeScriptLink')" @click="removeScriptLink(tag)">
-                {{ t('remove') }}
-              </button>
-            </div>
-          </template>
+          <div v-if="setupOpen === 'scripts'" class="trace-insert">
+            <p>{{ t('traceInsertHint') }}</p>
+            <button
+              :disabled="projectStore.isReadOnly"
+              @click="insertTraceBlock('peelCalculation')"
+            >
+              {{ t('traceCalculation') }}
+            </button>
+            <button :disabled="projectStore.isReadOnly" @click="insertTraceBlock('peelRepeat')">
+              {{ t('traceRepeat') }}
+            </button>
+            <button :disabled="projectStore.isReadOnly" @click="insertTraceBlock('peelValue')">
+              {{ t('traceValue') }}
+            </button>
+            <p>{{ t('traceSavedScripts') }}</p>
+          </div>
           <label v-else class="render-config-field"
             >{{ t('renderConfig')
             }}<select
@@ -316,7 +295,7 @@ async function previewDocument(): Promise<void> {
                 })
               "
             >
-              <option value="">{{ t('selectARenderConfig') }}</option>
+              <option value="">{{ t('standardRendering') }}</option>
               <option
                 v-for="config in draft.renderConfigurations"
                 :key="config.id"
@@ -432,6 +411,12 @@ async function previewDocument(): Promise<void> {
 </template>
 
 <style scoped>
+.trace-insert {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12px;
+}
 .document-panel {
   display: flex;
   flex-direction: column;

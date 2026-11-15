@@ -1,4 +1,5 @@
 package de.flogehring.peelserver.auth;
+import static de.flogehring.peelserver.DocumentFixtures.*;
 
 import de.flogehring.peelserver.config.PeelModuleTest;
 import de.flogehring.peelserver.impl.files.*;
@@ -118,6 +119,6 @@ class ProjectPrintJobsTest {
         return json.readTree(result.getResponse().getContentAsString()).get("id").asText();
     }
     private void insertDocument(String id,String name){files.insert(new ProjectFile(id,new ProjectId(project),name,"",0,
-            new FileContent.DocumentContent(Map.of(),"<p>Test</p>","{}","config"),Instant.now(),Instant.now()));}
+            new FileContent.DocumentContent(textDocument(),"config"),Instant.now(),Instant.now()));}
     private SpringUserDetails principal(String suffix){return new SpringUserDetails(new UserId(project+suffix),new UserPersistenceData(project+suffix+"@test.example",null));}
 }

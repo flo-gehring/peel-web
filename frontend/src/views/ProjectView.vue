@@ -196,9 +196,7 @@ async function saveAndSwitch(): Promise<void> {
         ...files.metadata(id),
         content: {
           type: 'document',
-          scriptNameTags: { ...draft.scriptNameTags },
-          templateHtml: draft.templateHtml,
-          editorStateJson: draft.editorStateJson,
+          document: draft.document,
           renderConfigurationId: draft.renderConfigurationId,
         },
       })
@@ -434,10 +432,7 @@ async function openFileInEditor(file: PeelWorkspaceDocument) {
         const document = loadedFile.content
         draft = {
           name: loadedFile.name ?? file.name,
-          editorStateJson:
-            document.editorStateJson ?? '{"type":"doc","content":[{"type":"paragraph"}]}',
-          templateHtml: document.templateHtml ?? '<p></p>',
-          scriptNameTags: document.scriptNameTags ?? {},
+          document: document.document,
           renderConfigurationId: document.renderConfigurationId ?? '',
           renderConfigurations: (projectStore.activeProject?.renderConfigurations ?? []).map(
             (config) => ({

@@ -1,11 +1,10 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
+import type { DocumentNode } from '@/adapter/documentModel'
 
 export type DocumentDraft = {
   name: string
-  editorStateJson: string
-  templateHtml: string
-  scriptNameTags: Record<string, string>
+  document: DocumentNode
   renderConfigurationId: string
   renderConfigurations: Array<{ id: string; name: string }>
   dirty: boolean

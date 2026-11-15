@@ -4,11 +4,12 @@ import de.flogehring.peelserver.impl.renderconfig.ExpressionRenderConfiguration;
 import de.flogehring.peelserver.impl.scripts.PeelScript;
 
 import java.util.Map;
+import de.flogehring.peelserver.api.data.template.DocumentNode;
 
 public record Document(
         String name,
-        Map<String, PeelScript> scriptNameTags,
-        String template,
+        Map<String, PeelScript> scripts,
+        DocumentNode document,
         ExpressionRenderConfiguration globalRenderConfiguration
 ) {
 }

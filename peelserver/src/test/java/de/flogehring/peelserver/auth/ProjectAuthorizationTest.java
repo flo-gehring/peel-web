@@ -1,4 +1,5 @@
 package de.flogehring.peelserver.auth;
+import static de.flogehring.peelserver.DocumentFixtures.*;
 
 import de.flogehring.peelserver.config.PeelModuleTest;
 import de.flogehring.peelserver.impl.documenttemplates.*;
@@ -56,7 +57,7 @@ class ProjectAuthorizationTest {
         var defaults = RenderConfigurationService.toDto(ExpressionRenderConfiguration.defaultConfig());
         insert(configId, "Config", new FileContent.RenderConfigContent(defaults.renderConfigurations(), defaults.namedOverrides()));
         documentId = prefix + "-document";
-        insert(documentId, "Document", new FileContent.DocumentContent(Map.of("calculation", scriptId), "<p>Test</p>", "{}", configId));
+        insert(documentId, "Document", new FileContent.DocumentContent(doc(calculation(scriptId)), configId));
     }
 
     @Test
@@ -102,20 +103,20 @@ class ProjectAuthorizationTest {
     @Test
     void rendersOwnProjectPreviewsAndRejectsForeignPreviewContexts() throws Exception {
         mvc.perform(body(post("/api/documents/preview"), Map.of("projectId", Map.of("id", project.id()),
-                "scriptTags", Map.of("calculation", Map.of("id", scriptId)), "bindings", Map.of(), "renderConfigId", configId, "template", "<p>Test</p>"))
+                "document", doc(calculation(scriptId)), "bindings", Map.of(), "renderConfigId", configId))
                 .with(user(member))).andExpect(status().isOk()).andExpect(jsonPath("$.pdfData").isNotEmpty());
         mvc.perform(body(post("/api/documents/preview-stored/" + documentId), Map.of()).with(user(owner)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.pdfData").isNotEmpty());
         mvc.perform(body(post("/api/documents/preview-stored/" + documentId), Map.of()).with(user(outsider)))
                 .andExpect(status().isNotFound());
         mvc.perform(body(post("/api/documents/preview"), Map.of("projectId", Map.of("id", project.id()),
-                "scriptTags", Map.of(), "bindings", Map.of(), "renderConfigId", configId, "template", "<p>Test</p>"))
+                "document", textDocument(), "bindings", Map.of(), "renderConfigId", configId))
                 .with(user(outsider))).andExpect(status().isNotFound());
     }
 
     @Test
     void validatesPreviewContextAndMissingReferences() throws Exception {
-        mvc.perform(body(post("/api/documents/preview"), Map.of("scriptTags", Map.of(), "bindings", Map.of(), "renderConfigId", configId, "template", "<p>Test</p>"))
+        mvc.perform(body(post("/api/documents/preview"), Map.of("document", textDocument(), "bindings", Map.of(), "renderConfigId", configId))
                 .with(user(owner))).andExpect(status().isBadRequest());
         mvc.perform(get("/api/projects/" + project.id() + "/files/does-not-exist").with(user(owner))).andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("not_found"));
@@ -129,7 +130,7 @@ class ProjectAuthorizationTest {
         mvc.perform(get("/api/projects/" + project.id() + "/files/" + scriptId).with(user(member))).andExpect(status().isOk());
         String jobId = createJob(member);
         mvc.perform(post("/api/print-jobs/" + jobId + "/run").with(user(member)).with(csrf())).andExpect(status().isOk());
-        verify(runner).run(argThat(job -> job.getProjectId().equals(project)), argThat(document -> document.scriptNameTags().containsKey("calculation")));
+        verify(runner).run(argThat(job -> job.getProjectId().equals(project)), argThat(document -> document.scripts().containsKey(scriptId)));
         projects.save(new ProjectPersistence(project.id(), new ProjectPersistenceData(owner.getUserId(), List.of(), "Project", "")));
         mvc.perform(get("/api/projects/" + project.id() + "/files/" + scriptId).with(user(member))).andExpect(status().isNotFound());
         mvc.perform(get("/api/print-jobs/" + jobId + "/data").with(user(member))).andExpect(status().isNotFound());
@@ -148,7 +149,7 @@ class ProjectAuthorizationTest {
         files.insert(new ProjectFile(foreignId,otherProject,"Foreign","",0,new FileContent.ScriptContent("99;"),Instant.now(),Instant.now()));
         var document = files.findById(documentId).orElseThrow();
         files.save(new ProjectFile(document.id(),document.projectId(),document.name(),document.description(),document.version(),
-                new FileContent.DocumentContent(Map.of("foreign",foreignId),"<p>Test</p>","{}",configId),document.createdAt(),document.updatedAt()));
+                new FileContent.DocumentContent(doc(calculation(foreignId)),configId),document.createdAt(),document.updatedAt()));
         mvc.perform(body(post("/api/documents/preview-stored/" + documentId), Map.of()).with(user(owner))).andExpect(status().isNotFound());
         String job = createJob(owner);
         mvc.perform(post("/api/print-jobs/" + job + "/run").with(user(owner)).with(csrf())).andExpect(status().isNotFound());

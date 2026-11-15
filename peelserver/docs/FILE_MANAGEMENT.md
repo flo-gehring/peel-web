@@ -22,6 +22,7 @@ Alle Verwaltungsaktionen liegen unter `/api/projects/{projectId}/files`:
 | --- | --- |
 | `GET /files` | Metadaten ohne Inhalt; optional `?type=script`, `render-config` oder `document`. Der abgeleitete Typ steht in der Listenprojektion als `type`. |
 | `GET /files/{fileId}` | Gemeinsame Metadaten und typisierter Inhalt. |
+| `GET /files/{fileId}/blocks` | Blocknamen eines gespeicherten Skripts ohne Ausführung. |
 | `POST /files` | Erstellen mit vom Client erzeugter UUID, Name, Beschreibung und Inhalt. |
 | `PUT /files/{fileId}` | Vollständiger Zielzustand aus Name, Beschreibung, Inhalt und `expectedVersion`. |
 | `DELETE /files/{fileId}?expectedVersion=N` | Versionsgeschützte, wiederholbare Löschung. |
@@ -54,7 +55,9 @@ bestimmten Anfrage. Die Änderungsnummer ist noch keine Versionshistorie.
 
 ## Referenzen, Rechte und Löschung
 
-Dokumentvorlagen referenzieren Skripte und eine Renderkonfiguration. Existenz,
+Dokumentvorlagen speichern einen strukturierten Dokumentbaum und referenzieren
+darüber Skripte sowie optional eine Renderkonfiguration. Siehe
+[STRUCTURED_DOCUMENTS.md](STRUCTURED_DOCUMENTS.md). Existenz,
 passender Dateityp und Zugehörigkeit zum selben Projekt werden vor dem Speichern
 und erneut vor Vorschau/Druck geprüft. Skripte dürfen als leere oder noch nicht
 ausführbare Entwürfe gespeichert werden. Strukturierte Inhalte müssen ihr Schema
