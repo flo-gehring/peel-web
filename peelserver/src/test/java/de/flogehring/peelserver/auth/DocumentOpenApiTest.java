@@ -21,6 +21,7 @@ class DocumentOpenApiTest {
                 .andExpect(jsonPath("$.components.schemas.DocumentContent.properties.templateHtml").doesNotExist())
                 .andExpect(jsonPath("$.components.schemas.DocumentNode.properties.content").exists())
                 .andExpect(jsonPath("$.paths['/api/projects/{projectId}/files/{fileId}/blocks'].get").exists())
+                .andExpect(jsonPath("$.components.schemas.BlockDefinition.properties.reachableBlocks").exists())
                 .andReturn();
         Files.writeString(Path.of("build/openapi.json"), result.getResponse().getContentAsString());
     }

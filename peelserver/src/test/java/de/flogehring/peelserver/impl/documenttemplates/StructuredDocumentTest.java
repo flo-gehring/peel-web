@@ -1,6 +1,5 @@
 package de.flogehring.peelserver.impl.documenttemplates;
 
-import de.flogehring.peel.parse.PeelGrammar;
 import de.flogehring.peelserver.api.data.template.DocumentNode;
 import de.flogehring.peelserver.impl.run.*;
 import de.flogehring.peelserver.impl.scripts.PeelScript;
@@ -83,6 +82,47 @@ class StructuredDocumentTest {
         assertThat(renderer.render(document, Map.of())).contains("peel-function", "return (x / 3)");
         var value = node("peelValue", Map.of("scope", "script", "scriptId", "script", "decimals", 2));
         assertThat(renderer.render(document("1 / 3;", doc(node("paragraph", Map.of(), value))), Map.of())).contains("<p>0.33</p>");
+    }
+
+    @Test void capturesLocalFinalValuesInWhileAndProgramRoot() {
+        String source = "var jahr=0;while(!(jahr==3)) runde:{var lokal=jahr+1;jahr=lokal;lokal=3;}";
+        var repeated = node("peelRepeat", Map.of("scope","script","scriptId","script","block","runde"),
+                node("paragraph",Map.of(),node("peelValue",Map.of("scope","current","binding","jahr")),
+                        text(":"),node("peelValue",Map.of("scope","current","binding","lokal"))));
+        var root = node("paragraph",Map.of(),node("peelValue",Map.of("scope","script","scriptId","script","binding","jahr")));
+        var result = renderer.preview(document(source,doc(repeated,root)),Map.of());
+        assertThat(result.pdfData()).isNotEmpty();
+        assertThat(renderer.render(document(source,doc(repeated,root)),Map.of())).containsSubsequence("<p>1:3</p>","<p>2:3</p>","<p>3:3</p>","<p>3</p>");
+    }
+
+    @Test void variableAndBlockResultStaySeparateUnderShadowing() {
+        String source = "var wert=10;abschnitt:{var wert=20;detail:{var wert=30;wert=31;}}";
+        var attrs = Map.<String,Object>of("scope","script","scriptId","script","block","abschnitt","binding","wert");
+        var body = doc(node("paragraph",Map.of(),node("peelValue",attrs),text(":"),
+                node("peelValue",Map.of("scope","script","scriptId","script","block","abschnitt"))));
+        assertThat(renderer.render(document(source,body),Map.of())).contains("<p>20:31</p>");
+    }
+
+    @Test void functionCaptureDoesNotExposeCallerLoopVariable() {
+        String source = "fun f(x) funktion:{x=x+1;x;}for(jahr in [1,2]){f(jahr);}";
+        var body = doc(node("peelRepeat",Map.of("scope","script","scriptId","script","block","funktion"),
+                node("paragraph",Map.of(),node("peelValue",Map.of("scope","current","binding","x")))));
+        assertThat(renderer.render(document(source,body),Map.of())).containsSubsequence("<p>2</p>","<p>3</p>");
+        var invalid = doc(node("peelRepeat",Map.of("scope","script","scriptId","script","block","funktion"),
+                node("paragraph",Map.of(),node("peelValue",Map.of("scope","current","binding","jahr")))));
+        assertThatThrownBy(()->renderer.render(document(source,invalid),Map.of())).hasMessageContaining("Unknown variable at block exit").hasMessageContaining("document/");
+    }
+
+    @Test void distinguishesNoneMissingAndMapPathsWithoutMutatingSnapshots() {
+        String source = "fun f(){return;}teil:{var n=f();var bauteil={\"name\":\"<A>&\",\"betrag\":1.234};}";
+        var value = node("peelValue",Map.of("scope","script","scriptId","script","block","teil","binding","bauteil.name"));
+        assertThat(renderer.render(document(source,doc(node("paragraph",Map.of(),value))),Map.of())).contains("&lt;A&gt;&amp;");
+        var none = node("peelValue",Map.of("scope","script","scriptId","script","block","teil","binding","n"));
+        assertThat(renderer.render(document(source,doc(node("paragraph",Map.of(),none))),Map.of())).contains("<p>none</p>");
+        for(String path:List.of("missing","bauteil.missing","n.name")) {
+            var invalid=node("peelValue",Map.of("scope","script","scriptId","script","block","teil","binding",path));
+            assertThatThrownBy(()->renderer.render(document(source,doc(node("paragraph",Map.of(),invalid))),Map.of())).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("document/");
+        }
     }
 
     private Document document(String source, DocumentNode root) {

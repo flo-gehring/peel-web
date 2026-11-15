@@ -234,7 +234,9 @@ class ProjectFileTest {
     @Test void listsBlocksWithoutExecutingAndUsesDocumentReferencesForDeletion() throws Exception {
         create(id, "Script", script("if (False) absent: {} report: { 1 / 0; }"));
         mvc.perform(get(base()+"/"+id+"/blocks").with(user(member))).andExpect(status().isOk())
-                .andExpect(jsonPath("$[0]").value("absent")).andExpect(jsonPath("$[1]").value("report"));
+                .andExpect(jsonPath("$[0].name").value("absent")).andExpect(jsonPath("$[1].name").value("report"))
+                .andExpect(jsonPath("$[0].reachableBlocks[0]").value("absent"))
+                .andExpect(jsonPath("$[1].reachableBlocks[0]").value("report"));
         mvc.perform(get(base()+"/"+id+"/blocks").with(user(outsider))).andExpect(status().isNotFound());
         String doc = UUID.randomUUID().toString();
         create(doc, "Document", Map.of("type", "document", "document", doc(calculation(id))));
@@ -252,6 +254,14 @@ class ProjectFileTest {
         mvc.perform(get(base()+"/"+id+"/blocks").with(user(member))).andExpect(status().isBadRequest());
         update(id,1,"Script","",script("same: {} same: {}"),200);
         mvc.perform(get(base()+"/"+id+"/blocks").with(user(member))).andExpect(status().isBadRequest());
+    }
+
+    @Test void blockCatalogIncludesStructuralAndCalledDescendantsWithoutRunning() throws Exception {
+        create(id, "Script", script("fun f() function:{1/0;} outer:{round:{if(False) conditional:{} f();}} sibling:{}"));
+        mvc.perform(get(base()+"/"+id+"/blocks").with(user(member))).andExpect(status().isOk())
+                .andExpect(jsonPath("$[2].name").value("round"))
+                .andExpect(jsonPath("$[2].parentName").value("outer"))
+                .andExpect(jsonPath("$[2].reachableBlocks").value(org.hamcrest.Matchers.contains("function", "round", "conditional")));
     }
     private Map<String,Object> script(String source){return Map.of("type","script","source",source);}
     private Map<String,Object> config(){return Map.of("type","render-config","renderConfigurations",Map.of(),"namedOverrides",Map.of());}

@@ -32,8 +32,9 @@ public class ProjectFileController {
     private final ProjectFileService files;
     private final de.flogehring.peelserver.impl.run.ValidationService validation;
     @GetMapping("/{fileId}/blocks")
-    @Operation(summary = "List named blocks in a saved script without executing it")
-    public List<String> blocks(@PathVariable String projectId, @PathVariable String fileId,
+    @ApiResponse(responseCode = "200", description = "Static block catalog", content = @Content(array = @ArraySchema(schema = @Schema(implementation = de.flogehring.peelserver.api.data.scripts.BlockDefinition.class))))
+    @Operation(summary = "Analyze named blocks and possible trace descendants without executing the saved script")
+    public List<de.flogehring.peelserver.api.data.scripts.BlockDefinition> blocks(@PathVariable String projectId, @PathVariable String fileId,
                               @AuthenticationPrincipal SpringUserDetails user) {
         var file = files.get(projectId, fileId, user);
         if (!(file.content() instanceof FileContent.ScriptContent script))
@@ -42,7 +43,9 @@ public class ProjectFileController {
             var diagnostics = validation.validate(new de.flogehring.peelserver.api.data.scripts.ValidationRequest(script.source())).diagnostics();
             if (!diagnostics.isEmpty()) throw new IllegalArgumentException(diagnostics.getFirst().message());
         }
-        return de.flogehring.peel.parse.PeelGrammar.parseWithBlocks(script.source()).blockNames();
+        return de.flogehring.peel.parse.PeelGrammar.parseWithBlocks(script.source()).blockCatalog().blocks().stream()
+                .map(block -> new de.flogehring.peelserver.api.data.scripts.BlockDefinition(
+                        block.name(), block.parentName(), block.reachableBlocks())).toList();
     }
     @GetMapping
     @ApiResponse(responseCode = "200", description = "File metadata", content = @Content(array = @ArraySchema(schema = @Schema(implementation = FileSummary.class))))

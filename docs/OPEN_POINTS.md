@@ -6,44 +6,40 @@ zur Umsetzung. Bestehende fremde Änderungen bleiben erhalten.
 
 ## 1. Lesbarkeit eingebetteter Bausteine im Dokument
 
-- Status: offen; noch keine Darstellung geändert.
+- Status: umgesetzt. Der Baustein-Hintergrund ist transparent, Dokumentinhalt
+  erbt die Textfarbe des Dokuments. Das gilt auch innerhalb verschachtelter
+  Wiederholungen. Auch die Einstellungsbereiche und geschlossenen Inline-Werte
+  sind transparent und übernehmen die Dokumenttextfarbe. Eingabefelder und
+  Schaltflächen behalten ihren eigenen kontrastreichen Hintergrund.
 - Beobachtung des Nutzers: Der PEEL-graue Hintergrund eingebetteter Bausteine
   verschlechtert den Kontrast zur Dokumentenschrift.
 - Gewünschte Richtung: Hintergrund des Dokumentinhalts transparent gestalten,
   sodass die Dokumentenfarbe durchscheint. Textfarbe passend zum Dokument erben.
-- Ansatzstelle: `frontend/src/components/document/PeelNodeView.vue` setzt derzeit
-  `.peel-node { background: #292a25; }`. Auch verschachtelte Wiederholungen und
-  Inline-Werte prüfen. Die Einstellungsoberfläche und der bearbeitbare
-  Dokumentinhalt müssen dabei jeweils lesbar bleiben.
-- Prüfen: heller Dokumenthintergrund, Auswahlrahmen, geschlossene/geöffnete
-  Inline-Werte sowie Inhalt innerhalb eines Wiederholungsbausteins.
+- Umsetzung: `frontend/src/components/document/PeelNodeView.vue` setzt
+  `.peel-node { background: transparent; color: inherit; }`. Der dunkle Hintergrund
+  entfällt auch auf `.peel-node-settings`; Auswahlrahmen bleiben erhalten.
+- Ursache der weiterhin alten Browseranzeige: Vite im Docker-Devcontainer erhielt
+  keine zuverlässigen Dateiänderungsereignisse vom Windows-Bind-Mount und lieferte
+  seinen alten Modul-/CSS-Cache auch nach einem Browser-Reload aus. Der Devcontainer
+  aktiviert deshalb Polling für Vites Dateiüberwachung.
 
 ## 2. Bedeutung und Beschriftung der Variablenauswahl
 
-- Status: Umsetzung offen; die erste Regel zur Wertauswahl ist unten festgehalten.
-  Nicht nur als Textkorrektur behandeln.
-- Beobachtung / Frage des Nutzers: Bei der Jahresüberschrift heißt das Feld
-  „Kontextwert (leer = Blockergebnis)“. Gemeint ist der Wert einer Variablen im
-  ausgewählten Blockvorkommen; die Bezeichnung klingt nach externen Eingaben.
-- Aktueller Befund: `jahr` wird als aufgezeichnete foreach-Schleifenvariable aus
-  dem Ausführungskontext des Blockvorkommens gelesen. Auch Funktionsparameter
-  werden erfasst. Das ist kein erneutes Lesen globaler Eingabebindings.
-- Einschränkung der Implementierung: `TraceSelection` sammelt derzeit
-  Schleifen-Bindings und Funktionsparameter. Beliebige lokal im Block deklarierte
-  oder zugewiesene Variablen sind über dieses Feld noch nicht auswählbar.
-- Richtung: Eine fachlich verständliche Variablenauswahl für das konkrete
-  Trace-Vorkommen entwickeln. Eine passende Beschriftung erst mit der tatsächlichen
-  Bedeutung abstimmen; kein umfassenderes Verhalten durch eine Umbenennung versprechen.
-- Bei der Erweiterung insbesondere Verschattung und verschachtelte Scopes klären.
-  Der Wert muss aus dem bestehenden Trace kommen, ohne erneute Skriptausführung.
-- Leeres Feld bedeutet weiterhin Blockergebnis, solange nichts anderes beschlossen wird.
-- Präzisierung der aktuellen Semantik: Zuerst wird ein Blockvorkommen ausgewählt;
-  anschließend wird entweder dessen Ergebnis oder ein Eintrag aus den gesammelten
-  Bindings dieses Vorkommens gelesen. Das Feld wertet keinen PEEL-Ausdruck aus.
-- Diese Bindings sind die aufgezeichneten foreach-Iterationswerte und übergebenen
-  Funktionsargumente. Spätere Zuweisungen aktualisieren sie nicht. Sie bilden
-  keinen vollständigen lexikalischen Variablen-Scope ab; auch der über den
-  Trace-Baum mitgeführte Aufrufkontext ist nicht mit Sprachsichtbarkeit gleichzusetzen.
+- Status: implementiert. Semantik und Testkatalog stehen in
+  [VARIABLE_CAPTURE_PLAN.md](VARIABLE_CAPTURE_PLAN.md).
+- Das Feld heißt jetzt „Variable (leer = Blockergebnis)“. Ein Hinweis erläutert
+  den letzten sichtbaren Wert beim Verlassen des ausgewählten Blockvorkommens.
+- Der Kern erfasst `variablesAtExit` an jedem tatsächlich ausgeführten Block und
+  der Programmwurzel. Lokale und sichtbare äußere Variablen sind damit auswählbar.
+- Web liest ausschließlich diesen Snapshot; Map-Pfade wie `bauteil.name`
+  bleiben möglich. Das Feld wertet keinen PEEL-Ausdruck aus.
+- Die frühere Auswahl sammelte foreach-Eintrittswerte und Funktionsargumente
+  aus dem Trace-Kontext. Diese Metadaten bleiben vorhanden, werden aber nicht
+  mehr als Variablen-Endwerte verwendet. Spätere Zuweisungen sind jetzt berücksichtigt.
+- Leeres Feld bedeutet weiterhin Blockergebnis. Unbekannte Variablen erzeugen
+  einen Fehler mit Dokumentpfad. Ein vorhandenes `None` gilt als Wert.
+- Automatisierte Kern-, Rendering- und Editorprüfungen sind vorhanden.
+  Die erneute manuelle Browserabnahme steht noch aus.
 
 ### Festgehaltene erste Regel: letzte Zuweisung je ausgeführtem Blockvorkommen
 
@@ -74,20 +70,21 @@ zur Umsetzung. Bestehende fremde Änderungen bleiben erhalten.
   aus dieser konzeptuellen Notation ableiten.
 - Lokale Variablen wie `notVisibleOutside` bleiben auf ihr jeweiliges
   Blockvorkommen beschränkt. Zuweisungen an eine äußere Variable wie `jahr`
-  müssen davon unterschieden werden. Die genaue Rekonstruktion der äußeren
-  Endstände und die Behandlung von Verschattung sind noch auszuarbeiten.
-- Technischer Prüfpunkt: `TraceExpression.Assignment` enthält aktuell Name,
-  Ausdruck und Wert, aber keine explizite Deklarations- oder Scope-Identität.
-  Prüfen, ob Trace plus Programmstruktur für eine korrekte Zuordnung reichen
-  oder ob der Kern zusätzliche Metadaten liefern muss. Ein einfaches Sammeln
-  aller gleichen Namen aus Unterblöcken wäre bei Verschattung fehlerhaft.
+  werden davon unterschieden. Äußere Endstände und Verschattung werden jetzt
+  anhand der lexikalischen Laufzeitumgebung direkt im Kern erfasst.
+- Aufgelöster technischer Prüfpunkt: Zuweisungen werden nicht anhand gleicher
+  Namen aus Unterblöcken zusammengesammelt. Der Kern nimmt den Snapshot direkt
+  aus den lexikalischen Laufzeit-Scopes auf, bevor er sie entfernt.
 - Nur tatsächlich ausgeführte Blöcke berücksichtigen. Die abschließende falsche
   while-Bedingung ist kein weiterer ausgeführter Schleifenrumpf.
 
 ### Vorschlag zur Verschattung: sichtbare Variablen beim Blockende
 
-Status: Diskussionsvorschlag, noch nicht als Produktentscheidung bestätigt oder
-implementiert. Maßgeblich soll die echte lexikalische Variablenauflösung der
+Status: Vom Nutzer am 15. November 2026 bestätigt und implementiert.
+Umsetzungs- und Testplan: [VARIABLE_CAPTURE_PLAN.md](VARIABLE_CAPTURE_PLAN.md).
+Der Plan dokumentiert auch den Prüfpunkt späterer Deklarationen in geteilten
+Scope-Maps gegenüber bereits aufgelösten Namen im Funktionscode (Test K20).
+Maßgeblich soll die echte lexikalische Variablenauflösung der
 Sprache sein. Gleicher Name bedeutet nicht gleiche Variable.
 
 - Der Wert einer ausgewählten Variablen entspricht ihrem letzten Zustand am
@@ -100,7 +97,7 @@ Sprache sein. Gleicher Name bedeutet nicht gleiche Variable.
   einen unveränderlichen Snapshot der sichtbaren Variablen im Trace fest, bevor
   der lokale Scope entfernt wird. Die Webanwendung liest diesen Snapshot.
   Damit muss sie weder Scopes anhand gleicher Namen erraten noch Ausführung
-  erneut simulieren. Konkretes Datenformat und Umfang noch prüfen.
+  erneut simulieren. Das Feld heißt `variablesAtExit`, auch an der Programmwurzel.
 - Ein Snapshot darf nicht auf einen später weiterveränderten Runtime-Scope
   verweisen. Schleifendurchläufe und rekursive Aufrufe bleiben getrennt.
 - Aufruf-/Schleifenmetadaten getrennt von lexikalisch sichtbaren Variablen führen.
@@ -165,10 +162,11 @@ Die drei diskutierten Randfälle und das vorgeschlagene Verhalten:
 
 ## 3. Blockauswahl innerhalb einer Wiederholung einschränken
 
-- Status: offen; vorerst nur notiert, keine UI- oder Resolveränderung.
+- Status: implementiert als konservative, statische Auswahlhilfe. Der Resolver
+  arbeitet weiterhin anhand der tatsächlich ausgeführten Trace-Vorkommen.
 - Beobachtung des Nutzers: Bei Quelle „Aktuelle Wiederholung“ bietet die
   Blockauswahl auch Blöcke an, die gar nicht innerhalb dieser Wiederholung liegen.
-- Aktueller Grund: Die UI lädt den vollständigen Blocknamenkatalog des Skripts.
+- Früherer Grund: Die UI lud nur einen flachen Blocknamenkatalog des Skripts.
   Der Resolver begrenzt die relative Auswahl dagegen auf den aktuellen
   Trace-Teilbaum, einschließlich des aktuellen Vorkommens selbst.
 - Ein bekannter Block außerhalb dieses Teilbaums liefert daher null Treffer.
@@ -181,9 +179,14 @@ Die drei diskutierten Randfälle und das vorgeschlagene Verhalten:
 - Dabei strukturell unmögliche Referenzen von bedingt nicht ausgeführten Blöcken
   unterscheiden. Ein Unterblock in einem `if` kann bei anderen Eingaben vorkommen
   und sollte nicht allein aufgrund eines einzelnen Testlaufs ausgefiltert werden.
-- Noch prüfen: Wie wird die strukturelle Erreichbarkeit bei Funktionsaufrufen und
-  dynamischen Aufrufzielen bestimmt? Benötigte Kataloginformationen vom Kern
-  bzw. Backend ableiten, keinen zweiten Sprachparser in der UI aufbauen.
+- Umsetzung: Der Kern analysiert den fertigen AST. Der Katalog enthält Namen,
+  nächste benannte syntaktische Eltern und mögliche Trace-Nachfahren. Bekannte
+  Funktionsaufrufe werden verfolgt; bei dynamischen Aufrufzielen bleiben alle
+  Callable-Körper Kandidaten. Rekursion terminiert über ein Besuchsset.
+- Die UI filtert anhand des nächsten wirksamen Wiederholungskontexts und reagiert
+  auch auf Änderungen an Vorfahren. Bestehende unpassende Referenzen werden
+  deaktiviert angezeigt statt stillschweigend geändert. Gespeicherte Skripte
+  bleiben die Katalogquelle; ungespeicherte Skriptentwürfe sind nicht enthalten.
 
 ## Bereits beobachtete Einschränkung der Browser-Prüfung
 

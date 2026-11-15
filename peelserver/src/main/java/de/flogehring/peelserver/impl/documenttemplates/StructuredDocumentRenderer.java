@@ -108,8 +108,8 @@ final class StructuredDocumentRenderer {
 
     private static Object binding(TraceSelection.Occurrence occurrence, String path) {
         String[] parts = path.split("\\.");
-        Object value = occurrence.bindings().get(parts[0]);
-        if (value == null) throw new IllegalArgumentException("Unknown context binding: " + parts[0]);
+        Object value = occurrence.variablesAtExit().get(parts[0]);
+        if (value == null) throw new IllegalArgumentException("Unknown variable at block exit: " + parts[0]);
         for (int i = 1; i < parts.length; i++) {
             Map<String, Object> map = map(value);
             if (!"map".equals(map.get("type"))) throw new IllegalArgumentException("Binding path is not a map: " + path);
@@ -150,7 +150,7 @@ final class StructuredDocumentRenderer {
                     html.append("<p class=\"peel-condition\">while ").append(expressions.render(condition)).append(" → ")
                             .append(escape(valueText(condition.get("value"), null))).append("</p>");
                 }
-                html.append(calculation(map(iteration.get("body")), mode, decimals));
+                if (iteration.get("body") != null) html.append(calculation(map(iteration.get("body")), mode, decimals));
             }
             return html.toString();
         }

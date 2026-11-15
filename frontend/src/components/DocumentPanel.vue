@@ -134,11 +134,12 @@ function insertTraceBlock(type: 'peelCalculation' | 'peelRepeat' | 'peelValue'):
           { type: 'peelCalculation', attrs: { scope: 'current', mode: 'detailed' } },
         ]
       : undefined
-  instance
+  const inserted = instance
     .chain()
     .focus()
     .insertContent({ type, attrs, ...(content ? { content } : {}) })
     .run()
+  if (inserted) setupOpen.value = null
 }
 
 async function previewDocument(): Promise<void> {

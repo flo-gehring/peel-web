@@ -5,7 +5,7 @@ import de.flogehring.peel.core.trace.TraceProgram;
 import java.util.*;
 
 final class TraceSelection {
-    record Occurrence(String scriptId, String path, Map<String, Object> node, Map<String, Object> bindings) {}
+    record Occurrence(String scriptId, String path, Map<String, Object> node, Map<String, Object> variablesAtExit) {}
     private final Map<String, List<Occurrence>> byScript = new LinkedHashMap<>();
     private final Map<String, List<String>> definitions;
 
@@ -15,9 +15,11 @@ final class TraceSelection {
             List<Occurrence> occurrences = new ArrayList<>();
             var root = new LinkedHashMap<String, Object>();
             root.put("type", "block");
-            root.put("content", TraceMapOutput.programmStatements(trace));
-            root.put("value", TraceMapOutput.fromValue(trace.result()));
-            walk(id, root, "/", Map.of(), occurrences);
+            var mapped = TraceMapOutput.fromProgram(trace);
+            root.put("content", mapped.get("expressions"));
+            root.put("value", mapped.get("result"));
+            root.put("variablesAtExit", mapped.get("variablesAtExit"));
+            walk(id, root, "/", occurrences);
             byScript.put(id, List.copyOf(occurrences));
         });
     }
@@ -35,26 +37,16 @@ final class TraceSelection {
     }
 
     @SuppressWarnings("unchecked")
-    private static void walk(String id, Object object, String path, Map<String, Object> bindings, List<Occurrence> result) {
+    private static void walk(String id, Object object, String path, List<Occurrence> result) {
         if (object instanceof List<?> list) {
-            for (int i = 0; i < list.size(); i++) walk(id, list.get(i), path + i + "/", bindings, result);
+            for (int i = 0; i < list.size(); i++) walk(id, list.get(i), path + i + "/", result);
         } else if (object instanceof Map<?, ?> raw) {
             Map<String, Object> node = (Map<String, Object>) raw;
-            var context = new LinkedHashMap<>(bindings);
-            if (node.get("binding") instanceof Map<?, ?> binding)
-                context.put(String.valueOf(binding.get("name")), binding.get("value"));
-            if (node.get("parameterBindings") instanceof List<?> parameters) {
-                for (Object item : parameters) {
-                    Map<?, ?> parameter = (Map<?, ?>) item;
-                    Map<?, ?> argument = (Map<?, ?>) parameter.get("argument");
-                    context.put(String.valueOf(parameter.get("name")), argument.get("value"));
-                }
-            }
             if ("block".equals(node.get("type")))
-                result.add(new Occurrence(id, path, node, Collections.unmodifiableMap(context)));
+                result.add(new Occurrence(id, path, node, (Map<String,Object>) node.get("variablesAtExit")));
             node.forEach((key, value) -> {
-                if (!Set.of("value", "result", "binding", "parameterBindings", "resolvedCallable").contains(key))
-                    walk(id, value, path + key + "/", context, result);
+                if (!Set.of("value", "result", "binding", "parameterBindings", "resolvedCallable", "variablesAtExit").contains(key))
+                    walk(id, value, path + key + "/", result);
             });
         }
     }

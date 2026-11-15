@@ -16,7 +16,13 @@ describe('editing trace blocks', () => {
     setActivePinia(createPinia())
     setLocale('en')
     vi.resetAllMocks()
-    get.mockResolvedValue({ data: ['nachweis', 'detail'] })
+    get.mockResolvedValue({
+      data: [
+        { name: 'nachweis', parentName: null, reachableBlocks: ['nachweis', 'detail'] },
+        { name: 'detail', parentName: 'nachweis', reachableBlocks: ['detail'] },
+        { name: 'outside', parentName: null, reachableBlocks: ['outside'] },
+      ],
+    })
     useProjectStore().activeProject = {
       projectIdApi: { id: 'p' },
       scripts: [{ id: 's', name: 'Calculation' }],
@@ -61,6 +67,8 @@ describe('editing trace blocks', () => {
     await flushPromises()
     await vi.waitFor(() => expect(wrapper.findAll('.peel-node')).toHaveLength(3))
     expect(wrapper.get('.peel-repeat-content').text()).toContain('Bauteil')
+    expect(wrapper.text()).toContain('Variable (empty = block result)')
+    expect(wrapper.text()).toContain('Last visible variable value')
     const calculation = wrapper
       .findAll('.peel-node')
       .find((node) => node.text().startsWith('Calculation'))!
@@ -127,6 +135,63 @@ describe('editing trace blocks', () => {
     await wrapper.get('[aria-label="Document view"] button:first-child').trigger('click')
     await flushPromises()
     expect(useDocumentDraftStore().getDraft('d')?.dirty).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('filters relative choices and reacts to ancestor changes through unnamed nested repeats', async () => {
+    const draft = useDocumentDraftStore().getDraft('d')!
+    draft.document.content![0]!.content!.push({
+      type: 'peelRepeat',
+      attrs: { scope: 'current', block: '' },
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'peelValue', attrs: { scope: 'current', binding: 'x' } }],
+        },
+      ],
+    })
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/', component: { template: '<div />' } }],
+    })
+    await router.push('/')
+    const wrapper = mount(DocumentPanel, {
+      props: { params: { params: { documentId: 'd' } } },
+      global: { plugins: [router] },
+    })
+    await flushPromises()
+    await vi.waitFor(() => expect(wrapper.findAll('.peel-node')).toHaveLength(5))
+    const nodes = wrapper.findAll('.peel-node')
+    const blockSelect = (index: number) =>
+      nodes[index]!.findAll('label')
+        .find((label) => label.text().startsWith('Block'))!
+        .get('select')
+    expect(blockSelect(0).find('option[value="outside"]').exists()).toBe(true)
+    expect(blockSelect(2).find('option[value="outside"]').exists()).toBe(false)
+    expect(blockSelect(4).find('option[value="nachweis"]').exists()).toBe(true)
+    await blockSelect(2).setValue('nachweis')
+    await blockSelect(0).setValue('detail')
+    await flushPromises()
+    expect(blockSelect(4).find('option[value="nachweis"]').exists()).toBe(false)
+    expect(blockSelect(4).find('option[value="detail"]').exists()).toBe(true)
+    expect(blockSelect(2).get('option[value="nachweis"]').attributes()).toHaveProperty('disabled')
+    expect(
+      useDocumentDraftStore().getDraft('d')!.document.content![0]!.content![1]!.attrs!.block,
+    ).toBe('nachweis')
+    const source = nodes[2]!
+      .findAll('label')
+      .find((label) => label.text().startsWith('Source'))!
+      .get('select')
+    await source.setValue('script')
+    await flushPromises()
+    expect(blockSelect(2).find('option[value="outside"]').exists()).toBe(false)
+    const script = nodes[2]!
+      .findAll('label')
+      .find((label) => label.text().startsWith('Script'))!
+      .get('select')
+    await script.setValue('s')
+    await flushPromises()
+    expect(blockSelect(2).find('option[value="outside"]').exists()).toBe(true)
     wrapper.unmount()
   })
 })

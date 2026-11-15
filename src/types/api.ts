@@ -519,7 +519,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List named blocks in a saved script without executing it */
+        /** Analyze named blocks and possible trace descendants without executing the saved script */
         get: operations["blocks"];
         put?: never;
         post?: never;
@@ -898,6 +898,11 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        BlockDefinition: {
+            name: string;
+            parentName?: string;
+            reachableBlocks: string[];
         };
         DocumentTemplateSummaryResponse: {
             id?: string;
@@ -2231,6 +2236,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Static block catalog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BlockDefinition"][];
+                };
+            };
             /** @description Invalid request */
             400: {
                 headers: {

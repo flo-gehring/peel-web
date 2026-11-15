@@ -23,7 +23,10 @@ einzelne Statements als Schleifen-/Funktions-/Bedingungsrumpf bleiben möglich.
 Namen sind nur an Blöcken mit geschweiften Klammern erlaubt.
 
 Die Kernbibliothek bietet `PeelGrammar.parseWithBlocks(source)` für das Programm
-und den Katalog aller Blocknamen, ohne es auszuführen. `TraceExpression.Block`
+und einen aus dem fertigen AST abgeleiteten Blockkatalog, ohne es auszuführen.
+`BlockCatalog.analyze(program)` ist auch für bereits vorhandene oder direkt
+erzeugte ASTs verwendbar und prüft doppelte Blocknamen. Der Parser-Visitor baut
+ausschließlich den AST. `TraceExpression.Block`
 und die Map-/JSON-Ausgabe enthalten einen nullable `name`.
 
 ## Dokument und Referenzen
@@ -39,7 +42,7 @@ Unterstützte PEEL-Knoten:
 | Typ | Inhalt / Attribute |
 | --- | --- |
 | `peelCalculation` | Blockelement ohne Kinder; `mode`: `detailed`, `compact`, `result`. |
-| `peelValue` | Inline-Element; `binding` leer für das Blockergebnis, sonst Kontextname mit optionalem Map-Pfad, z. B. `bauteil.name`. |
+| `peelValue` | Inline-Element; `binding` leer für das Blockergebnis, sonst sichtbarer Variablenname mit optionalem Map-Pfad, z. B. `bauteil.name`. |
 | `peelRepeat` | Blockcontainer mit editierbaren Blockelementen; Ausgabe einmal je Vorkommen. |
 
 Alle drei verwenden `scope: "script"` mit `scriptId` oder `scope: "current"`
@@ -55,9 +58,26 @@ auch Referenzen in verschachtelten Wiederholungen. Es gibt keine Alias-Tabelle.
 ## Auswahl und Ausführung
 
 Alle referenzierten Skripte laufen vollständig und je Dokumenterzeugung einmal.
-Die Trace-Auswahl löst keine weitere Berechnung aus. Schleifen-Bindings,
-Funktionsparameter und die Baumposition bleiben an jedem Vorkommen erhalten.
+Die Trace-Auswahl löst keine weitere Berechnung aus. Eintrittswerte von Schleifen
+und Funktionsargumenten bleiben separate Trace-Metadaten.
 Relative Auswahl innerhalb einer Wiederholung bleibt auf deren Teilbaum begrenzt.
+
+Jeder ausgeführte Block und die Programmwurzel besitzen `variablesAtExit`:
+einen unveränderlichen Snapshot aller beim Verlassen lexikalisch sichtbaren
+Variablen. Die innerste Deklaration gewinnt; verlassene Unterblock-Variablen und
+lokale Variablen des Aufrufers werden nicht hineinkopiert. Äußere Schreibzugriffe
+wirken weiter. Jeder Schleifendurchlauf und Funktionsaufruf hält seinen eigenen
+Endstand fest, bei `return` vor dem Scope-Abbau. Spätere Zuweisungen und Mutationen
+an Host-Collections verändern frühere Trace-Werte nicht.
+
+Ein Trace-Wert liest ausschließlich aus diesem Snapshot. Eine unbekannte Variable,
+ein unbekanntes Map-Feld und ein Map-Zugriff auf einen anderen Werttyp ergeben
+unterscheidbare Fehler mit Dokumentpfad. Ein vorhandenes `None` bleibt ein Wert.
+Ein leeres Variablenfeld liefert weiterhin das separate Blockergebnis. Die UI
+bezeichnet das Feld als „Variable (leer = Blockergebnis)“.
+
+Die abschließende falsche while-Bedingung hat `body = null`, da kein Rumpf ausgeführt
+wurde. Ein tatsächlich ausgeführter leerer Block hat dagegen einen normalen Snapshot.
 
 Einzelbausteine verlangen genau ein Vorkommen. Null oder mehrere Vorkommen ergeben
 einen Fehler mit Dokumentpfad. Unbekannte Blocknamen werden anhand des statischen
@@ -73,6 +93,26 @@ Block und Darstellung direkt in seiner Node-View an. Die Blockliste verwendet
 gespeicherte Skripte und lässt sich aktualisieren. Der projektgebundene Endpunkt
 `GET /api/projects/{projectId}/files/{fileId}/blocks` führt kein Skript aus.
 Wiederholungsvorlagen werden einmal bearbeitet, nicht als editierbare Laufzeitkopien.
+
+Der Endpunkt liefert Einträge mit `name`, optionalem `parentName` (nächster
+benannter syntaktischer Vorfahr) und `reachableBlocks` (mögliche Trace-Nachfahren,
+einschließlich des Blocks selbst). Unbenannte Zwischenblöcke werden durchlaufen.
+Bei Quelle „Skript“ werden alle Namen angeboten; bei „Aktuelle Wiederholung“ nur
+die möglichen Nachfahren des dort ausgewählten Blocks. Eine leere Blockauswahl
+übernimmt das umgebende Vorkommen, auch durch verschachtelte Wiederholungen.
+
+Die Analyse berücksichtigt alle Zweige und Schleifen unabhängig von Eingaben.
+Funktionsdeklarationen erzeugen für sich keine Ausführungskante; Aufrufe verbinden
+die möglichen Funktionskörper. Gleiche Funktionsnamen und Überladungen bleiben
+konservative Kandidaten. Bei variablen/dynamischen oder externen Aufrufzielen
+bleiben alle im Skript definierten Callable-Körper mögliche Ziele. Rekursion wird
+mit einem Besuchsset begrenzt. Daher kann die Liste mehr Kandidaten enthalten, als
+ein konkreter Lauf erreicht. Der Trace-Resolver entscheidet weiterhin über echte
+Vorkommen; die UI ist eine Auswahlhilfe, keine Ausführungsgarantie.
+
+Ändert sich ein Vorfahr, werden relative Listen sofort neu gefiltert. Eine bereits
+gespeicherte, nun nicht passende Referenz bleibt sichtbar, aber als deaktivierte
+Option erhalten; sie wird nicht stillschweigend gelöscht oder umgebogen.
 
 Der Server validiert den Dokumentbaum, löst Trace-Referenzen auf und erzeugt HTML.
 Pebble rendert weiterhin die Ausdrucksfragmente; die Auswahl- und
