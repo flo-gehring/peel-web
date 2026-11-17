@@ -1,4 +1,13 @@
 {
+  "replaceCsvFile": "Replace CSV file",
+  "expectedBindings": "Expected bindings",
+  "expectedBindingsHint": "These inputs must be provided when running the script or printing a document. Use PEEL names; values are supplied separately.",
+  "addExpectedBinding": "Add input",
+  "removeExpectedBinding": "Remove input",
+  "externalBinding": "External input",
+  "analysisUnavailable": "Language analysis is currently unavailable.",
+  "missingCsvColumns": "Missing CSV columns: {names}",
+  "requiredByScripts": "Required by scripts: {names}",
   "theRequestFailedPleaseTryAgain": "The request failed. Please try again.",
   "theServerCouldNotVerifyThisRequestPleaseTry": "The server could not verify this request. Please try again.",
   "project": "Project",

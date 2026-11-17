@@ -4,7 +4,20 @@ export function definePeelEditorTheme(monaco: typeof Monaco): void {
   monaco.editor.defineTheme('peel-dark', {
     base: 'vs-dark',
     inherit: true,
-    rules: [],
+    rules: [
+      { token: 'keyword.peel', foreground: 'c792ea' },
+      { token: 'constant.peel', foreground: '82aaff' },
+      { token: 'number.peel', foreground: 'f78c6c' },
+      { token: 'string.peel', foreground: 'c3e88d' },
+      { token: 'string.escape.peel', foreground: '89ddff' },
+      { token: 'string.escape.invalid.peel', foreground: 'ff5370' },
+      { token: 'comment.peel', foreground: '858e94', fontStyle: 'italic' },
+      { token: 'operator.peel', foreground: '89ddff' },
+      { token: 'function', foreground: 'ffcf32' },
+      { token: 'parameter', foreground: '82aaff' },
+      { token: 'variable', foreground: 'f3f1e9' },
+      { token: 'variable.readonly', foreground: 'c3e88d' },
+    ],
     colors: {
       'editor.background': '#1b1e20',
       'editor.foreground': '#f3f1e9',

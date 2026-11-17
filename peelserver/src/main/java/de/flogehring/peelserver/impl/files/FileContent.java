@@ -10,6 +10,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.annotation.TypeAlias;
 import java.util.Map;
+import java.util.List;
+import jakarta.validation.Valid;
+import de.flogehring.peelserver.impl.run.ExpectedBinding;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
 @JsonSubTypes({
@@ -32,7 +35,7 @@ public sealed interface FileContent {
     }
 
     @TypeAlias("script")
-    record ScriptContent(@NotNull String source) implements FileContent {}
+    record ScriptContent(@NotNull String source, @NotNull List<@NotNull @Valid ExpectedBinding> expectedBindings) implements FileContent {}
 
     @TypeAlias("render-config")
     record RenderConfigContent(

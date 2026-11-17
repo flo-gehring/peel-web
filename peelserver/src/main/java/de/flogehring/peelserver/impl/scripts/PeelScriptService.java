@@ -10,11 +10,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class PeelScriptService implements PeelScriptController {
     private final ProjectAccessService projectAccess;
     private final RunService runService;
-    private final ValidationService validationService;
+    private final AnalysisService analysisService;
     @Override
     public RunResponse run(RunRequest request, SpringUserDetails user) {
         return projectAccess.active(new ProjectId(request.projectId().id()), user.getUserId(), () -> runService.run(request));
     }
     @Override
-    public ValidationResponse validate(ValidationRequest request) { return validationService.validate(request); }
+    public de.flogehring.peel.analysis.AnalysisResult analyze(AnalyzeRequest request, SpringUserDetails user) {
+        projectAccess.requireProjectAccess(new ProjectId(request.projectId().id()), user.getUserId());
+        return analysisService.analyze(request);
+    }
 }

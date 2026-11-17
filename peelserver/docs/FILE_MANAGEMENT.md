@@ -1,5 +1,9 @@
 # Gemeinsame Dateiverwaltung
 
+Skriptinhalte enthalten zusätzlich `expectedBindings`. Eingabevertrag,
+Editor-Unterstützung und Ausführungsprüfung sind in [LANGUAGE_SUPPORT.md](LANGUAGE_SUPPORT.md)
+beschrieben.
+
 Skripte, Renderkonfigurationen und Dokumentvorlagen liegen gemeinsam in MongoDB in
 `project-files`. Eine Datei besitzt eine unveränderliche UUID und Projektzuordnung,
 einen Namen, eine optionale Beschreibung (gespeichert als leerer String), eine

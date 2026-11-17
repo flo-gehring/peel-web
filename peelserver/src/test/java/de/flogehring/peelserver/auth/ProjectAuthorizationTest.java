@@ -51,7 +51,7 @@ class ProjectAuthorizationTest {
         projects.save(new ProjectPersistence(project.id(), new ProjectPersistenceData(owner.getUserId(), List.of(member.getUserId()), "Project", "")));
         projects.save(new ProjectPersistence(otherProject.id(), new ProjectPersistenceData(outsider.getUserId(), List.of(owner.getUserId()), "Other", "")));
         scriptId = UUID.randomUUID().toString();
-        insert(scriptId, "Script", new FileContent.ScriptContent("1 + 2;"));
+        insert(scriptId, "Script", new FileContent.ScriptContent("1 + 2;", java.util.List.of()));
         configId = prefix + "-config";
         var defaults = RenderConfigurationService.toDto(ExpressionRenderConfiguration.defaultConfig());
         insert(configId, "Config", new FileContent.RenderConfigContent(defaults.renderConfigurations(), defaults.namedOverrides()));
@@ -128,8 +128,13 @@ class ProjectAuthorizationTest {
     void checksCurrentMembershipOnEveryRequestAndDispatchesValidJobs() throws Exception {
         mvc.perform(get("/api/projects/" + project.id() + "/files/" + scriptId).with(user(member))).andExpect(status().isOk());
         String jobId = createJob(member);
+        var pending = jobs.findById(jobId).orElseThrow();
+        pending.updateFileName("input.csv");
+        jobs.save(pending);
         mvc.perform(post("/api/print-jobs/" + jobId + "/run").with(user(member)).with(csrf())).andExpect(status().isOk());
         verify(runner).run(argThat(job -> job.getProjectId().equals(project)), argThat(document -> document.scriptNameTags().containsKey("calculation")));
+        verify(storage).processFile(eq("print-jobs"), eq(jobId), any());
+        clearInvocations(storage);
         projects.save(new ProjectPersistence(project.id(), new ProjectPersistenceData(owner.getUserId(), List.of(), "Project", "")));
         mvc.perform(get("/api/projects/" + project.id() + "/files/" + scriptId).with(user(member))).andExpect(status().isNotFound());
         mvc.perform(get("/api/print-jobs/" + jobId + "/data").with(user(member))).andExpect(status().isNotFound());
@@ -145,7 +150,7 @@ class ProjectAuthorizationTest {
     @Test
     void storedPreviewAndPrintExecutionRecheckReferenceProjectBoundaries() throws Exception {
         String foreignId = UUID.randomUUID().toString();
-        files.insert(new ProjectFile(foreignId,otherProject,"Foreign","",0,new FileContent.ScriptContent("99;"),Instant.now(),Instant.now()));
+        files.insert(new ProjectFile(foreignId,otherProject,"Foreign","",0,new FileContent.ScriptContent("99;", java.util.List.of()),Instant.now(),Instant.now()));
         var document = files.findById(documentId).orElseThrow();
         files.save(new ProjectFile(document.id(),document.projectId(),document.name(),document.description(),document.version(),
                 new FileContent.DocumentContent(Map.of("foreign",foreignId),"<p>Test</p>","{}",configId),document.createdAt(),document.updatedAt()));

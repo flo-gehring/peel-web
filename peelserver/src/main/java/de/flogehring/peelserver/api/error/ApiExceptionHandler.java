@@ -10,6 +10,10 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    @ExceptionHandler(de.flogehring.peelserver.impl.run.BindingInputException.class)
+    public ResponseEntity<ApiErrorResponse> handleBindings(de.flogehring.peelserver.impl.run.BindingInputException ex) {
+        return ResponseEntity.badRequest().body(ApiErrorResponse.of(ex.code(), ex.getMessage(), ex.details()));
+    }
     @ExceptionHandler(de.flogehring.peelserver.impl.files.FileConflictException.class)
     public ResponseEntity<ApiErrorResponse> handleFileConflict(de.flogehring.peelserver.impl.files.FileConflictException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorResponse.of(ex.code(), ex.getMessage(), ex.details()));

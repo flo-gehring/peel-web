@@ -34,7 +34,7 @@ vi.mock('@/adapter/client', () => ({
                 projectId: { id: 'invoices' },
                 version: 0,
                 name: 'Customer',
-                content: { type: 'script', source: 'customer' },
+                content: { type: 'script', source: 'customer', expectedBindings: [] },
               }
           : path === '/api/projects/{projectId}/files'
             ? [{ id: 'script-1', name: 'Customer', type: 'script', version: 0 }]

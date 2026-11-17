@@ -77,7 +77,7 @@ async function save(): Promise<boolean> {
       }
     } else if (props.documentKind === 'renderConfig') {
       content = { type: 'render-config', ...renderConfigurationSchema.parse(JSON.parse(text)) }
-    } else content = { type: 'script', source: text }
+    } else content = files.scriptContent(id, text)
     await files.save(projectId, id, { ...metadata, content })
     if (props.documentKind === 'document') {
       if (documents.getDraft(id) === document) documents.markSaved(id)
@@ -120,7 +120,12 @@ async function execute(): Promise<void> {
   })
   try {
     const { data, error } = await api.PUT('/api/scripts/run', {
-      body: { projectId: { id: projectId }, script, bindings: parsedBindings },
+      body: {
+        projectId: { id: projectId },
+        script,
+        expectedBindings: files.expectedBindings(id),
+        bindings: parsedBindings,
+      },
     })
     if (error) output.setRunError(apiErrorMessage(error, t('runRequestFailed')), requestId)
     else output.setRunSuccess({ trace: data?.trace, result: data?.result }, requestId)

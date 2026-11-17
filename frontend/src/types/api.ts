@@ -172,6 +172,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/scripts/analyze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["analyze"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/{projectId}/print-jobs": {
         parameters: {
             query?: never;
@@ -464,22 +480,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/scripts/validate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["validate"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/render-config/default": {
         parameters: {
             query?: never;
@@ -667,13 +667,18 @@ export interface components {
         ApiErrorResponse: {
             error?: components["schemas"]["ApiError"];
         };
+        ExpectedBinding: {
+            name: string;
+            description: string;
+        };
         ProjectIdApi: {
             id: string;
         };
         RunRequest: {
             projectId: components["schemas"]["ProjectIdApi"];
             script?: string;
-            bindings?: {
+            expectedBindings: components["schemas"]["ExpectedBinding"][];
+            bindings: {
                 [key: string]: unknown;
             };
         };
@@ -718,6 +723,7 @@ export interface components {
         };
         ScriptContent: {
             source: string;
+            expectedBindings: components["schemas"]["ExpectedBinding"][];
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -753,6 +759,64 @@ export interface components {
         };
         AdminRequest: {
             admin?: boolean;
+        };
+        AnalyzeRequest: {
+            projectId: components["schemas"]["ProjectIdApi"];
+            script: string;
+            expectedBindings: components["schemas"]["ExpectedBinding"][];
+        };
+        AnalysisResult: {
+            symbols?: components["schemas"]["Symbol"][];
+            occurrences?: components["schemas"]["Occurrence"][];
+            scopes?: components["schemas"]["LexicalScope"][];
+            diagnostics?: components["schemas"]["Diagnostic"][];
+        };
+        Diagnostic: {
+            code?: string;
+            severity?: string;
+            message?: string;
+            /** Format: int32 */
+            start?: number;
+            /** Format: int32 */
+            end?: number;
+        };
+        LexicalScope: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            parentId?: number;
+            /** Format: int32 */
+            start?: number;
+            /** Format: int32 */
+            end?: number;
+            openEnded?: boolean;
+        };
+        Occurrence: {
+            /** Format: int32 */
+            symbolId?: number;
+            role?: string;
+            /** Format: int32 */
+            start?: number;
+            /** Format: int32 */
+            end?: number;
+        };
+        Symbol: {
+            /** Format: int32 */
+            id?: number;
+            name?: string;
+            kind?: string;
+            origin?: string;
+            description?: string;
+            /** Format: int32 */
+            arity?: number;
+            /** Format: int32 */
+            scopeId?: number;
+            /** Format: int32 */
+            visibleFrom?: number;
+            /** Format: int32 */
+            start?: number;
+            /** Format: int32 */
+            end?: number;
         };
         DocumentId: {
             id: string;
@@ -802,24 +866,6 @@ export interface components {
         DocumentPreviewResponse: {
             /** Format: byte */
             pdfData?: string;
-        };
-        ValidationRequest: {
-            script?: string;
-        };
-        ValidationDiagnostic: {
-            /** Format: int32 */
-            line?: number;
-            /** Format: int32 */
-            column?: number;
-            /** Format: int32 */
-            endLine?: number;
-            /** Format: int32 */
-            endColumn?: number;
-            severity?: string;
-            message?: string;
-        };
-        ValidationResponse: {
-            diagnostics?: components["schemas"]["ValidationDiagnostic"][];
         };
         RenderConfigurationDto: {
             renderConfigurations?: {
@@ -1572,6 +1618,30 @@ export interface operations {
             };
         };
     };
+    analyze: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnalyzeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalysisResult"];
+                };
+            };
+        };
+    };
     list: {
         parameters: {
             query?: never;
@@ -2125,30 +2195,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentPreviewResponse"];
-                };
-            };
-        };
-    };
-    validate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ValidationRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationResponse"];
                 };
             };
         };

@@ -1,4 +1,13 @@
 {
+  "replaceCsvFile": "CSV-Datei ersetzen",
+  "expectedBindings": "Erwartete Eingaben",
+  "expectedBindingsHint": "Diese Eingaben müssen beim Ausführen des Skripts oder Drucken eines Dokuments vorhanden sein. Verwende PEEL-Namen; die Werte werden separat übergeben.",
+  "addExpectedBinding": "Eingabe hinzufügen",
+  "removeExpectedBinding": "Eingabe entfernen",
+  "externalBinding": "Externe Eingabe",
+  "analysisUnavailable": "Die Sprachanalyse ist momentan nicht verfügbar.",
+  "missingCsvColumns": "Fehlende CSV-Spalten: {names}",
+  "requiredByScripts": "Benötigt von Skripten: {names}",
   "theRequestFailedPleaseTryAgain": "Die Anfrage ist fehlgeschlagen. Bitte versuche es erneut.",
   "theServerCouldNotVerifyThisRequestPleaseTry": "Der Server konnte diese Anfrage nicht überprüfen. Bitte versuche es erneut.",
   "project": "Projekt",

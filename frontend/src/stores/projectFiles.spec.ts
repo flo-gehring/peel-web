@@ -10,11 +10,49 @@ const mockApi = vi.mocked(api)
 const state = {
   name: 'Script',
   description: 'Purpose',
-  content: { type: 'script' as const, source: '1' },
+  content: { type: 'script' as const, source: '1', expectedBindings: [] },
 }
 const initial: ProjectFile = { id: 'file', projectId: { id: 'project' }, version: 7, ...state }
 
 describe('project file requests', () => {
+  it('keeps binding edits made during a save dirty and visible to navigation', async () => {
+    setActivePinia(createPinia())
+    const store = useProjectFileStore()
+    store.loaded.file = initial
+    store.setExpectedBindings('file', [{ name: 'first', description: '' }])
+    const content = store.scriptContent('file', 'draft')
+    let acknowledge!: (value: unknown) => void
+    mockApi.PUT.mockReturnValueOnce(
+      new Promise((resolve) => {
+        acknowledge = resolve
+      }) as never,
+    )
+    const saving = store.save('project', 'file', { ...state, content })
+    store.setExpectedBindings('file', [{ name: 'second', description: '' }])
+    acknowledge({ data: { ...initial, content, version: 8 } })
+    await saving
+    expect(store.expectedBindings('file')[0]?.name).toBe('second')
+    expect(store.metadataDirty('file')).toBe(true)
+    expect(Object.keys(store.metadataDrafts)).toContain('file')
+    expect(store.loaded.file?.version).toBe(8)
+  })
+
+  it('preserves the contract draft and baseline on conflict, then clears them on explicit reload', async () => {
+    setActivePinia(createPinia())
+    const store = useProjectFileStore()
+    store.loaded.file = initial
+    store.setExpectedBindings('file', [{ name: 'input', description: 'Required' }])
+    mockApi.PUT.mockResolvedValueOnce({ error: { error: { message: 'Conflict' } } } as never)
+    await expect(
+      store.save('project', 'file', { ...state, content: store.scriptContent('file', 'draft') }),
+    ).rejects.toThrow()
+    expect(store.loaded.file?.version).toBe(7)
+    expect(store.metadataDirty('file')).toBe(true)
+    mockApi.GET.mockResolvedValueOnce({ data: initial } as never)
+    await store.load('project', 'file', true)
+    expect(store.expectedBindings('file')).toEqual([])
+    expect(store.metadataDirty('file')).toBe(false)
+  })
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.resetAllMocks()
@@ -23,7 +61,10 @@ describe('project file requests', () => {
   it('retries the original version after a lost response and advances only after acknowledgement', async () => {
     const store = useProjectFileStore()
     store.loaded.file = initial
-    const changed = { ...state, content: { type: 'script' as const, source: '2' } }
+    const changed = {
+      ...state,
+      content: { type: 'script' as const, source: '2', expectedBindings: [] },
+    }
     mockApi.PUT.mockRejectedValueOnce(new TypeError('Network failed'))
     mockApi.PUT.mockResolvedValueOnce({ data: { ...initial, ...changed, version: 8 } })
     await expect(store.save('project', 'file', changed)).rejects.toThrow('Network failed')

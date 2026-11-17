@@ -51,6 +51,24 @@ class ProjectFileTest {
         }
     }
 
+    @Test void versionsExpectedBindingsAndValidatesTheirNamesWithoutRequiringValidSource() throws Exception {
+        var bindings = List.of(Map.of("name", "amount", "description", "Net amount"));
+        var content = Map.of("type", "script", "source", "var unfinished =", "expectedBindings", bindings);
+        create(id, "Script", content);
+        mvc.perform(get(base()+"/"+id).with(user(member))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.expectedBindings[0].name").value("amount"))
+                .andExpect(jsonPath("$.content.expectedBindings[0].description").value("Net amount"));
+        update(id, 0, "Script", "", content, 200);
+        assertThat(files.findById(id).orElseThrow().version()).isZero();
+        update(id, 0, "Script", "", script("var unfinished ="), 200);
+        update(id, 0, "Script", "", content, 409);
+        update(id, 1, "Script", "", Map.of("type", "script", "source", "", "expectedBindings",
+                List.of(Map.of("name", "var", "description", ""))), 400);
+        update(id, 1, "Script", "", Map.of("type", "script", "source", "", "expectedBindings",
+                List.of(bindings.getFirst(), bindings.getFirst())), 400);
+        assertThat(files.findById(id).orElseThrow().version()).isEqualTo(1);
+    }
+
     @Test void createRetriesNeverOverwriteExistingFilesEvenAfterChangingBack() throws Exception {
         var initial = Map.of("id", id, "name", " Script ", "content", script("1"));
         mvc.perform(body(post(base()), initial).with(user(member))).andExpect(status().isOk()).andExpect(jsonPath("$.version").value(0));
@@ -94,7 +112,7 @@ class ProjectFileTest {
             var tasks = List.of("first", "second").stream().map(source -> executor.submit(() -> {
                 ready.countDown(); start.await();
                 try {
-                    service.update(project,id,new de.flogehring.peelserver.api.data.files.FileData.UpdateFile(0L,"Script","",new FileContent.ScriptContent(source)),member);
+                    service.update(project,id,new de.flogehring.peelserver.api.data.files.FileData.UpdateFile(0L,"Script","",new FileContent.ScriptContent(source, java.util.List.of())),member);
                     return "success";
                 } catch (FileConflictException exception) { return exception.code(); }
             })).toList();
@@ -128,7 +146,7 @@ class ProjectFileTest {
                 // Separate locks force the database CAS and its reread path to arbitrate the race.
                 var independent = new ProjectFileService(repository, new ProjectAccessService(projects), mongo);
                 try {
-                    independent.update(project,id,new de.flogehring.peelserver.api.data.files.FileData.UpdateFile(0L,"Script","",new FileContent.ScriptContent(source)),member);
+                    independent.update(project,id,new de.flogehring.peelserver.api.data.files.FileData.UpdateFile(0L,"Script","",new FileContent.ScriptContent(source, java.util.List.of())),member);
                     return "success";
                 } catch (FileConflictException exception) { return exception.code(); }
             })).toList();
@@ -143,7 +161,7 @@ class ProjectFileTest {
                 .append("_class","project-file").append("projectId",new org.bson.Document("_id",project))
                 .append("name","Raw script").append("description","").append("version",0L)
                 .append("createdAt",new Date()).append("updatedAt",new Date())
-                .append("content",new org.bson.Document("_class","script").append("source","42")));
+                .append("content",new org.bson.Document("_class","script").append("source","42").append("expectedBindings", java.util.List.of())));
         mvc.perform(get(base()+"/"+id).with(user(member))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.type").value("script")).andExpect(jsonPath("$.content.source").value("42"));
     }
@@ -230,7 +248,7 @@ class ProjectFileTest {
     }
 
     private String base(){return "/api/projects/"+project+"/files";}
-    private Map<String,Object> script(String source){return Map.of("type","script","source",source);}
+    private Map<String,Object> script(String source){return Map.of("type","script","source",source,"expectedBindings",java.util.List.of());}
     private Map<String,Object> config(){return Map.of("type","render-config","renderConfigurations",Map.of(),"namedOverrides",Map.of());}
     private Map<String,Object> document(String script,String config){return Map.of("type","document","templateHtml","<p>Test</p>","editorStateJson","{}","scriptNameTags",Map.of("calculation",script),"renderConfigurationId",config);}
     private void create(String id,String name,Object content)throws Exception{

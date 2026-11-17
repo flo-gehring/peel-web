@@ -43,6 +43,14 @@ const canStart = computed(
     printJob.value?.status === 'CREATED' &&
     !!printJob.value.fileName,
 )
+const canUpload = computed(
+  () =>
+    !readOnly.value &&
+    documentAvailable.value &&
+    printJob.value?.status === 'CREATED' &&
+    !isStarting.value &&
+    !isUploading.value,
+)
 
 function statusLabel(status: PrintJobSummary['status']) {
   return {
@@ -88,8 +96,29 @@ async function startPrintJob() {
     const { data, error } = await api.POST('/api/print-jobs/{id}/run', {
       params: { path: { id: printJobId.value } },
     })
-    if (error || !data || !printJob.value)
+    if (error || !data || !printJob.value) {
+      const detail = (
+        error as unknown as {
+          error?: {
+            code?: string
+            details?: {
+              missingColumns?: string[]
+              scripts?: Record<string, string[]>
+            }
+          }
+        }
+      )?.error
+      if (detail?.code === 'missing_csv_columns') {
+        throw new Error(
+          t('missingCsvColumns', { names: detail.details?.missingColumns?.join(', ') ?? '' }) +
+            '. ' +
+            t('requiredByScripts', {
+              names: Object.keys(detail.details?.scripts ?? {}).join(', '),
+            }),
+        )
+      }
       throw new Error(apiErrorMessage(error, t('thePrintJobCouldNotBeStarted')))
+    }
     if (printJobId.value === requestedId) printJob.value = { ...printJob.value, status: data }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : t('theServerCouldNotBeReached')
@@ -99,7 +128,7 @@ async function startPrintJob() {
 }
 
 async function uploadFile(event: Event) {
-  if (readOnly.value || !documentAvailable.value || isUploading.value) return
+  if (!canUpload.value) return
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
   if (!file.name.toLowerCase().endsWith('.csv')) {
@@ -129,6 +158,7 @@ async function uploadFile(event: Event) {
     errorMessage.value = error instanceof Error ? error.message : t('theServerCouldNotBeReached')
   } finally {
     isUploading.value = false
+    ;(event.target as HTMLInputElement).value = ''
   }
 }
 
@@ -272,22 +302,22 @@ watch(
                 </button>
                 <p class="hint">{{ t('csvFileForThisPrintJob') }}</p>
               </template>
-              <template v-else>
-                <p class="empty-message">{{ t('noCsvFileUploadedYet') }}</p>
-                <label
-                  class="primary-button upload-button"
-                  :class="{ disabled: isUploading || readOnly || !documentAvailable }"
-                  ><Upload :size="17" aria-hidden="true" />{{
-                    isUploading ? t('uploading') : t('uploadCsvFile')
-                  }}<input
-                    class="sr-only"
-                    type="file"
-                    accept=".csv,text/csv"
-                    :disabled="isUploading || readOnly || !documentAvailable"
-                    @change="uploadFile"
-                /></label>
-                <p class="hint">{{ t('uploadTheInputDataThenStartThePrintJob') }}</p>
-              </template>
+              <p v-else class="empty-message">{{ t('noCsvFileUploadedYet') }}</p>
+              <label class="primary-button upload-button" :class="{ disabled: !canUpload }"
+                ><Upload :size="17" aria-hidden="true" />{{
+                  isUploading
+                    ? t('uploading')
+                    : printJob.fileName
+                      ? t('replaceCsvFile')
+                      : t('uploadCsvFile')
+                }}<input
+                  class="sr-only"
+                  type="file"
+                  accept=".csv,text/csv"
+                  :disabled="!canUpload"
+                  @change="uploadFile"
+              /></label>
+              <p class="hint">{{ t('uploadTheInputDataThenStartThePrintJob') }}</p>
             </div>
           </section>
           <details class="detail-card result-files" open>

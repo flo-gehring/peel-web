@@ -26,6 +26,7 @@ public class DocumentTemplateRenderService {
     private final PeelExecutionService peelExecutionService;
 
     public String render(Document document, Map<String, Object> bindings) {
+        de.flogehring.peelserver.impl.run.ExpectedBindings.requireDocument(document, bindings.keySet(), false);
         Map<String, TraceProgram> runScripts = transformMapValues(
                 document.scriptNameTags(),
                 script -> peelExecutionService.execute(script.script(), bindings)

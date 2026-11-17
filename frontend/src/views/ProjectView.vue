@@ -177,7 +177,7 @@ async function saveAndSwitch(): Promise<void> {
       if (!baseline) throw new Error(t('reopenTheFileBeforeSaving'))
       const content =
         baseline.content?.type === 'script'
-          ? { type: 'script' as const, source: draft.content }
+          ? files.scriptContent(id, draft.content)
           : {
               type: 'render-config' as const,
               ...renderConfigurationSchema.parse(JSON.parse(draft.content)),
@@ -208,7 +208,11 @@ async function saveAndSwitch(): Promise<void> {
       if (!files.metadataDirty(id)) continue
       const baseline = files.loaded[id]
       if (!baseline?.content) throw new Error(t('reopenTheFileBeforeSaving'))
-      await files.save(projectId, id, { ...files.metadata(id), content: baseline.content })
+      const content =
+        baseline.content.type === 'script'
+          ? files.scriptContent(id, draftStore.getDraft(id) ?? baseline.content.source)
+          : baseline.content
+      await files.save(projectId, id, { ...files.metadata(id), content })
     }
     if (hasDirtyDrafts()) throw new Error(t('filesChangedWhileSavingSaveAgainBeforeSwitching'))
   } catch (error) {

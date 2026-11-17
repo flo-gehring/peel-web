@@ -79,6 +79,8 @@ public class PrintJobService implements PrintJobController {
     public void uploadFile(String id, MultipartFile file, SpringUserDetails user) throws IOException {
         projectAccess.active(requireJobAccess(id, user).getProjectId(), user.getUserId(), () -> {
             var job = requireJobAccess(id, user);
+            if (job.getPrintJobPersistenceData().status() != PrintJobStatus.CREATED)
+                throw new IllegalArgumentException("CSV can only be replaced before the print job starts");
             String fileName = file.getOriginalFilename();
             if (fileName == null || !fileName.toLowerCase(Locale.ROOT).endsWith(".csv")) {
                 throw new IllegalArgumentException("only CSV files can be uploaded");
@@ -101,6 +103,9 @@ public class PrintJobService implements PrintJobController {
                     .filter(value -> job.getProjectId().equals(value.projectId()) && value.content() instanceof FileContent.DocumentContent).orElseThrow(ProjectAccessService::notFound);
             // Resolve and authorize before scheduling; the worker does not depend on a request SecurityContext.
             var resolved = references.resolve(document);
+            if (job.getPrintJobPersistenceData().fileName() == null)
+                throw new IllegalArgumentException("Upload a CSV file before starting the print job");
+            storage.processFile(BUCKET_NAME, id, stream -> CsvInput.validate(stream, resolved));
             job.updateStatus(PrintJobStatus.CALCULATING);
             jobs.save(job);
             try {

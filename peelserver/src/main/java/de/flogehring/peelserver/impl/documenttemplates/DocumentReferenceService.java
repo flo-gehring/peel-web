@@ -20,7 +20,7 @@ public class DocumentReferenceService {
         Map<String, PeelScript> byId = new HashMap<>();
         files.findAllById(ids).forEach(file -> {
             if (!project.equals(file.projectId()) || !(file.content() instanceof FileContent.ScriptContent script)) throw notFound();
-            byId.put(file.id(), new PeelScript(file.name(), script.source()));
+            byId.put(file.id(), new PeelScript(file.name(), script.source(), script.expectedBindings()));
         });
         if (byId.size() != ids.size()) throw notFound();
         Map<String, PeelScript> resolved = new HashMap<>();

@@ -152,7 +152,7 @@ class ProjectManagementTest {
         mvc.perform(post("/api/projects/" + id + "/archive").with(user(owner)).with(csrf())).andExpect(status().isNoContent());
         mvc.perform(get("/api/projects/" + id).with(user(owner))).andExpect(status().isOk());
         mvc.perform(post("/api/projects/" + id + "/files").with(user(owner)).with(csrf()).contentType("application/json")
-                .content(body(Map.of("id", UUID.randomUUID(), "name", "Blocked", "content", Map.of("type", "script", "source", ""))))).andExpect(status().isConflict());
+                .content(body(Map.of("id", UUID.randomUUID(), "name", "Blocked", "content", Map.of("type","script","source","","expectedBindings",java.util.List.of()))))).andExpect(status().isConflict());
         mvc.perform(delete("/api/projects/" + id).with(user(owner)).with(csrf()).contentType("application/json")
                 .content(body(Map.of("confirmation", "wrong")))).andExpect(status().isBadRequest());
         mvc.perform(delete("/api/projects/" + id).with(user(owner)).with(csrf()).contentType("application/json")
@@ -222,7 +222,7 @@ class ProjectManagementTest {
 
     @Test void deletionWaitsForJobsAndCanRetryFailedFileCleanupWithoutLosingRecords() throws Exception {
         var project = new ProjectId(id);
-        var script = scripts.insert(new ProjectFile(UUID.randomUUID().toString(), project, "Script", "", 0, new FileContent.ScriptContent("1;"), Instant.now(), Instant.now()));
+        var script = scripts.insert(new ProjectFile(UUID.randomUUID().toString(), project, "Script", "", 0, new FileContent.ScriptContent("1;", java.util.List.of()), Instant.now(), Instant.now()));
         var job = PrintJobPersistence.init(new PrintJobId(UUID.randomUUID().toString()), new DocumentId("template"), project, "Job", "Template");
         job.updateStatus(PrintJobStatus.CALCULATING); jobs.save(job);
         mvc.perform(post("/api/projects/" + id + "/archive").with(user(owner)).with(csrf())).andExpect(status().isNoContent());
@@ -236,7 +236,7 @@ class ProjectManagementTest {
         assertThat(projects.findById(id).orElseThrow().getState()).isEqualTo(ProjectState.DELETING);
         assertThat(scripts.existsById(script.id())).isTrue();
         mvc.perform(post("/api/projects/" + id + "/files").with(user(owner)).with(csrf()).contentType("application/json")
-                .content(body(Map.of("id", UUID.randomUUID(), "name", "No recreation", "content", Map.of("type", "script", "source", ""))))).andExpect(status().isNotFound());
+                .content(body(Map.of("id", UUID.randomUUID(), "name", "No recreation", "content", Map.of("type","script","source","","expectedBindings",java.util.List.of()))))).andExpect(status().isNotFound());
         mvc.perform(delete("/api/projects/" + id).with(user(owner)).with(csrf()).contentType("application/json")
                 .content(body(Map.of("confirmation", "Test project")))).andExpect(status().isNoContent());
         assertThat(projects.existsById(id)).isFalse(); assertThat(scripts.existsById(script.id())).isFalse(); assertThat(jobs.existsById(job.getId())).isFalse();

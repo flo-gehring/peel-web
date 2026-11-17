@@ -61,7 +61,12 @@ describe('shared file toolbar', () => {
     await flushPromises()
 
     expect(mockApi.PUT).toHaveBeenCalledWith('/api/scripts/run', {
-      body: { projectId: { id: 'project' }, script: 'unsaved script', bindings: { amount: 5 } },
+      body: {
+        projectId: { id: 'project' },
+        script: 'unsaved script',
+        expectedBindings: [],
+        bindings: { amount: 5 },
+      },
     })
     expect(outputStore.response).toEqual({ trace: { step: 1 }, result: { value: 1 } })
     expect(outputPanel.api.setActive).toHaveBeenCalled()
@@ -93,7 +98,7 @@ describe('shared file toolbar', () => {
       version: 7,
       name: 'Example',
       description: 'Purpose',
-      content: { type: 'script', source: 'old' },
+      content: { type: 'script', source: 'old', expectedBindings: [] },
     }
     const drafts = useEditorDraftStore()
     drafts.setDraft('script-1', 'new')
@@ -107,7 +112,7 @@ describe('shared file toolbar', () => {
         expectedVersion: 7,
         name: 'Example',
         description: 'Purpose',
-        content: { type: 'script', source: 'new' },
+        content: { type: 'script', source: 'new', expectedBindings: [] },
       },
     })
     expect(drafts.draftsById['script-1']?.dirty).toBe(false)
@@ -119,7 +124,7 @@ describe('shared file toolbar', () => {
       projectId: { id: 'project' },
       version: 7,
       name: 'Example',
-      content: { type: 'script', source: 'old' },
+      content: { type: 'script', source: 'old', expectedBindings: [] },
     }
     useEditorDraftStore().setDraft('script-1', 'new')
     mockApi.PUT.mockResolvedValueOnce({
@@ -139,7 +144,7 @@ describe('shared file toolbar', () => {
       projectId: { id: 'project' },
       version: 7,
       name: 'Example',
-      content: { type: 'script', source: 'old' },
+      content: { type: 'script', source: 'old', expectedBindings: [] },
     }
     const drafts = useEditorDraftStore()
     drafts.setDraft('script-1', 'sent')

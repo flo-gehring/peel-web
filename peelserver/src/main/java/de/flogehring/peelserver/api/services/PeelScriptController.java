@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 public interface PeelScriptController {
     @PutMapping(path = "/run", consumes = MediaType.APPLICATION_JSON_VALUE)
     RunResponse run(@Valid @RequestBody RunRequest request, @AuthenticationPrincipal SpringUserDetails user);
-    @GetMapping("/validate")
-    ValidationResponse validate(@RequestBody ValidationRequest request);
+    @PostMapping(path = "/analyze", consumes = MediaType.APPLICATION_JSON_VALUE)
+    de.flogehring.peel.analysis.AnalysisResult analyze(@Valid @RequestBody AnalyzeRequest request,
+                                                     @AuthenticationPrincipal SpringUserDetails user);
 }

@@ -65,7 +65,7 @@ public class PrintJobRunner {
     }
 
     private void processCsv(InputStream resource, PrintJobPersistence printJobPersistence, Document document) {
-        try (CSVParser csvParser = CSVParser.parse(resource, UTF_8, CSVFormat.Builder.create().setHeader().setSkipHeaderRecord(true).build())) {
+        try (CSVParser csvParser = CsvInput.open(resource)) {
             // Process CSV records
             List<String> documentIds = new ArrayList<>();
             for (var record : csvParser) {

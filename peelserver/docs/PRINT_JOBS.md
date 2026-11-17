@@ -1,5 +1,9 @@
 # Druckaufträge im Projekt
 
+Vor dem Start prüft der Auftrag die CSV-Spalten gegen die Expected Bindings seiner
+Skripte. Fehlende Spalten erhalten den Status CREATED; CSV-Austausch ist nur in
+CREATED möglich. Details: [LANGUAGE_SUPPORT.md](LANGUAGE_SUPPORT.md).
+
 Druckaufträge sind ein eigener Bereich jedes Projekts. Der Workspace und die
 Auftragsübersicht sind über die Projektnavigation erreichbar; Projektkarten
 bieten ebenfalls einen direkten Einstieg. Die bisherigen globalen Listen- und

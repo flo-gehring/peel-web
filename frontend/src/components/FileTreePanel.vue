@@ -128,7 +128,8 @@ async function createDocument() {
   try {
     if (!pendingCreate.value) {
       let content: FileState['content']
-      if (newDocumentKind.value === 'peel') content = { type: 'script', source: '' }
+      if (newDocumentKind.value === 'peel')
+        content = { type: 'script', source: '', expectedBindings: [] }
       else if (newDocumentKind.value === 'document') {
         if (!newDocumentRenderConfigurationId.value)
           throw new Error(t('selectARenderConfiguration'))

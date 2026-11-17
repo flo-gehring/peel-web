@@ -70,6 +70,8 @@ public class StorageService {
                         .object(objectId)
                         .build())) {
             fileProcessor.accept(stream);
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("Error occurred: " + e.getMessage());
         }

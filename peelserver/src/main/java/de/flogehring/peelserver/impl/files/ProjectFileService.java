@@ -115,6 +115,8 @@ public class ProjectFileService {
     }
 
     private void validateReferences(ProjectId project, FileContent content) {
+        if (content instanceof FileContent.ScriptContent script)
+            de.flogehring.peelserver.impl.run.ExpectedBindings.validate(script.expectedBindings());
         if (content instanceof FileContent.DocumentContent document) {
             if (!(requireFile(project, document.renderConfigurationId()).content() instanceof FileContent.RenderConfigContent))
                 throw new IllegalArgumentException("The render configuration reference must point to a render configuration");

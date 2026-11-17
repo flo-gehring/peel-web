@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { t } from '@/i18n'
-import { ref, computed, shallowRef, watch } from 'vue'
+import { ref, computed, shallowRef, watch, onUnmounted } from 'vue'
 import FileToolbar from './FileToolbar.vue'
 import FileSettings from './FileSettings.vue'
+import ScriptBindings from './ScriptBindings.vue'
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
 import { useEditorDraftStore } from '@/stores/editorDrafts'
 import { definePeelEditorTheme } from '@/adapter/editorTheme'
+import { registerPeelLanguage, bindPeelModel } from '@/adapter/peelLanguage'
+import { useProjectFileStore } from '@/stores/projectFiles'
 import { useProjectStore } from '@/stores/projects'
 import { renderConfigurationSchema } from '@/adapter/renderConfigurationSchema'
 import type { editor as MonacoEditor } from 'monaco-editor'
@@ -32,6 +35,10 @@ const props = defineProps<{
 
 const draftStore = useEditorDraftStore()
 const projectStore = useProjectStore()
+const files = useProjectFileStore()
+const analysisAvailable = ref(true)
+let languageSession: ReturnType<typeof bindPeelModel> | undefined
+let modelListener: { dispose(): void } | undefined
 const toolbar = ref<InstanceType<typeof FileToolbar> | null>(null)
 const settingsOpen = ref(false)
 
@@ -63,19 +70,16 @@ const existingDraft = panelId.value
 // 2. Reactive code buffer
 const code = ref(existingDraft ?? initialContent.value)
 
-// 3. Dynamic language detection based on file extension
 const language = computed(() => {
   if (documentKind.value === 'renderConfig') return 'json'
-  const lowered = filename.value.toLowerCase()
-  if (lowered.endsWith('.java')) return 'java'
-  if (lowered.endsWith('.ts') || lowered.endsWith('.js')) return 'typescript'
-  if (lowered.endsWith('.json')) return 'json'
-  if (lowered.endsWith('.xml') || lowered.endsWith('.pom')) return 'xml'
-  if (lowered.endsWith('.md')) return 'markdown'
-  if (lowered.endsWith('.css')) return 'css'
-  if (lowered.endsWith('.html')) return 'html'
-  return 'plaintext'
+  return 'peel'
 })
+const modelPath = computed(
+  () =>
+    'peel://workspace/' +
+    encodeURIComponent(documentId.value || panelId.value) +
+    (documentKind.value === 'renderConfig' ? '.json' : '.peel'),
+)
 
 // 4. IMPORTANT: Use shallowRef for the editor instance to prevent
 // Vue from making the Monaco internals reactive (which degrades performance)
@@ -84,6 +88,7 @@ let monacoApi: typeof import('monaco-editor') | undefined
 function beforeMount(monaco: typeof import('monaco-editor')): void {
   monacoApi = monaco
   definePeelEditorTheme(monaco)
+  registerPeelLanguage(monaco)
 }
 function validateConfiguration(): void {
   const model = editorRef.value?.getModel()
@@ -116,7 +121,35 @@ function validateConfiguration(): void {
 const handleMount = (editorInstance: MonacoEditor.IStandaloneCodeEditor) => {
   editorRef.value = editorInstance
   validateConfiguration()
+  const bind = () => {
+    languageSession?.dispose()
+    const model = editorInstance.getModel()
+    if (monacoApi && model && documentKind.value === 'peel') {
+      languageSession = bindPeelModel(
+        monacoApi,
+        model,
+        () => ({
+          projectId: projectStore.activeProject?.projectIdApi?.id ?? '',
+          expectedBindings: files.expectedBindings(documentId.value),
+        }),
+        (available) => {
+          analysisAvailable.value = available
+        },
+      )
+    }
+  }
+  modelListener = editorInstance.onDidChangeModel(bind)
+  bind()
 }
+watch(
+  () => [files.expectedBindings(documentId.value), projectStore.activeProject?.projectIdApi?.id],
+  () => languageSession?.refresh(),
+  { deep: true, flush: 'sync' },
+)
+onUnmounted(() => {
+  languageSession?.dispose()
+  modelListener?.dispose()
+})
 
 // 5. Monaco configuration options
 const editorOptions = computed(() => ({
@@ -126,6 +159,7 @@ const editorOptions = computed(() => ({
   automaticLayout: true,
 
   theme: 'peel-dark',
+  'semanticHighlighting.enabled': true,
   fontSize: 14,
   fontFamily: "'Fira Code', 'Cascadia Code', Consolas, monospace",
   minimap: { enabled: false },
@@ -159,16 +193,22 @@ watch(code, (newVal) => {
       @settings="settingsOpen = !settingsOpen"
     />
     <div class="editor-body">
-      <FileSettings v-if="settingsOpen" :document-id="documentId" @close="settingsOpen = false" />
+      <FileSettings v-if="settingsOpen" :document-id="documentId" @close="settingsOpen = false">
+        <ScriptBindings v-if="documentKind === 'peel'" :document-id="documentId" />
+      </FileSettings>
       <VueMonacoEditor
         v-model:value="code"
         :language="language"
+        :path="modelPath"
         :options="editorOptions"
         @before-mount="beforeMount"
         @mount="handleMount"
         class="monaco-editor-instance"
       />
     </div>
+    <p v-if="documentKind === 'peel' && !analysisAvailable" class="analysis-status" role="status">
+      {{ t('analysisUnavailable') }}
+    </p>
   </div>
 </template>
 
@@ -192,5 +232,11 @@ watch(code, (newVal) => {
 .monaco-editor-instance {
   width: 100%;
   height: 100%;
+}
+.analysis-status {
+  margin: 0;
+  padding: 4px 12px;
+  color: var(--peel-muted);
+  font-size: 12px;
 }
 </style>

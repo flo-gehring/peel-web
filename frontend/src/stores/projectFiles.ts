@@ -9,6 +9,7 @@ export type ProjectFile = components['schemas']['ProjectFile']
 export type FileContent = components['schemas']['FileContent']
 export type FileSummary = components['schemas']['FileSummary']
 export type FileState = { name: string; description: string; content: FileContent }
+export type ExpectedBinding = components['schemas']['ExpectedBinding']
 
 export function fileError(error: unknown): Error {
   let message = apiErrorMessage(error)
@@ -23,6 +24,24 @@ export const useProjectFileStore = defineStore('projectFiles', () => {
   // These are acknowledged server states, never refreshed implicitly during a save.
   const loaded = ref<Record<string, ProjectFile>>({})
   const metadataDrafts = ref<Record<string, { name: string; description: string }>>({})
+  const bindingDrafts = ref<Record<string, ExpectedBinding[]>>({})
+  function expectedBindings(id: string): ExpectedBinding[] {
+    const content = loaded.value[id]?.content
+    return (
+      bindingDrafts.value[id] ?? (content?.type === 'script' ? content.expectedBindings : []) ?? []
+    )
+  }
+  function setExpectedBindings(id: string, value: ExpectedBinding[]): void {
+    bindingDrafts.value[id] = value.map((binding) => ({ ...binding }))
+    metadataDrafts.value[id] ??= { ...metadata(id) }
+  }
+  function scriptContent(id: string, source: string): Extract<FileContent, { type: 'script' }> {
+    return {
+      type: 'script',
+      source,
+      expectedBindings: expectedBindings(id).map((binding) => ({ ...binding })),
+    }
+  }
   function metadata(fileId: string): { name: string; description: string } {
     return (
       metadataDrafts.value[fileId] ?? {
@@ -40,7 +59,12 @@ export const useProjectFileStore = defineStore('projectFiles', () => {
   function metadataDirty(fileId: string): boolean {
     const draft = metadataDrafts.value[fileId]
     const saved = loaded.value[fileId]
-    return !!draft && (draft.name !== saved?.name || draft.description !== saved?.description)
+    const savedBindings = saved?.content?.type === 'script' ? saved.content.expectedBindings : []
+    return (
+      (!!draft && (draft.name !== saved?.name || draft.description !== saved?.description)) ||
+      (bindingDrafts.value[fileId] !== undefined &&
+        JSON.stringify(bindingDrafts.value[fileId]) !== JSON.stringify(savedBindings))
+    )
   }
   const saving = new Set<string>()
   const pendingLoads = new Map<string, Promise<ProjectFile>>()
@@ -69,7 +93,10 @@ export const useProjectFileStore = defineStore('projectFiles', () => {
       if (started !== generation) throw new Error(t('theWorkspaceChanged'))
       if (error || !data) throw fileError(error)
       loaded.value[fileId] = data
-      if (reload) delete metadataDrafts.value[fileId]
+      if (reload) {
+        delete metadataDrafts.value[fileId]
+        delete bindingDrafts.value[fileId]
+      }
       return data
     })()
     pendingLoads.set(key, request)
@@ -109,8 +136,18 @@ export const useProjectFileStore = defineStore('projectFiles', () => {
       if (started !== generation) throw new Error(t('theWorkspaceChanged'))
       if (error || !data) throw fileError(error)
       loaded.value[fileId] = data
+      if (
+        state.content.type === 'script' &&
+        JSON.stringify(bindingDrafts.value[fileId]) ===
+          JSON.stringify(state.content.expectedBindings)
+      )
+        delete bindingDrafts.value[fileId]
       const draft = metadataDrafts.value[fileId]
-      if (draft?.name === state.name && draft.description === state.description)
+      if (
+        draft?.name === state.name &&
+        draft.description === state.description &&
+        !bindingDrafts.value[fileId]
+      )
         delete metadataDrafts.value[fileId]
       return data
     } finally {
@@ -125,6 +162,7 @@ export const useProjectFileStore = defineStore('projectFiles', () => {
     if (error) throw fileError(error)
     delete loaded.value[fileId]
     delete metadataDrafts.value[fileId]
+    delete bindingDrafts.value[fileId]
   }
 
   function clear(): void {
@@ -132,10 +170,14 @@ export const useProjectFileStore = defineStore('projectFiles', () => {
     pendingLoads.clear()
     loaded.value = {}
     metadataDrafts.value = {}
+    bindingDrafts.value = {}
   }
   return {
     loaded,
     metadataDrafts,
+    expectedBindings,
+    setExpectedBindings,
+    scriptContent,
     metadata,
     setMetadata,
     metadataDirty,
