@@ -1,24 +1,13 @@
 package de.flogehring.peelserver.api.services;
 
-import de.flogehring.peelserver.api.data.print.jobs.PrintJobId;
-import de.flogehring.peelserver.api.data.print.jobs.PrintJobInitRequestDto;
 import de.flogehring.peelserver.api.data.print.jobs.PrintJobStatus;
-import de.flogehring.peelserver.api.data.print.jobs.PrintJobSummary;
-import org.springframework.http.MediaType;
 import de.flogehring.peelserver.impl.users.SpringUserDetails;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import jakarta.validation.Valid;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
 
 @RequestMapping(path = "/api/print-jobs", produces = MediaType.APPLICATION_JSON_VALUE)
 public interface PrintJobController {

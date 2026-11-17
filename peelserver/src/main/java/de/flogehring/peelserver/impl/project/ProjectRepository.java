@@ -1,8 +1,9 @@
 package de.flogehring.peelserver.impl.project;
 
+import de.flogehring.peelserver.impl.users.UserId;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
-import de.flogehring.peelserver.impl.users.UserId;
+
 import java.util.List;
 import java.util.Optional;
 

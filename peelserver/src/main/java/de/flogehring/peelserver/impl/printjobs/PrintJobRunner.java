@@ -40,8 +40,9 @@ public class PrintJobRunner {
             log.warn("Print job {} is not in CALCULATING state, current state: {}", printJob.getId(), status);
             return;
         }
-        try { runJob(printJob, document); }
-        catch (RuntimeException exception) {
+        try {
+            runJob(printJob, document);
+        } catch (RuntimeException exception) {
             printJob.updateStatus(PrintJobStatus.FAILED);
             log.error("Print job {} failed", printJob.getId(), exception);
         } finally {
@@ -99,11 +100,11 @@ public class PrintJobRunner {
     }
 
     private Object tryInferData(String s) {
-        if(INTEGER.matcher(s).matches()) {
+        if (INTEGER.matcher(s).matches()) {
             return Integer.parseInt(s);
-        } else if(FLOAT.matcher(s).matches()) {
+        } else if (FLOAT.matcher(s).matches()) {
             return Double.parseDouble(s);
-        } else if(Pattern.compile("^(true|false)$", Pattern.CASE_INSENSITIVE).matcher(s).matches()) {
+        } else if (Pattern.compile("^(true|false)$", Pattern.CASE_INSENSITIVE).matcher(s).matches()) {
             return Boolean.parseBoolean(s);
         } else {
             return s;

@@ -17,12 +17,11 @@ public class ExpressionRenderConfiguration {
     private ExpressionRenderConfiguration(
             ExpressionRenderTemplate defaultTemplates,
             Map<String, ExpressionRenderTemplate> namedOverrides
-
     ) {
         this.defaultTemplates = defaultTemplates;
         this.namedOverrides = namedOverrides;
     }
- 
+
     public static ExpressionRenderConfiguration of(
             Map<TraceExpressionKind, String> render,
             Map<String, Map<TraceExpressionKind, String>> namedOverrides

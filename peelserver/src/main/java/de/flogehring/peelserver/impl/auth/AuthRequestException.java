@@ -8,13 +8,23 @@ public class AuthRequestException extends RuntimeException {
     public AuthRequestException(int status, String code, String message) {
         this(status, code, message, 0);
     }
+
     public AuthRequestException(int status, String code, String message, long retryAfter) {
         super(message);
         this.status = status;
         this.code = code;
         this.retryAfter = retryAfter;
     }
-    public int status() { return status; }
-    public String code() { return code; }
-    public long retryAfter() { return retryAfter; }
+
+    public int status() {
+        return status;
+    }
+
+    public String code() {
+        return code;
+    }
+
+    public long retryAfter() {
+        return retryAfter;
+    }
 }

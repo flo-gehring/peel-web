@@ -5,13 +5,18 @@ import de.flogehring.peelserver.impl.users.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
+
 import java.util.UUID;
-import static org.assertj.core.api.Assertions.*;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @PeelModuleTest
 class AuthPersistenceTest {
-    @Autowired SpringUserDetailService accounts;
-    @Autowired UserRepository users;
+    @Autowired
+    SpringUserDetailService accounts;
+    @Autowired
+    UserRepository users;
 
     @Test
     void createsFindsAndReusesAnAccountWithAUniqueEmailIndex() {

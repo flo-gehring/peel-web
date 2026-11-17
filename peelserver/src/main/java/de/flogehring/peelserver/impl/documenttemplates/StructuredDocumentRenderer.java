@@ -2,9 +2,13 @@ package de.flogehring.peelserver.impl.documenttemplates;
 
 import de.flogehring.peelserver.api.data.template.DocumentNode;
 import de.flogehring.peelserver.impl.run.render.ExpressionRenderer;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 final class StructuredDocumentRenderer {
     private final TraceSelection selection;
@@ -16,9 +20,13 @@ final class StructuredDocumentRenderer {
         this.expressions = expressions;
     }
 
-    List<String> warnings() { return List.copyOf(warnings); }
+    List<String> warnings() {
+        return List.copyOf(warnings);
+    }
 
-    String render(DocumentNode node) { return render(node, null, "document"); }
+    String render(DocumentNode node) {
+        return render(node, null, "document");
+    }
 
     private String render(DocumentNode node, TraceSelection.Occurrence current, String path) {
         try {
@@ -26,15 +34,18 @@ final class StructuredDocumentRenderer {
             if (type.equals("peelTable")) return table(node, current, path);
             if (type.equals("peelRepeat")) {
                 var occurrences = select(node, current);
-                if (occurrences.isEmpty()) warnings.add(path + ": block '" + node.attribute("block") + "' was not executed");
+                if (occurrences.isEmpty())
+                    warnings.add(path + ": block '" + node.attribute("block") + "' was not executed");
                 StringBuilder html = new StringBuilder();
-                for (var occurrence : occurrences) html.append("<div class=\"peel-repeat\">")
-                        .append(children(node, occurrence, path)).append("</div>");
+                for (var occurrence : occurrences)
+                    html.append("<div class=\"peel-repeat\">")
+                            .append(children(node, occurrence, path)).append("</div>");
                 return html.toString();
             }
             if (type.equals("peelCalculation") || type.equals("peelValue")) {
                 var occurrences = select(node, current);
-                if (occurrences.size() != 1) throw new IllegalArgumentException("Expected one trace occurrence, found " + occurrences.size());
+                if (occurrences.size() != 1)
+                    throw new IllegalArgumentException("Expected one trace occurrence, found " + occurrences.size());
                 var occurrence = occurrences.getFirst();
                 if (type.equals("peelValue")) {
                     Object value = occurrence.node().get("value");
@@ -47,8 +58,12 @@ final class StructuredDocumentRenderer {
                 String text = escape(node.text());
                 for (var mark : node.marks()) {
                     String tag = switch (mark.type()) {
-                        case "bold" -> "strong"; case "italic" -> "em"; case "strike" -> "s";
-                        case "underline" -> "u"; case "code" -> "code"; default -> "span";
+                        case "bold" -> "strong";
+                        case "italic" -> "em";
+                        case "strike" -> "s";
+                        case "underline" -> "u";
+                        case "code" -> "code";
+                        default -> "span";
                     };
                     if (mark.type().equals("link") && mark.attrs() != null) {
                         String href = String.valueOf(mark.attrs().getOrDefault("href", ""));
@@ -65,9 +80,14 @@ final class StructuredDocumentRenderer {
             if (type.equals("horizontalRule")) return "<hr />";
             String inner = children(node, current, path);
             String tag = switch (type) {
-                case "doc" -> "div"; case "paragraph" -> "p"; case "heading" -> "h" + heading(node);
-                case "bulletList" -> "ul"; case "orderedList" -> "ol"; case "listItem" -> "li";
-                case "blockquote" -> "blockquote"; case "codeBlock" -> "pre";
+                case "doc" -> "div";
+                case "paragraph" -> "p";
+                case "heading" -> "h" + heading(node);
+                case "bulletList" -> "ul";
+                case "orderedList" -> "ol";
+                case "listItem" -> "li";
+                case "blockquote" -> "blockquote";
+                case "codeBlock" -> "pre";
                 default -> throw new IllegalArgumentException("Unsupported node: " + type);
             };
             String attributes = type.equals("orderedList") ? " start=\"" + start(node) + "\"" : "";
@@ -88,8 +108,9 @@ final class StructuredDocumentRenderer {
             return "";
         }
         var html = new StringBuilder("<table class=\"peel-table\"><thead><tr>");
-        for (var column : node.content()) html.append("<th scope=\"col\" style=\"text-align:")
-                .append(alignment(column)).append("\">").append(escape(column.attribute("title"))).append("</th>");
+        for (var column : node.content())
+            html.append("<th scope=\"col\" style=\"text-align:")
+                    .append(alignment(column)).append("\">").append(escape(column.attribute("title"))).append("</th>");
         html.append("</tr></thead><tbody>");
         for (int row = 0; row < occurrences.size(); row++) {
             html.append("<tr>");
@@ -109,7 +130,8 @@ final class StructuredDocumentRenderer {
 
     private String children(DocumentNode node, TraceSelection.Occurrence current, String path) {
         var html = new StringBuilder();
-        for (int i = 0; i < node.content().size(); i++) html.append(render(node.content().get(i), current, path + "/" + i));
+        for (int i = 0; i < node.content().size(); i++)
+            html.append(render(node.content().get(i), current, path + "/" + i));
         return html.toString();
     }
 
@@ -130,7 +152,9 @@ final class StructuredDocumentRenderer {
             int decimals = Integer.parseInt(value.toString());
             if (decimals < 0 || decimals > 12) throw new NumberFormatException();
             return decimals;
-        } catch (NumberFormatException exception) { throw new IllegalArgumentException("Decimal places must be between 0 and 12"); }
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("Decimal places must be between 0 and 12");
+        }
     }
 
     private static Object binding(TraceSelection.Occurrence occurrence, String path) {
@@ -139,7 +163,8 @@ final class StructuredDocumentRenderer {
         if (value == null) throw new IllegalArgumentException("Unknown variable at block exit: " + parts[0]);
         for (int i = 1; i < parts.length; i++) {
             Map<String, Object> map = map(value);
-            if (!"map".equals(map.get("type"))) throw new IllegalArgumentException("Binding path is not a map: " + path);
+            if (!"map".equals(map.get("type")))
+                throw new IllegalArgumentException("Binding path is not a map: " + path);
             String key = parts[i];
             value = list(map.get("entries")).stream().map(StructuredDocumentRenderer::map)
                     .filter(entry -> key.equals(valueText(entry.get("key"), null)))
@@ -161,7 +186,8 @@ final class StructuredDocumentRenderer {
                 html.append("<p class=\"peel-condition\">if ").append(expressionText(item, mode, decimals)).append(" → ")
                         .append(escape(valueText(item.get("value"), null))).append("</p>");
             }
-            if (expression.get("executedBlock") != null) html.append(calculation(map(expression.get("executedBlock")), mode, decimals));
+            if (expression.get("executedBlock") != null)
+                html.append(calculation(map(expression.get("executedBlock")), mode, decimals));
             return html.toString();
         }
         if (type.equals("for_each_loop") || type.equals("while_loop")) {
@@ -199,7 +225,8 @@ final class StructuredDocumentRenderer {
     private String expressionText(Map<String, Object> expression, String mode, Integer decimals) {
         if (!mode.equals("substituted")) return expressions.render(expression);
         String text = switch (String.valueOf(expression.get("type"))) {
-            case "assignment" -> expression.get("variableName") + " = " + substituted(map(expression.get("expression")), decimals);
+            case "assignment" ->
+                    expression.get("variableName") + " = " + substituted(map(expression.get("expression")), decimals);
             case "return_expression" -> "return " + substituted(map(expression.get("expression")), decimals);
             default -> substituted(expression, decimals);
         };
@@ -209,17 +236,20 @@ final class StructuredDocumentRenderer {
     private String functionDetails(Map<String, Object> expression, String mode, Integer decimals) {
         StringBuilder html = new StringBuilder();
         switch (String.valueOf(expression.get("type"))) {
-            case "assignment", "return_expression" -> html.append(functionDetails(map(expression.get("expression")), mode, decimals));
+            case "assignment", "return_expression" ->
+                    html.append(functionDetails(map(expression.get("expression")), mode, decimals));
             case "binary_operator" -> {
                 html.append(functionDetails(map(expression.get("lhs")), mode, decimals));
                 html.append(functionDetails(map(expression.get("rhs")), mode, decimals));
             }
-            case "unary_prefix_operator" -> html.append(functionDetails(map(expression.get("argument")), mode, decimals));
+            case "unary_prefix_operator" ->
+                    html.append(functionDetails(map(expression.get("argument")), mode, decimals));
             case "selector" -> {
                 html.append(functionDetails(map(expression.get("target")), mode, decimals));
                 html.append(functionDetails(map(expression.get("selector")), mode, decimals));
             }
-            case "list_literal" -> list(expression.get("elements")).forEach(item -> html.append(functionDetails(map(item), mode, decimals)));
+            case "list_literal" ->
+                    list(expression.get("elements")).forEach(item -> html.append(functionDetails(map(item), mode, decimals)));
             case "map_literal" -> list(expression.get("entries")).forEach(item -> {
                 html.append(functionDetails(map(map(item).get("key")), mode, decimals));
                 html.append(functionDetails(map(map(item).get("value")), mode, decimals));
@@ -231,7 +261,8 @@ final class StructuredDocumentRenderer {
                 if (body != null) html.append("<div class=\"peel-function\">")
                         .append(calculation(map(body), mode, decimals)).append("</div>");
             }
-            default -> { }
+            default -> {
+            }
         }
         return html.toString();
     }
@@ -239,9 +270,11 @@ final class StructuredDocumentRenderer {
     private static String substituted(Map<String, Object> node, Integer decimals) {
         String type = String.valueOf(node.get("type"));
         return switch (type) {
-            case "binary_operator" -> "(" + substituted(map(node.get("lhs")), decimals) + " " + node.get("operator") + " "
-                    + (node.get("rhs") == null ? "…" : substituted(map(node.get("rhs")), decimals)) + ")";
-            case "unary_prefix_operator" -> node.get("operator") + "(" + substituted(map(node.get("argument")), decimals) + ")";
+            case "binary_operator" ->
+                    "(" + substituted(map(node.get("lhs")), decimals) + " " + node.get("operator") + " "
+                            + (node.get("rhs") == null ? "…" : substituted(map(node.get("rhs")), decimals)) + ")";
+            case "unary_prefix_operator" ->
+                    node.get("operator") + "(" + substituted(map(node.get("argument")), decimals) + ")";
             case "function_call" -> node.get("name") + "(" + list(node.get("arguments")).stream()
                     .map(item -> valueText(map(item).get("value"), decimals)).reduce((a, b) -> a + ", " + b).orElse("") + ")";
             default -> valueText(node.get("value"), decimals);
@@ -253,7 +286,8 @@ final class StructuredDocumentRenderer {
         if (node.isEmpty()) return value == null ? "none" : String.valueOf(value);
         return switch (String.valueOf(node.get("type"))) {
             case "none" -> "none";
-            case "list" -> "[" + list(node.get("items")).stream().map(item -> valueText(item, decimals)).reduce((a, b) -> a + ", " + b).orElse("") + "]";
+            case "list" ->
+                    "[" + list(node.get("items")).stream().map(item -> valueText(item, decimals)).reduce((a, b) -> a + ", " + b).orElse("") + "]";
             case "map" -> "{" + list(node.get("entries")).stream().map(StructuredDocumentRenderer::map)
                     .map(entry -> valueText(entry.get("key"), null) + ": " + valueText(entry.get("value"), decimals))
                     .reduce((a, b) -> a + ", " + b).orElse("") + "}";
@@ -272,6 +306,13 @@ final class StructuredDocumentRenderer {
     static String escape(String text) {
         return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
     }
-    @SuppressWarnings("unchecked") private static Map<String, Object> map(Object object) { return object instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of(); }
-    private static List<?> list(Object object) { return object instanceof List<?> list ? list : List.of(); }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> map(Object object) {
+        return object instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();
+    }
+
+    private static List<?> list(Object object) {
+        return object instanceof List<?> list ? list : List.of();
+    }
 }

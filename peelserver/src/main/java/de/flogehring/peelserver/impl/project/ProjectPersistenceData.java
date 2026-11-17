@@ -15,6 +15,7 @@ public record ProjectPersistenceData(
         // An unset admin list grants no extra privileges.
         admins = admins == null ? List.of() : List.copyOf(admins);
     }
+
     public ProjectPersistenceData(UserId owner, List<UserId> members, String name, String description) {
         this(owner, members, name, description, List.of());
     }

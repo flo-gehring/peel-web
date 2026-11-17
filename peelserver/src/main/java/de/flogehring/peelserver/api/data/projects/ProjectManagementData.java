@@ -1,7 +1,9 @@
 package de.flogehring.peelserver.api.data.projects;
 
 import de.flogehring.peelserver.impl.project.ProjectState;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
 import java.util.List;

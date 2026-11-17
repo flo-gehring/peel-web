@@ -1,20 +1,30 @@
 package de.flogehring.peelserver.auth;
 
 import de.flogehring.peelserver.config.PeelModuleTest;
-import de.flogehring.peelserver.impl.users.*;
+import de.flogehring.peelserver.impl.users.SpringUserDetails;
+import de.flogehring.peelserver.impl.users.UserId;
+import de.flogehring.peelserver.impl.users.UserPersistenceData;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
-import java.nio.file.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@PeelModuleTest @AutoConfigureMockMvc
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@PeelModuleTest
+@AutoConfigureMockMvc
 class DocumentOpenApiTest {
-    @Autowired MockMvc mvc;
-    @Test void exportsTheStructuredDocumentContract() throws Exception {
+    @Autowired
+    MockMvc mvc;
+
+    @Test
+    void exportsTheStructuredDocumentContract() throws Exception {
         var user = new SpringUserDetails(new UserId("contract"), new UserPersistenceData("contract@example.test", null));
         var result = mvc.perform(get("/v3/api-docs").with(user(user))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.components.schemas.DocumentContent.properties.document").exists())

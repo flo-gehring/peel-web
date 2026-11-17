@@ -2,10 +2,13 @@ package de.flogehring.peelserver.impl.documenttemplates;
 
 import de.flogehring.peel.convenience.output.TraceMapOutput;
 import de.flogehring.peel.core.trace.TraceProgram;
+
 import java.util.*;
 
 final class TraceSelection {
-    record Occurrence(String scriptId, String path, Map<String, Object> node, Map<String, Object> variablesAtExit) {}
+    record Occurrence(String scriptId, String path, Map<String, Object> node, Map<String, Object> variablesAtExit) {
+    }
+
     private final Map<String, List<Occurrence>> byScript = new LinkedHashMap<>();
     private final Map<String, List<String>> definitions;
 
@@ -43,7 +46,7 @@ final class TraceSelection {
         } else if (object instanceof Map<?, ?> raw) {
             Map<String, Object> node = (Map<String, Object>) raw;
             if ("block".equals(node.get("type")))
-                result.add(new Occurrence(id, path, node, (Map<String,Object>) node.get("variablesAtExit")));
+                result.add(new Occurrence(id, path, node, (Map<String, Object>) node.get("variablesAtExit")));
             node.forEach((key, value) -> {
                 if (!Set.of("value", "result", "binding", "parameterBindings", "resolvedCallable", "variablesAtExit").contains(key))
                     walk(id, value, path + key + "/", result);

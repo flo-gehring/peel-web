@@ -1,6 +1,7 @@
 package de.flogehring.peelserver.impl.project;
-import de.flogehring.peelserver.impl.files.*;
 
+import de.flogehring.peelserver.impl.files.FileContent;
+import de.flogehring.peelserver.impl.files.ProjectFile;
 import de.flogehring.peelserver.impl.printjobs.PrintJobPersistence;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.annotation.Bean;

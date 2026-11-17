@@ -3,20 +3,20 @@ package de.flogehring.peelserver.impl.files;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import de.flogehring.peel.core.trace.TraceExpressionKind;
+import de.flogehring.peelserver.api.data.template.DocumentNode;
 import de.flogehring.peelserver.impl.renderconfig.ExpressionRenderConfiguration;
 import io.swagger.v3.oas.annotations.media.DiscriminatorMapping;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.annotation.TypeAlias;
+
 import java.util.Map;
-import de.flogehring.peelserver.api.data.template.DocumentNode;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
 @JsonSubTypes({
-    @JsonSubTypes.Type(value = FileContent.ScriptContent.class, name = "script"),
-    @JsonSubTypes.Type(value = FileContent.RenderConfigContent.class, name = "render-config"),
-    @JsonSubTypes.Type(value = FileContent.DocumentContent.class, name = "document")
+        @JsonSubTypes.Type(value = FileContent.ScriptContent.class, name = "script"),
+        @JsonSubTypes.Type(value = FileContent.RenderConfigContent.class, name = "render-config"),
+        @JsonSubTypes.Type(value = FileContent.DocumentContent.class, name = "document")
 })
 @Schema(oneOf = {FileContent.ScriptContent.class, FileContent.RenderConfigContent.class, FileContent.DocumentContent.class},
         discriminatorProperty = "type", discriminatorMapping = {
@@ -33,7 +33,8 @@ public sealed interface FileContent {
     }
 
     @TypeAlias("script")
-    record ScriptContent(@NotNull String source) implements FileContent {}
+    record ScriptContent(@NotNull String source) implements FileContent {
+    }
 
     @TypeAlias("render-config")
     record RenderConfigContent(
@@ -49,5 +50,6 @@ public sealed interface FileContent {
     record DocumentContent(
             @NotNull DocumentNode document,
             String renderConfigurationId
-    ) implements FileContent {}
+    ) implements FileContent {
+    }
 }

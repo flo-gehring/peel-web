@@ -5,15 +5,21 @@ import de.flogehring.peelserver.api.data.auth.CsrfResponse;
 import de.flogehring.peelserver.api.data.auth.WhoAmIResponse;
 import de.flogehring.peelserver.api.error.ApiErrorResponse;
 import io.swagger.v3.core.converter.ModelConverters;
-import io.swagger.v3.oas.models.*;
+import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.Operation;
+import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.media.*;
 import io.swagger.v3.oas.models.parameters.RequestBody;
-import io.swagger.v3.oas.models.responses.*;
+import io.swagger.v3.oas.models.responses.ApiResponse;
+import io.swagger.v3.oas.models.responses.ApiResponses;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** Includes the filter-owned endpoints in the same contract as the controllers. */
+/**
+ * Includes the filter-owned endpoints in the same contract as the controllers.
+ */
 @Configuration
 public class AuthOpenApiConfiguration {
     @Bean

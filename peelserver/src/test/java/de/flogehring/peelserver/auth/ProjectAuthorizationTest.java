@@ -1,16 +1,22 @@
 package de.flogehring.peelserver.auth;
-import static de.flogehring.peelserver.DocumentFixtures.*;
 
 import de.flogehring.peelserver.config.PeelModuleTest;
-import de.flogehring.peelserver.impl.documenttemplates.*;
-import de.flogehring.peelserver.impl.project.*;
-import de.flogehring.peelserver.impl.renderconfig.*;
-import de.flogehring.peelserver.impl.scripts.*;
-import de.flogehring.peelserver.impl.files.*;
-import java.time.Instant;
-import de.flogehring.peelserver.impl.users.*;
+import de.flogehring.peelserver.impl.documenttemplates.Document;
+import de.flogehring.peelserver.impl.files.FileContent;
+import de.flogehring.peelserver.impl.files.ProjectFile;
+import de.flogehring.peelserver.impl.files.ProjectFileRepository;
 import de.flogehring.peelserver.impl.filestorage.StorageService;
-import de.flogehring.peelserver.impl.printjobs.*;
+import de.flogehring.peelserver.impl.printjobs.PrintJobRepository;
+import de.flogehring.peelserver.impl.printjobs.PrintJobRunner;
+import de.flogehring.peelserver.impl.project.ProjectId;
+import de.flogehring.peelserver.impl.project.ProjectPersistence;
+import de.flogehring.peelserver.impl.project.ProjectPersistenceData;
+import de.flogehring.peelserver.impl.project.ProjectRepository;
+import de.flogehring.peelserver.impl.renderconfig.ExpressionRenderConfiguration;
+import de.flogehring.peelserver.impl.renderconfig.RenderConfigurationService;
+import de.flogehring.peelserver.impl.users.SpringUserDetails;
+import de.flogehring.peelserver.impl.users.UserId;
+import de.flogehring.peelserver.impl.users.UserPersistenceData;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,23 +26,37 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import tools.jackson.databind.ObjectMapper;
-import java.util.*;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static de.flogehring.peelserver.DocumentFixtures.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @PeelModuleTest
 @AutoConfigureMockMvc
 class ProjectAuthorizationTest {
-    @Autowired MockMvc mvc;
-    @Autowired ObjectMapper json;
-    @Autowired ProjectRepository projects;
-    @Autowired ProjectFileRepository files;
-    @Autowired PrintJobRepository jobs;
-    @MockitoBean StorageService storage;
-    @MockitoBean PrintJobRunner runner;
+    @Autowired
+    MockMvc mvc;
+    @Autowired
+    ObjectMapper json;
+    @Autowired
+    ProjectRepository projects;
+    @Autowired
+    ProjectFileRepository files;
+    @Autowired
+    PrintJobRepository jobs;
+    @MockitoBean
+    StorageService storage;
+    @MockitoBean
+    PrintJobRunner runner;
     SpringUserDetails owner, member, outsider;
     ProjectId project, otherProject;
     String scriptId, configId, documentId;
@@ -78,7 +98,10 @@ class ProjectAuthorizationTest {
         mvc.perform(get("/api/print-jobs/" + jobId + "/data").with(user(outsider))).andExpect(status().isNotFound());
         mvc.perform(get("/api/print-jobs/" + jobId + "/file/guessed.pdf").with(user(outsider))).andExpect(status().isNotFound());
         mvc.perform(multipart("/api/print-jobs/" + jobId + "/data").file(new MockMultipartFile("file", "test.csv", "text/csv", "a\n1".getBytes()))
-                .with(request -> { request.setMethod("PUT"); return request; }).with(user(outsider)).with(csrf())).andExpect(status().isNotFound());
+                .with(request -> {
+                    request.setMethod("PUT");
+                    return request;
+                }).with(user(outsider)).with(csrf())).andExpect(status().isNotFound());
         verifyNoInteractions(storage);
         verifyNoInteractions(runner);
         assertThat(jobs.findById(jobId).orElseThrow().getPrintJobPersistenceData().status()).isEqualTo(de.flogehring.peelserver.api.data.print.jobs.PrintJobStatus.CREATED);
@@ -146,17 +169,18 @@ class ProjectAuthorizationTest {
     @Test
     void storedPreviewAndPrintExecutionRecheckReferenceProjectBoundaries() throws Exception {
         String foreignId = UUID.randomUUID().toString();
-        files.insert(new ProjectFile(foreignId,otherProject,"Foreign","",0,new FileContent.ScriptContent("99;"),Instant.now(),Instant.now()));
+        files.insert(new ProjectFile(foreignId, otherProject, "Foreign", "", 0, new FileContent.ScriptContent("99;"), Instant.now(), Instant.now()));
         var document = files.findById(documentId).orElseThrow();
-        files.save(new ProjectFile(document.id(),document.projectId(),document.name(),document.description(),document.version(),
-                new FileContent.DocumentContent(doc(calculation(foreignId)),configId),document.createdAt(),document.updatedAt()));
+        files.save(new ProjectFile(document.id(), document.projectId(), document.name(), document.description(), document.version(),
+                new FileContent.DocumentContent(doc(calculation(foreignId)), configId), document.createdAt(), document.updatedAt()));
         mvc.perform(body(post("/api/documents/preview-stored/" + documentId), Map.of()).with(user(owner))).andExpect(status().isNotFound());
         String job = createJob(owner);
         mvc.perform(post("/api/print-jobs/" + job + "/run").with(user(owner)).with(csrf())).andExpect(status().isNotFound());
         verifyNoInteractions(runner, storage);
     }
 
-    @Test void tablesUseAuthorizedReferencesAndPassAnImmutableTemplateToPrintJobs() throws Exception {
+    @Test
+    void tablesUseAuthorizedReferencesAndPassAnImmutableTemplateToPrintJobs() throws Exception {
         var original = files.findById(documentId).orElseThrow();
         var tableDocument = doc(table(scriptId));
         files.save(new ProjectFile(original.id(), original.projectId(), original.name(), original.description(), original.version(),
@@ -180,11 +204,13 @@ class ProjectAuthorizationTest {
     }
 
     private void insert(String id, String name, FileContent content) {
-        files.insert(new ProjectFile(id,project,name,"",0,content,Instant.now(),Instant.now()));
+        files.insert(new ProjectFile(id, project, name, "", 0, content, Instant.now(), Instant.now()));
     }
+
     private MockHttpServletRequestBuilder body(MockHttpServletRequestBuilder request, Object body) throws Exception {
         return request.with(csrf()).contentType("application/json").content(json.writeValueAsString(body));
     }
+
     private SpringUserDetails principal(String id) {
         return new SpringUserDetails(new UserId(id), new UserPersistenceData(id + "@example.test", null));
     }

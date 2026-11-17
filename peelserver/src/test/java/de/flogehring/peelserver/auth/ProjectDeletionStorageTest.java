@@ -1,24 +1,40 @@
 package de.flogehring.peelserver.auth;
+
+import de.flogehring.peelserver.api.data.print.jobs.PrintJobId;
 import de.flogehring.peelserver.config.PeelModuleTest;
-import de.flogehring.peelserver.impl.project.*;
-import de.flogehring.peelserver.impl.printjobs.*;
 import de.flogehring.peelserver.impl.documenttemplates.DocumentId;
 import de.flogehring.peelserver.impl.filestorage.StorageService;
-import de.flogehring.peelserver.impl.users.*;
-import de.flogehring.peelserver.api.data.print.jobs.PrintJobId;
+import de.flogehring.peelserver.impl.printjobs.PrintJobPersistence;
+import de.flogehring.peelserver.impl.printjobs.PrintJobRepository;
+import de.flogehring.peelserver.impl.project.ProjectId;
+import de.flogehring.peelserver.impl.project.ProjectManagementService;
+import de.flogehring.peelserver.impl.project.ProjectPersistence;
+import de.flogehring.peelserver.impl.project.ProjectRepository;
+import de.flogehring.peelserver.impl.users.SpringUserDetails;
+import de.flogehring.peelserver.impl.users.UserId;
+import de.flogehring.peelserver.impl.users.UserPersistenceData;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+
 import java.io.ByteArrayInputStream;
 import java.util.UUID;
-import static org.assertj.core.api.Assertions.*;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @PeelModuleTest
 class ProjectDeletionStorageTest {
-    @Autowired ProjectManagementService management;
-    @Autowired ProjectRepository projects;
-    @Autowired PrintJobRepository jobs;
-    @Autowired StorageService storage;
-    @Test void hardDeletionRemovesCsvPdfAndOrphanResultsButPreservesOtherProjectsFiles() {
+    @Autowired
+    ProjectManagementService management;
+    @Autowired
+    ProjectRepository projects;
+    @Autowired
+    PrintJobRepository jobs;
+    @Autowired
+    StorageService storage;
+
+    @Test
+    void hardDeletionRemovesCsvPdfAndOrphanResultsButPreservesOtherProjectsFiles() {
         var owner = new SpringUserDetails(new UserId("owner"), new UserPersistenceData("owner@example.test", null));
         var project = projects.save(ProjectPersistence.newProject(owner.getUserId(), "Delete me"));
         var job = jobs.save(PrintJobPersistence.init(new PrintJobId(UUID.randomUUID().toString()), new DocumentId("template"), new ProjectId(project.getId()), "Job", "Template"));

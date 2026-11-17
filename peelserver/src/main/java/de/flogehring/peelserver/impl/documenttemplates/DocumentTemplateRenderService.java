@@ -1,17 +1,17 @@
 package de.flogehring.peelserver.impl.documenttemplates;
 
+import de.flogehring.peel.core.trace.TraceProgram;
 import de.flogehring.peel.parse.PeelGrammar;
 import de.flogehring.peelserver.api.data.template.DocumentPreviewResponse;
-import de.flogehring.peelserver.impl.run.render.ExpressionRenderer;
-import de.flogehring.peel.core.trace.TraceProgram;
 import de.flogehring.peelserver.impl.run.PeelExecutionService;
+import de.flogehring.peelserver.impl.run.render.ExpressionRenderer;
 import lombok.RequiredArgsConstructor;
 import org.openpdf.pdf.ITextRenderer;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
-import java.util.List;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -20,7 +20,9 @@ import java.util.function.Function;
 public class DocumentTemplateRenderService {
 
     private final PeelExecutionService peelExecutionService;
-    private record Rendered(String html, List<String> warnings) {}
+
+    private record Rendered(String html, List<String> warnings) {
+    }
 
     public String render(Document document, Map<String, Object> bindings) {
         return renderContent(document, bindings).html();
@@ -73,7 +75,7 @@ public class DocumentTemplateRenderService {
     }
 
     private <T> T pdf(String html, Function<ByteArrayOutputStream, T> processor) {
-        try(ByteArrayOutputStream outputStream = new ByteArrayOutputStream()){
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             ITextRenderer renderer = new ITextRenderer();
             renderer.setDocumentFromString(html);
             renderer.layout();

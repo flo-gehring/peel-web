@@ -1,20 +1,21 @@
 package de.flogehring.peelserver.api.data.template;
 
-import jakarta.validation.constraints.NotBlank;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
 
 import java.util.*;
 
 public record DocumentNode(
         @NotBlank String type,
-        @Schema(type = "object", additionalProperties = Schema.AdditionalPropertiesValue.TRUE)
-        Map<String, Object> attrs,
+        @Schema(type = "object", additionalProperties = Schema.AdditionalPropertiesValue.TRUE) Map<String, Object> attrs,
         List<DocumentNode> content,
         String text,
         List<Mark> marks
 ) {
-    public record Mark(@NotBlank String type,
-                       @Schema(type = "object", additionalProperties = Schema.AdditionalPropertiesValue.TRUE) Map<String, Object> attrs) {
+    public record Mark(
+            @NotBlank String type,
+            @Schema(type = "object", additionalProperties = Schema.AdditionalPropertiesValue.TRUE) Map<String, Object> attrs
+    ) {
     }
 
     public DocumentNode {
