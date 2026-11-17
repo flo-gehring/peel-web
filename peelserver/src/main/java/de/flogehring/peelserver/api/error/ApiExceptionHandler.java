@@ -10,6 +10,38 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    @ExceptionHandler(de.flogehring.peelserver.impl.run.BindingInputException.class)
+    public ResponseEntity<ApiErrorResponse> handleBindings(de.flogehring.peelserver.impl.run.BindingInputException ex) {
+        return ResponseEntity.badRequest().body(ApiErrorResponse.of(ex.code(), ex.getMessage(), ex.details()));
+    }
+    @ExceptionHandler(de.flogehring.peelserver.impl.files.FileConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleFileConflict(
+            de.flogehring.peelserver.impl.files.FileConflictException ex
+    ) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorResponse.of(ex.code(), ex.getMessage(), ex.details()));
+    }
+
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<ApiErrorResponse> handleStatus(org.springframework.web.server.ResponseStatusException ex) {
+        return ResponseEntity.status(ex.getStatusCode()).body(ApiErrorResponse.of("project_error", ex.getReason()));
+    }
+
+    @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidRequest() {
+        return ResponseEntity.badRequest().body(ApiErrorResponse.of("bad_request", "Invalid request fields"));
+    }
+
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleUnreadableRequest() {
+        return ResponseEntity.badRequest().body(ApiErrorResponse.of("bad_request", "Invalid request body"));
+    }
+
+    @ExceptionHandler(de.flogehring.peelserver.impl.auth.AuthRequestException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuth(de.flogehring.peelserver.impl.auth.AuthRequestException ex) {
+        var response = ResponseEntity.status(ex.status());
+        if (ex.retryAfter() > 0) response.header("Retry-After", Long.toString(ex.retryAfter()));
+        return response.body(ApiErrorResponse.of(ex.code(), ex.getMessage()));
+    }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleNotFound(ResourceNotFoundException ex) {

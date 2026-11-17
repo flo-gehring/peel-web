@@ -1,327 +1,332 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { formatDateTime, t } from '@/i18n'
+import { computed, ref, watch } from 'vue'
+import { ChevronRight, FileText, Plus, RefreshCw } from '@lucide/vue'
+import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/adapter/client'
+import { apiErrorMessage } from '@/adapter/apiError'
 import type { components } from '@/types/api'
+import { useProjectStore } from '@/stores/projects'
+import CreatePrintJobDialog from '@/components/CreatePrintJobDialog.vue'
 
-type PrintJobSummary = components['schemas']['PrintJobSummary']
-type DocumentSummary = components['schemas']['DocumentTemplateSummaryResponse']
-
-const router = useRouter()
-const printJobs = ref<PrintJobSummary[]>([])
-const documents = ref<DocumentSummary[]>([])
-const isLoading = ref(true)
-const isDialogOpen = ref(false)
-const isCreating = ref(false)
+type Overview = components['schemas']['ProjectPrintJobs']
+type Group = components['schemas']['DocumentJobs']
+const route = useRoute(),
+  router = useRouter()
+const projects = useProjectStore()
+const projectId = computed(() => String(route.params.projectId))
+const overview = ref<Overview | null>(null)
+const isLoading = ref(false)
 const errorMessage = ref('')
-const name = ref('')
-const documentId = ref('')
-
-function documentName(documentId: string | undefined) {
+const selected = ref<Group | null>(null)
+const readOnly = computed(() => overview.value?.state !== 'ACTIVE')
+const groups = computed(() => [
+  ...(overview.value?.documents ?? []).map((group) => ({ ...group, deleted: false })),
+  ...(overview.value?.deletedDocuments ?? []).map((group) => ({ ...group, deleted: true })),
+])
+function statusLabel(status: string | undefined): string {
   return (
-    documents.value.find((document) => document.id === documentId)?.name ??
-    'Dokument nicht verfügbar'
+    (
+      {
+        CREATED: t('created'),
+        CALCULATING: t('processing'),
+        PRINTING: t('printing'),
+        COMPLETED: t('completed'),
+        FAILED: t('failed'),
+      } as Record<string, string>
+    )[status ?? 'CREATED'] ??
+    status ??
+    ''
   )
 }
-
-function statusLabel(status: PrintJobSummary['status']) {
-  return {
-    CREATED: 'Erstellt',
-    CALCULATING: 'Wird verarbeitet',
-    PRINTING: 'Wird gedruckt',
-    COMPLETED: 'Abgeschlossen',
-    FAILED: 'Fehlgeschlagen',
-  }[status ?? 'CREATED']
-}
-
-async function loadPrintJobs() {
+async function load(): Promise<void> {
+  const id = projectId.value
   isLoading.value = true
   errorMessage.value = ''
-  const [
-    { data: printJobData, error: printJobError },
-    { data: documentData, error: documentError },
-  ] = await Promise.all([api.GET('/api/print-jobs/list'), api.GET('/api/documents')])
-  isLoading.value = false
-
-  if (printJobError || documentError) {
-    errorMessage.value = 'Druckaufträge konnten nicht geladen werden.'
-    return
+  try {
+    const [{ data, error }] = await Promise.all([
+      api.GET('/api/projects/{projectId}/print-jobs', { params: { path: { projectId: id } } }),
+      projects.loadProject(id),
+    ])
+    if (error || !data) throw new Error(apiErrorMessage(error, t('printJobsCouldNotBeLoaded')))
+    if (projectId.value === id) overview.value = data
+  } catch (error) {
+    if (projectId.value === id)
+      errorMessage.value = error instanceof Error ? error.message : t('theServerCouldNotBeReached')
+  } finally {
+    if (projectId.value === id) isLoading.value = false
   }
-
-  printJobs.value = printJobData ?? []
-  documents.value = documentData ?? []
 }
-
-async function openCreateDialog() {
-  errorMessage.value = ''
-  const { data, error } = await api.GET('/api/documents')
-  if (error) {
-    errorMessage.value = 'Dokumente konnten nicht geladen werden.'
-    return
-  }
-
-  documents.value = data ?? []
-  name.value = ''
-  documentId.value = ''
-  isDialogOpen.value = true
+function created(id: string): void {
+  selected.value = null
+  void router.push({ name: 'print-job-detail', params: { projectId: projectId.value, id } })
 }
-
-async function createPrintJob() {
-  if (!name.value.trim() || !documentId.value) return
-
-  isCreating.value = true
-  errorMessage.value = ''
-  const { data, error } = await api.POST('/api/print-jobs', {
-    body: {
-      name: name.value.trim(),
-      documentId: { id: documentId.value },
-    },
-  })
-  isCreating.value = false
-
-  if (error || !data?.id) {
-    errorMessage.value = 'Druckauftrag konnte nicht angelegt werden.'
-    return
-  }
-
-  await router.push({ name: 'print-job-detail', params: { id: data.id } })
-}
-
-function openPrintJob(printJob: PrintJobSummary) {
-  const id = printJob.printJobId?.id
-  if (id) router.push({ name: 'print-job-detail', params: { id } })
-}
-
-onMounted(loadPrintJobs)
+watch(
+  projectId,
+  () => {
+    overview.value = null
+    selected.value = null
+    void load()
+  },
+  { immediate: true },
+)
 </script>
-
 <template>
   <main class="page">
-    <header class="page-header">
-      <div>
-        <RouterLink class="back-link" to="/">Peel</RouterLink>
-        <h1>Druckaufträge</h1>
-      </div>
-      <button class="primary-button" type="button" @click="openCreateDialog">
-        + Neuer Auftrag
-      </button>
-    </header>
-
-    <p v-if="errorMessage" class="error-message" role="alert">{{ errorMessage }}</p>
-    <p v-else-if="isLoading" class="status-message">Druckaufträge werden geladen...</p>
-    <p v-else-if="printJobs.length === 0" class="status-message">
-      Noch keine Druckaufträge vorhanden.
-    </p>
-
-    <section v-else class="print-job-list" aria-label="Druckaufträge">
-      <button
-        v-for="printJob in printJobs"
-        :key="printJob.printJobId?.id"
-        class="print-job-row"
-        type="button"
-        @click="openPrintJob(printJob)"
-      >
-        <strong>{{ printJob.name || 'Unbenannter Druckauftrag' }}</strong>
-        <span>{{ documentName(printJob.documentId?.id) }}</span>
-        <span :class="printJob.fileName ? 'file-ready' : 'file-missing'">
-          {{ printJob.fileName || 'Keine Datei hochgeladen' }}
-        </span>
-        <span class="status-badge" :class="`status-${printJob.status?.toLowerCase() ?? 'created'}`">
-          {{ statusLabel(printJob.status) }}
-        </span>
-      </button>
-    </section>
-
-    <div v-if="isDialogOpen" class="dialog-backdrop" @click.self="isDialogOpen = false">
-      <form class="dialog" @submit.prevent="createPrintJob">
-        <h2>Druckauftrag anlegen</h2>
-        <label>
-          Name
-          <input v-model="name" required autofocus />
-        </label>
-        <label>
-          Dokument
-          <select v-model="documentId" required>
-            <option disabled value="">Dokument auswählen</option>
-            <option v-for="document in documents" :key="document.id" :value="document.id">
-              {{ document.name || 'Unbenanntes Dokument' }}
-            </option>
-          </select>
-        </label>
-        <p v-if="documents.length === 0" class="hint">Es sind keine Dokumente verfügbar.</p>
-        <div class="dialog-actions">
-          <button type="button" @click="isDialogOpen = false">Abbrechen</button>
-          <button
-            class="primary-button"
-            type="submit"
-            :disabled="isCreating || documents.length === 0"
-          >
-            {{ isCreating ? 'Wird angelegt...' : 'Anlegen' }}
-          </button>
+    <div class="page-content">
+      <header class="page-header">
+        <div class="page-intro">
+          <h1>{{ t('printJobs') }}</h1>
+          <p>{{ overview?.projectName }} {{ t('groupedByDocumentTemplate') }}</p>
         </div>
-      </form>
+        <button
+          :title="t('refreshPrintJobs')"
+          :aria-label="t('refreshPrintJobs')"
+          :disabled="isLoading"
+          @click="load"
+        >
+          <RefreshCw :size="18" />
+        </button>
+      </header>
+      <p v-if="overview && readOnly" class="status-message">
+        {{ t('archivedProjectJobsAndResultsRemainReadableNewJobs') }}
+      </p>
+      <p v-if="errorMessage" class="error-message" role="alert">
+        {{ errorMessage }} <button @click="load">{{ t('tryAgain') }}</button>
+      </p>
+      <p v-if="isLoading" class="status-message" role="status">{{ t('loadingPrintJobs') }}</p>
+      <p v-if="overview && !groups.length" class="status-message">
+        {{ t('noDocumentTemplatesYetCreateADocumentTemplateIn') }}
+      </p>
+      <template v-for="(group, index) in groups" :key="group.documentId">
+        <h2 v-if="group.deleted && !groups[index - 1]?.deleted" class="deleted-heading">
+          {{ t('deletedDocumentTemplates') }}
+        </h2>
+        <section class="document-jobs" :class="{ deleted: group.deleted }">
+          <details open>
+            <summary>
+              <ChevronRight :size="16" class="chevron" aria-hidden="true" /><FileText
+                :size="18"
+                aria-hidden="true"
+              /><strong>{{ group.name }}</strong
+              ><span>{{ group.jobs?.length ?? 0 }} {{ t('jobs') }}</span>
+            </summary>
+            <div class="print-job-list">
+              <p v-if="!group.jobs?.length" class="empty-group">{{ t('noPrintJobsYet') }}</p>
+              <RouterLink
+                v-for="job in group.jobs"
+                :key="job.printJobId?.id"
+                class="print-job-row"
+                :to="{ name: 'print-job-detail', params: { projectId, id: job.printJobId?.id } }"
+              >
+                <span class="job-info"
+                  ><strong>{{ job.name || t('untitledPrintJob') }}</strong
+                  ><time>{{
+                    job.createdAt ? formatDateTime(job.createdAt) : t('timeNotRecorded')
+                  }}</time></span
+                >
+                <span class="job-file">{{ job.fileName || t('noCsvFile') }}</span>
+                <span>{{ job.fileIds?.length ?? 0 }} {{ t('pdfs') }}</span>
+                <span class="status-badge" :class="`status-${job.status?.toLowerCase()}`">{{
+                  statusLabel(job.status)
+                }}</span>
+              </RouterLink>
+            </div>
+          </details>
+          <button
+            v-if="!group.deleted"
+            class="create-job"
+            :disabled="readOnly"
+            :title="t('createPrintJobForName', { name: group.name })"
+            @click="selected = group"
+          >
+            <Plus :size="16" aria-hidden="true" />{{ t('newPrintJob') }}
+          </button>
+        </section>
+      </template>
     </div>
+    <CreatePrintJobDialog
+      v-if="selected?.documentId"
+      :project-id="projectId"
+      :document-id="selected.documentId"
+      :document-name="selected.name ?? ''"
+      @cancel="selected = null"
+      @created="created"
+    />
   </main>
 </template>
-
 <style scoped>
 .page {
-  min-height: 100vh;
-  padding: 40px max(24px, calc((100vw - 980px) / 2));
-  background: #17191d;
-  color: #edf1f5;
+  min-height: calc(100dvh - var(--app-header-height));
+  padding: 40px 24px;
+  background: var(--peel-background);
+  color: var(--peel-text);
+}
+.page-content {
+  max-width: 1120px;
+  margin: 0 auto;
 }
 .page-header {
   display: flex;
-  align-items: end;
+  align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 38px;
-}
-.back-link {
-  color: #89c6ff;
-  font-family: ui-monospace, monospace;
-  font-size: 0.8rem;
-  text-decoration: none;
-  text-transform: uppercase;
+  gap: 20px;
+  margin-bottom: 28px;
 }
 h1 {
-  margin-top: 5px;
-  font-size: clamp(2.2rem, 6vw, 4rem);
-  letter-spacing: -0.055em;
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1.2;
 }
-button,
-input,
-select {
-  font: inherit;
+.page-intro p {
+  margin-top: 8px;
+  color: var(--peel-muted);
 }
-button {
+.document-jobs {
+  position: relative;
+  margin: 16px 0;
+  border: 1px solid var(--peel-border);
+  border-radius: 12px;
+  background: var(--peel-surface);
+}
+.document-jobs summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 220px 18px 16px;
   cursor: pointer;
+  list-style: none;
 }
-.primary-button {
-  border: 1px solid #89c6ff;
-  padding: 10px 15px;
-  background: #89c6ff;
-  color: #102231;
-  font-weight: 700;
+.document-jobs summary::-webkit-details-marker {
+  display: none;
 }
-.primary-button:disabled {
-  cursor: wait;
-  opacity: 0.55;
+.document-jobs summary strong {
+  overflow-wrap: anywhere;
+}
+.document-jobs summary span {
+  color: var(--peel-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.document-jobs summary svg {
+  flex-shrink: 0;
+}
+.document-jobs details[open] > summary .chevron {
+  transform: rotate(90deg);
 }
 .print-job-list {
-  border-top: 1px solid #3a4049;
+  border-top: 1px solid var(--peel-border);
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
 }
 .print-job-row {
   display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr auto;
-  width: 100%;
-  padding: 18px 12px;
-  border: 0;
-  border-bottom: 1px solid #3a4049;
-  background: transparent;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--peel-border);
   color: inherit;
-  text-align: left;
+  text-decoration: none;
+}
+.print-job-row:last-child {
+  border-bottom: 0;
 }
 .print-job-row:hover,
 .print-job-row:focus-visible {
-  background: #252a31;
+  background: var(--peel-raised);
 }
-.print-job-row span {
-  color: #afb8c4;
+.job-info {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
-.file-ready {
-  color: #9ee3b1 !important;
-}
-.file-missing {
-  color: #e7b76b !important;
+.job-file,
+time {
+  color: var(--peel-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 .status-badge {
   width: fit-content;
-  padding: 2px 7px;
-  border: 1px solid #4d5865;
-  color: #c9d1da !important;
-  font-family: ui-monospace, monospace;
-  font-size: 0.72rem;
-  text-transform: uppercase;
+  padding: 4px 10px;
+  border: 1px solid var(--peel-border);
+  border-radius: 20px;
+  color: var(--peel-muted);
+  font-size: 12px;
+  white-space: nowrap;
 }
 .status-completed {
   border-color: #4f9d67;
-  color: #9ee3b1 !important;
+  color: #9ee3b1;
+  background: #9ee3b10d;
 }
 .status-failed {
   border-color: #c97777;
-  color: #ffabab !important;
+  color: var(--peel-error);
+  background: #ffaca00d;
 }
 .status-calculating,
 .status-printing {
   border-color: #b5894c;
-  color: #e7b76b !important;
+  color: #e7b76b;
+  background: #e7b76b0d;
 }
 .status-message,
 .error-message {
-  padding: 22px;
-  border: 1px solid #3a4049;
-  color: #afb8c4;
+  padding: 24px;
+  border: 1px solid var(--peel-border);
+  border-radius: 12px;
+  background: var(--peel-surface);
+  color: var(--peel-muted);
 }
 .error-message {
-  border-color: #c97777;
-  color: #ffabab;
+  color: var(--peel-error);
 }
-.dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  padding: 24px;
-  place-items: center;
-  background: rgb(0 0 0 / 65%);
+.create-job {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
 }
-.dialog {
-  display: grid;
-  width: min(440px, 100%);
-  gap: 18px;
-  padding: 24px;
-  border: 1px solid #4d5865;
-  background: #22272e;
+.empty-group {
+  padding: 20px;
+  color: var(--peel-muted);
 }
-.dialog h2 {
-  font-size: 1.4rem;
+.deleted-heading {
+  margin-top: 36px;
+  font-size: 20px;
 }
-.dialog label {
-  display: grid;
-  gap: 6px;
-  color: #c9d1da;
+.deleted summary {
+  padding-right: 16px;
+  color: var(--peel-muted);
 }
-input,
-select {
-  width: 100%;
-  border: 1px solid #4d5865;
-  padding: 9px;
-  background: #17191d;
-  color: inherit;
-}
-.hint {
-  color: #e7b76b;
-}
-.dialog-actions {
-  display: flex;
-  justify-content: end;
-  gap: 10px;
-}
-.dialog-actions button:not(.primary-button) {
-  border: 1px solid #4d5865;
-  padding: 10px 15px;
-  background: transparent;
-  color: inherit;
-}
-@media (max-width: 650px) {
-  .page-header {
-    align-items: start;
-    flex-direction: column;
+@media (max-width: 680px) {
+  .page {
+    padding: 28px 16px;
+  }
+  .document-jobs summary {
+    padding-right: 16px;
+    padding-bottom: 52px;
+    flex-wrap: wrap;
+  }
+  .create-job {
+    top: 47px;
+    left: 16px;
+    right: auto;
+  }
+  .deleted summary {
+    padding-bottom: 18px;
   }
   .print-job-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .job-info {
+    flex: 1 1 100%;
   }
 }
 </style>

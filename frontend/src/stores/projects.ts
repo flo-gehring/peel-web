@@ -1,0 +1,68 @@
+import { t } from '@/i18n'
+import { computed, ref } from 'vue'
+import { defineStore } from 'pinia'
+import { api } from '@/adapter/client'
+import type { components } from '@/types/api'
+
+type ProjectSummary = components['schemas']['ProjectSummary']
+type ProjectData = components['schemas']['ProjectData']
+
+export const useProjectStore = defineStore('projects', () => {
+  const projects = ref<ProjectSummary[]>([])
+  const activeProject = ref<ProjectData | null>(null)
+  const isLoading = ref(false)
+  const isReadOnly = computed(
+    () => activeProject.value?.state === 'ARCHIVED' || activeProject.value?.state === 'DELETING',
+  )
+
+  async function loadProjects(): Promise<void> {
+    const { data, error } = await api.GET('/api/projects/list')
+    if (error) throw error
+    projects.value = data ?? []
+  }
+
+  async function loadProject(projectId: string): Promise<ProjectData> {
+    isLoading.value = true
+    try {
+      const { data, error } = await api.GET('/api/projects/{projectId}', {
+        params: { path: { projectId } },
+      })
+      if (error || !data) throw error ?? new Error(t('projectNotFound'))
+      activeProject.value = data
+      return data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function createProject(name: string): Promise<ProjectSummary> {
+    const { data, error } = await api.POST('/api/projects/{projectId}', {
+      params: { path: { projectId: name } },
+    })
+    if (error || !data) throw error ?? new Error(t('projectCouldNotBeCreated'))
+    projects.value.push(data)
+    return data
+  }
+
+  function clearActiveProject(): void {
+    activeProject.value = null
+  }
+
+  function clear(): void {
+    projects.value = []
+    activeProject.value = null
+    isLoading.value = false
+  }
+
+  return {
+    isReadOnly,
+    projects,
+    activeProject,
+    isLoading,
+    loadProjects,
+    loadProject,
+    createProject,
+    clearActiveProject,
+    clear,
+  }
+})

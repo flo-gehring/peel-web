@@ -17,33 +17,38 @@ public class ExpressionRenderConfiguration {
     private ExpressionRenderConfiguration(
             ExpressionRenderTemplate defaultTemplates,
             Map<String, ExpressionRenderTemplate> namedOverrides
-
     ) {
         this.defaultTemplates = defaultTemplates;
         this.namedOverrides = namedOverrides;
     }
- 
+
     public static ExpressionRenderConfiguration of(
             Map<TraceExpressionKind, String> render,
             Map<String, Map<TraceExpressionKind, String>> namedOverrides
     ) {
         return new ExpressionRenderConfiguration(
-                new ExpressionRenderTemplate(Map.copyOf(new EnumMap<>(render))),
+                new ExpressionRenderTemplate(Map.copyOf(enumMap(render))),
                 namedOverrides.entrySet().stream().collect(
                         LinkedHashMap::new,
-                        (map, entry) -> map.put(entry.getKey(), new ExpressionRenderTemplate(Map.copyOf(new EnumMap<>(entry.getValue())))),
+                        (map, entry) -> map.put(entry.getKey(), new ExpressionRenderTemplate(Map.copyOf(enumMap(entry.getValue())))),
                         LinkedHashMap::putAll
                 )
         );
     }
 
+    private static EnumMap<TraceExpressionKind, String> enumMap(Map<TraceExpressionKind, String> values) {
+        var result = new EnumMap<TraceExpressionKind, String>(TraceExpressionKind.class);
+        result.putAll(values);
+        return result;
+    }
+
     public static ExpressionRenderConfiguration defaultConfig() {
         Map<TraceExpressionKind, String> templates = new EnumMap<>(TraceExpressionKind.class);
-        templates.put(TraceExpressionKind.FUNCTION_CALL, "{{name}}({% for argument in arguments %}{{argument.value.value}}{% if not loop.last %}, {% endif %}{% endfor %})");
-        templates.put(TraceExpressionKind.BINARY_OPERATOR, "{{  lhs | renderTraceExpression }} {{ operator }} {{ rhs | renderTraceExpression }}");
+        templates.put(TraceExpressionKind.FUNCTION_CALL, "{{name}}({% for argument in arguments %}{{ argument | renderTraceExpression }}{% if not loop.last %}, {% endif %}{% endfor %})");
+        templates.put(TraceExpressionKind.BINARY_OPERATOR, "({{ lhs | renderTraceExpression }} {{ operator }} {% if rhs != null %}{{ rhs | renderTraceExpression }}{% else %}…{% endif %})");
         templates.put(TraceExpressionKind.LITERAL, "{{ valueText }}");
         templates.put(TraceExpressionKind.UNARY_PREFIX_OPERATOR, "{{ operator }}{{ argument | renderTraceExpression }}");
-        templates.put(TraceExpressionKind.VARIABLE_NAME, "{{valueText}}");
+        templates.put(TraceExpressionKind.VARIABLE_NAME, "{{name}}");
         templates.put(TraceExpressionKind.RETURN_EXPR, "return {{ expression | renderTraceExpression }}");
         templates.put(TraceExpressionKind.ASSIGNMENT, "{{ variableName }} = {{ expression | renderTraceExpression }}");
         templates.put(

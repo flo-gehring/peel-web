@@ -4,6 +4,86 @@
  */
 
 export interface paths {
+    "/api/whoami": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["whoAmI"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/csrf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["csrf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["sendLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/scripts/run": {
         parameters: {
             query?: never;
@@ -20,7 +100,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/render-config/update/{id}": {
+    "/api/projects/{projectId}/files/{fileId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get"];
+        /**
+         * Replace a file state using its expected version
+         * @description An identical target succeeds without writing at any expected version. Other updates atomically require the expected version and increment it.
+         */
+        put: operations["update"];
+        post?: never;
+        /**
+         * Delete an unreferenced file using its expected version
+         * @description Already absent files succeed. Changed files or blocking document references return 409.
+         */
+        delete: operations["delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{id}/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["settings"];
+        put: operations["update_1"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{id}/members/{memberId}/admin": {
         parameters: {
             query?: never;
             header?: never;
@@ -28,7 +148,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put: operations["updateRenderConfiguration"];
+        put: operations["admin"];
         post?: never;
         delete?: never;
         options?: never;
@@ -52,7 +172,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/scripts": {
+    "/api/scripts/analyze": {
         parameters: {
             query?: never;
             header?: never;
@@ -61,30 +181,66 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["saveScript"];
+        post: operations["analyze"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/render-config/save": {
+    "/api/projects/{projectId}/print-jobs": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["list"];
         put?: never;
-        post: operations["createRenderConfiguration"];
+        post: operations["create"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/print-jobs": {
+    "/api/projects/{projectId}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_1"];
+        put?: never;
+        /**
+         * Create a file at version 0
+         * @description A repeated creation succeeds only for an identical file still at version 0. Never overwrites an existing file.
+         */
+        post: operations["create_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{projectId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getProject"];
+        put?: never;
+        post: operations["createProject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{id}/transfer": {
         parameters: {
             query?: never;
             header?: never;
@@ -93,7 +249,119 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["initPrintJob"];
+        post: operations["transfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{id}/transfer/{requestId}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["declineTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{id}/transfer/{requestId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["acceptTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["restore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{id}/leave": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["leave"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{id}/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["invite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{id}/invitations/{invitationId}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["resend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["archive"];
         delete?: never;
         options?: never;
         head?: never;
@@ -116,16 +384,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/documents": {
+    "/api/invitations/{token}/decline": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["listDocuments"];
+        get?: never;
         put?: never;
-        post: operations["saveDocument"];
+        post: operations["declineInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invitations/{token}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["acceptInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invitations/received/{id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["declineReceivedInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invitations/received/{id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["acceptReceivedInvitation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -164,86 +480,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/scripts/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["getScript"];
-        put?: never;
-        post?: never;
-        delete: operations["deleteScript"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scripts/validate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["validate"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scripts/list": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["listScripts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/render-config/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["getById"];
-        put?: never;
-        post?: never;
-        delete: operations["deleteById"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/render-config/list-ids": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["listAll"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/render-config/default": {
         parameters: {
             query?: never;
@@ -252,6 +488,55 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getDefault"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{projectId}/print-jobs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["details"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{projectId}/files/{fileId}/blocks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Analyze named blocks and possible trace descendants without executing the saved script */
+        get: operations["blocks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listProjects"];
         put?: never;
         post?: never;
         delete?: never;
@@ -276,14 +561,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/print-jobs/list": {
+    "/api/invitations/{token}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["listPrintJobs"];
+        get: operations["invitation"];
         put?: never;
         post?: never;
         delete?: never;
@@ -292,17 +577,81 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/documents/{id}": {
+    "/api/invitations/received": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["getDocument"];
+        get: operations["receivedInvitations"];
         put?: never;
         post?: never;
-        delete: operations["deleteDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_1"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{id}/transfer/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["cancel"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{id}/members/{memberId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{id}/invitations/{invitationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["revoke"];
         options?: never;
         head?: never;
         patch?: never;
@@ -312,9 +661,41 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AuthLinkRequest: {
+            email?: string;
+            redirect?: string;
+        };
+        CsrfResponse: {
+            token?: string;
+            headerName?: string;
+        };
+        WhoAmIResponse: {
+            authenticated?: boolean;
+            userId?: string;
+            email?: string;
+        };
+        ApiError: {
+            code?: string;
+            message?: string;
+            details?: {
+                [key: string]: Record<string, never>;
+            };
+        };
+        ApiErrorResponse: {
+            error?: components["schemas"]["ApiError"];
+        };
+        ExpectedBinding: {
+            name: string;
+            description: string;
+        };
+        ProjectIdApi: {
+            id: string;
+        };
         RunRequest: {
+            projectId: components["schemas"]["ProjectIdApi"];
             script?: string;
-            bindings?: {
+            expectedBindings: components["schemas"]["ExpectedBinding"][];
+            bindings: {
                 [key: string]: unknown;
             };
         };
@@ -326,6 +707,189 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        DocumentContent: {
+            document: components["schemas"]["DocumentNode"];
+            renderConfigurationId?: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "document";
+        };
+        DocumentNode: {
+            type: string;
+            attrs?: {
+                [key: string]: unknown;
+            };
+            content?: components["schemas"]["DocumentNode"][];
+            text?: string;
+            marks?: components["schemas"]["Mark"][];
+        };
+        FileContent: {
+            type: string;
+        } & (components["schemas"]["ScriptContent"] | components["schemas"]["RenderConfigContent"] | components["schemas"]["DocumentContent"]);
+        Mark: {
+            type: string;
+            attrs?: {
+                [key: string]: unknown;
+            };
+        };
+        RenderConfigContent: {
+            renderConfigurations: {
+                [key: string]: string;
+            };
+            namedOverrides: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "render-config";
+        };
+        ScriptContent: {
+            source: string;
+            expectedBindings: components["schemas"]["ExpectedBinding"][];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "script";
+        };
+        UpdateFile: {
+            /** Format: int64 */
+            expectedVersion: number;
+            name: string;
+            description?: string;
+            content: components["schemas"]["FileContent"];
+        };
+        ProjectFile: {
+            id?: string;
+            projectId?: components["schemas"]["ProjectId"];
+            name?: string;
+            description?: string;
+            /** Format: int64 */
+            version?: number;
+            content?: components["schemas"]["FileContent"];
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ProjectId: {
+            id?: string;
+        };
+        ProjectUpdate: {
+            name: string;
+            description: string;
+        };
+        AdminRequest: {
+            admin?: boolean;
+        };
+        AnalyzeRequest: {
+            projectId: components["schemas"]["ProjectIdApi"];
+            script: string;
+            expectedBindings: components["schemas"]["ExpectedBinding"][];
+        };
+        AnalysisResult: {
+            symbols?: components["schemas"]["Symbol"][];
+            occurrences?: components["schemas"]["Occurrence"][];
+            scopes?: components["schemas"]["LexicalScope"][];
+            diagnostics?: components["schemas"]["Diagnostic"][];
+        };
+        Diagnostic: {
+            code?: string;
+            severity?: string;
+            message?: string;
+            /** Format: int32 */
+            start?: number;
+            /** Format: int32 */
+            end?: number;
+        };
+        LexicalScope: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            parentId?: number;
+            /** Format: int32 */
+            start?: number;
+            /** Format: int32 */
+            end?: number;
+            openEnded?: boolean;
+        };
+        Occurrence: {
+            /** Format: int32 */
+            symbolId?: number;
+            role?: string;
+            /** Format: int32 */
+            start?: number;
+            /** Format: int32 */
+            end?: number;
+        };
+        Symbol: {
+            /** Format: int32 */
+            id?: number;
+            name?: string;
+            kind?: string;
+            origin?: string;
+            description?: string;
+            /** Format: int32 */
+            arity?: number;
+            /** Format: int32 */
+            scopeId?: number;
+            /** Format: int32 */
+            visibleFrom?: number;
+            /** Format: int32 */
+            start?: number;
+            /** Format: int32 */
+            end?: number;
+        };
+        DocumentId: {
+            id: string;
+        };
+        PrintJobInitRequestDto: {
+            documentId: components["schemas"]["DocumentId"];
+            name: string;
+        };
+        PrintJobId: {
+            id?: string;
+        };
+        CreateFile: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            description?: string;
+            content: components["schemas"]["FileContent"];
+        };
+        ProjectSummary: {
+            projectIdApi?: components["schemas"]["ProjectIdApi"];
+            name?: string;
+            description?: string;
+            /** @enum {string} */
+            state?: "ACTIVE" | "ARCHIVED" | "DELETING";
+        };
+        TransferConfirmation: {
+            email: string;
+            confirmation: string;
+        };
+        EmailRequest: {
+            email: string;
+        };
+        DocumentPreviewRequest: {
+            projectId: components["schemas"]["ProjectIdApi"];
+            document: components["schemas"]["DocumentNode"];
+            bindings?: {
+                [key: string]: unknown;
+            };
+            renderConfigId?: string;
+        };
+        DocumentPreviewResponse: {
+            /** Format: byte */
+            pdfData?: string;
+            warnings?: string[];
+        };
         RenderConfigurationDto: {
             renderConfigurations?: {
                 [key: string]: string;
@@ -336,103 +900,55 @@ export interface components {
                 };
             };
         };
-        RenderConfigurationPersistenceDto: {
+        DocumentJobs: {
+            documentId?: string;
             name?: string;
-            renderConfigurationDto?: components["schemas"]["RenderConfigurationDto"];
-        };
-        ScriptSaveRequest: {
-            id?: string;
-            name?: string;
-            script?: string;
-        };
-        ScriptDtoResponse: {
-            id?: string;
-            name?: string;
-            script?: string;
-        };
-        RenderConfigurationCreateResponse: {
-            id?: string;
-        };
-        DocumentId: {
-            id?: string;
-        };
-        PrintJobInitRequestDto: {
-            documentId?: components["schemas"]["DocumentId"];
-            name?: string;
-        };
-        PrintJobId: {
-            id?: string;
-        };
-        DocumentTemplateSaveRequest: {
-            id?: string;
-            name?: string;
-            scriptNameTags?: {
-                [key: string]: string;
-            };
-            templateHtml?: string;
-            editorStateJson?: string;
-            renderConfigurationId?: string;
-        };
-        DocumentTemplateSaveResponse: {
-            id?: string;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
-            /** @enum {string} */
-            type?: "CREATED" | "UPDATED";
-        };
-        DocumentPreviewRequest: {
-            scriptTags?: {
-                [key: string]: components["schemas"]["PeelScriptId"];
-            };
-            bindings?: {
-                [key: string]: unknown;
-            };
-            renderConfigId?: string;
-            template?: string;
-        };
-        PeelScriptId: {
-            id?: string;
-        };
-        DocumentPreviewResponse: {
-            /** Format: byte */
-            pdfData?: string;
-        };
-        ValidationRequest: {
-            script?: string;
-        };
-        ValidationDiagnostic: {
-            /** Format: int32 */
-            line?: number;
-            /** Format: int32 */
-            column?: number;
-            /** Format: int32 */
-            endLine?: number;
-            /** Format: int32 */
-            endColumn?: number;
-            severity?: string;
-            message?: string;
-        };
-        ValidationResponse: {
-            diagnostics?: components["schemas"]["ValidationDiagnostic"][];
-        };
-        ScriptSummaryResponse: {
-            id?: string;
-            name?: string;
-        };
-        IdNameTuple: {
-            id?: string;
-            name?: string;
+            jobs?: components["schemas"]["PrintJobSummary"][];
         };
         PrintJobSummary: {
             printJobId?: components["schemas"]["PrintJobId"];
+            projectId?: components["schemas"]["ProjectIdApi"];
             name?: string;
             documentId?: components["schemas"]["DocumentId"];
+            documentName?: string;
+            /** Format: date-time */
+            createdAt?: string;
             fileName?: string;
             /** @enum {string} */
             status?: "CREATED" | "CALCULATING" | "PRINTING" | "COMPLETED" | "FAILED";
             fileIds?: string[];
+        };
+        ProjectPrintJobs: {
+            projectId?: components["schemas"]["ProjectIdApi"];
+            projectName?: string;
+            /** @enum {string} */
+            state?: "ACTIVE" | "ARCHIVED" | "DELETING";
+            documents?: components["schemas"]["DocumentJobs"][];
+            deletedDocuments?: components["schemas"]["DocumentJobs"][];
+        };
+        ProjectPrintJobDetails: {
+            job?: components["schemas"]["PrintJobSummary"];
+            projectName?: string;
+            /** @enum {string} */
+            projectState?: "ACTIVE" | "ARCHIVED" | "DELETING";
+            currentDocumentName?: string;
+        };
+        FileSummary: {
+            id?: string;
+            name?: string;
+            description?: string;
+            /** Format: int64 */
+            version?: number;
+            type?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        BlockDefinition: {
+            name: string;
+            parentName?: string;
+            reachableBlocks: string[];
         };
         DocumentTemplateSummaryResponse: {
             id?: string;
@@ -440,19 +956,67 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
-        DocumentTemplate: {
+        ProjectData: {
+            projectIdApi?: components["schemas"]["ProjectIdApi"];
+            name?: string;
+            /** @enum {string} */
+            state?: "ACTIVE" | "ARCHIVED" | "DELETING";
+            scripts?: components["schemas"]["ScriptSummaryResponse"][];
+            documentTemplates?: components["schemas"]["DocumentTemplateSummaryResponse"][];
+            renderConfigurations?: components["schemas"]["RenderConfigurationSummaryResponse"][];
+        };
+        RenderConfigurationSummaryResponse: {
             id?: string;
             name?: string;
-            scriptNameTags?: {
-                [key: string]: string;
-            };
-            templateHtml?: string;
-            editorStateJson?: string;
-            renderConfigurationId?: string;
+        };
+        ScriptSummaryResponse: {
+            id?: string;
+            name?: string;
+        };
+        ProjectInvitation: {
+            id?: string;
+            email?: string;
             /** Format: date-time */
-            createdAt?: string;
+            expiresAt?: string;
+        };
+        ProjectMember: {
+            id?: string;
+            email?: string;
+            role?: string;
+        };
+        ProjectSettings: {
+            id?: string;
+            name?: string;
+            description?: string;
+            /** @enum {string} */
+            state?: "ACTIVE" | "ARCHIVED" | "DELETING";
+            role?: string;
+            members?: components["schemas"]["ProjectMember"][];
+            invitations?: components["schemas"]["ProjectInvitation"][];
+            transfer?: components["schemas"]["TransferRequest"];
+        };
+        TransferRequest: {
+            id?: string;
+            email?: string;
+            recipientId?: string;
             /** Format: date-time */
-            updatedAt?: string;
+            expiresAt?: string;
+        };
+        InvitationDetails: {
+            projectName?: string;
+            email?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+        };
+        ReceivedInvitation: {
+            id?: string;
+            projectName?: string;
+            invitedByEmail?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+        };
+        Confirmation: {
+            confirmation: string;
         };
     };
     responses: never;
@@ -463,6 +1027,272 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    whoAmI: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhoAmIResponse"];
+                };
+            };
+        };
+    };
+    csrf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CsrfResponse"];
+                };
+            };
+        };
+    };
+    sendLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    token: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Response */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
     run: {
         parameters: {
             query?: never;
@@ -487,7 +1317,237 @@ export interface operations {
             };
         };
     };
-    updateRenderConfiguration: {
+    get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectFile"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Invalid CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Resource unavailable */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Version, name, creation or reference conflict; or archived project */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFile"];
+            };
+        };
+        responses: {
+            /** @description Updated or identical current file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectFile"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Invalid CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Resource unavailable */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Version, name, creation or reference conflict; or archived project */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    delete: {
+        parameters: {
+            query: {
+                expectedVersion: number;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Invalid CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Resource unavailable */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Version, name, creation or reference conflict; or archived project */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectSettings"];
+                };
+            };
+        };
+    };
+    update_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -498,12 +1558,37 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RenderConfigurationPersistenceDto"];
+                "application/json": components["schemas"]["ProjectUpdate"];
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    admin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -561,7 +1646,7 @@ export interface operations {
             };
         };
     };
-    saveScript: {
+    analyze: {
         parameters: {
             query?: never;
             header?: never;
@@ -570,7 +1655,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ScriptSaveRequest"];
+                "application/json": components["schemas"]["AnalyzeRequest"];
             };
         };
         responses: {
@@ -580,23 +1665,21 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ScriptDtoResponse"];
+                    "application/json": components["schemas"]["AnalysisResult"];
                 };
             };
         };
     };
-    createRenderConfiguration: {
+    list: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                projectId: string;
+            };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RenderConfigurationPersistenceDto"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {
@@ -604,16 +1687,18 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RenderConfigurationCreateResponse"];
+                    "application/json": components["schemas"]["ProjectPrintJobs"];
                 };
             };
         };
     };
-    initPrintJob: {
+    create: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                projectId: string;
+            };
             cookie?: never;
         };
         requestBody: {
@@ -630,6 +1715,361 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PrintJobId"];
                 };
+            };
+        };
+    };
+    list_1: {
+        parameters: {
+            query?: {
+                type?: string;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description File metadata */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["FileSummary"][];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Invalid CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Resource unavailable */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Version, name, creation or reference conflict; or archived project */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    create_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFile"];
+            };
+        };
+        responses: {
+            /** @description Created or identical version-0 file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectFile"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Invalid CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Resource unavailable */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Version, name, creation or reference conflict; or archived project */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    getProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectData"];
+                };
+            };
+        };
+    };
+    createProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectSummary"];
+                };
+            };
+        };
+    };
+    transfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferConfirmation"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    declineTransfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    acceptTransfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    restore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    leave: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    invite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    resend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                invitationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    archive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -655,47 +2095,83 @@ export interface operations {
             };
         };
     };
-    listDocuments: {
+    declineInvitation: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                token: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["DocumentTemplateSummaryResponse"][];
-                };
+                content?: never;
             };
         };
     };
-    saveDocument: {
+    acceptInvitation: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                token: string;
+            };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DocumentTemplateSaveRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["DocumentTemplateSaveResponse"];
+                content?: never;
+            };
+        };
+    };
+    declineReceivedInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
                 };
+                content?: never;
+            };
+        };
+    };
+    acceptReceivedInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -751,154 +2227,6 @@ export interface operations {
             };
         };
     };
-    getScript: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScriptDtoResponse"];
-                };
-            };
-        };
-    };
-    deleteScript: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    validate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ValidationRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationResponse"];
-                };
-            };
-        };
-    };
-    listScripts: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScriptSummaryResponse"][];
-                };
-            };
-        };
-    };
-    getById: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RenderConfigurationPersistenceDto"];
-                };
-            };
-        };
-    };
-    deleteById: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    listAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["IdNameTuple"][];
-                };
-            };
-        };
-    };
     getDefault: {
         parameters: {
             query?: never;
@@ -915,6 +2243,117 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RenderConfigurationDto"];
+                };
+            };
+        };
+    };
+    details: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPrintJobDetails"];
+                };
+            };
+        };
+    };
+    blocks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Static block catalog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BlockDefinition"][];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Invalid CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Resource unavailable */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Version, name, creation or reference conflict; or archived project */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    listProjects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectSummary"][];
                 };
             };
         };
@@ -943,7 +2382,29 @@ export interface operations {
             };
         };
     };
-    listPrintJobs: {
+    invitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["InvitationDetails"];
+                };
+            };
+        };
+    };
+    receivedInvitations: {
         parameters: {
             query?: never;
             header?: never;
@@ -958,12 +2419,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PrintJobSummary"][];
+                    "*/*": components["schemas"]["ReceivedInvitation"][];
                 };
             };
         };
     };
-    getDocument: {
+    delete_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -972,32 +2433,77 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Confirmation"];
+            };
+        };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["DocumentTemplate"];
-                };
+                content?: never;
             };
         };
     };
-    deleteDocument: {
+    cancel: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 id: string;
+                requestId: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    revoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                invitationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };

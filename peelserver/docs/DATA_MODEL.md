@@ -1,82 +1,49 @@
-# Data Modell
+# Datenmodell
 
-````mermaid
+Die gemeinsame Dateiverwaltung ist in [FILE_MANAGEMENT.md](FILE_MANAGEMENT.md)
+beschrieben. Skripte, Renderkonfigurationen und Dokumentvorlagen verwenden
+`ProjectFile` und dieselbe MongoDB-Collection `project-files`.
+
+```mermaid
 classDiagram
-    class ScriptId {
+    class ProjectFile {
         String id
-    }
-
-    class DocumentId {
-        String id
-    }
-
-    class PeelScriptPersistence {
-        ScriptId id
-        PeelScriptData data
-    }
-
-    class PeelScriptData {
+        ProjectId projectId
+        String name
         String description
-        String script
+        long version
+        Instant createdAt
+        Instant updatedAt
     }
-    
-    PeelScriptPersistence "1" *--> "1" PeelScriptData
-    class DocumentPersistence {
-        DocumentId id
-        DocumentData  documentData
+    class FileContent {
+        <<sealed interface>>
     }
-        
-    class DocumentPersistenceData {
-        Map[String, PeelScriptId] scriptTags
-        String documentContent,
-        ExpressionRenderConfigurationId expressionRenderConfigurationId,
-        ExpressionRenderConfigurationData localOverrides
+    class ScriptContent {
+        String source
     }
-    
-    DocumentPersistenceData "0..n" o--> "1" RenderConfigurationPersistence
-    DocumentPersistenceData "0..n" o--> "1" PeelScriptPersistence
-    
-    class Document {
-        Map[String, PeelScript] scriptTags
-        String documentContent,
-        ExpressionRenderConfigurationData config,
-        ExpressionRenderConfigurationData localOverrides
+    class RenderConfigContent {
+        Map renderConfigurations
+        Map namedOverrides
     }
-    
-    DocumentPersistenceData -->  Document: transforms to
-    DocumentPersistence "1" *--> "1" DocumentPersistenceData
-    DocumentPersistence "1" *--> "1" DocumentId
+    class DocumentContent {
+        Map scriptNameTags
+        String templateHtml
+        String editorStateJson
+        String renderConfigurationId
+    }
+    ProjectFile *-- FileContent
+    FileContent <|.. ScriptContent
+    FileContent <|.. RenderConfigContent
+    FileContent <|.. DocumentContent
+    DocumentContent --> ProjectFile : IDs anderer Dateien im selben Projekt
+```
 
-    class RenderConfigurationPersistence {
-        ExpressionRenderConfigId Id
-        ExpressionRenderConfigurationData data
-    }
-    class ExpressionRenderConfiguration {
-        Map[TraceExpressionKind, renderTemplate] renderTemplates
-    }
+Dateien werden für Ausführung und Rendering in fachliche Objekte aufgelöst.
+Ein `Document` enthält die referenzierten `PeelScript`-Werte und eine
+`ExpressionRenderConfiguration`. Diese aufgelösten Objekte besitzen keine eigene
+CRUD-Verwaltung oder Collection. Ein Print-Job-Worker erhält den aufgelösten Stand
+beim Start; eine persistente historische Dateiversion ist damit noch nicht eingeführt.
 
-    RenderConfigurationPersistence "1" *--> "1" ExpressionRenderConfiguration
-    RenderConfigurationPersistence "1" *--> "1" ExpressionRenderConfigurationId
-    ExpressionRenderConfiguration "0..n" *--> "0..n" TraceExpressionKind
-    Document "0..*" *--> "0..*" PeelScript
-    Document "1" *--> "2" ExpressionRenderConfiguration
-    PeelScript "1" *--> "1" ScriptId
-
-    class TraceExpressionKind {
-        <<enumeration>>
-        LITERAL,
-        BINARY_OPERATOR,
-        UNARY_PREFIX_OPERATOR,
-        VARIABLE_NAME,
-        FUNCTION_CALL,
-        RETURN_EXPR,
-        ASSIGNMENT,
-        IF_STATEMENT,
-        WHILE_LOOP,
-        FOR_EACH_LOOP,
-        LIST_LITERAL,
-        MAP_LITERAL,
-        SELECTOR,
-        BLOCK
-    }
-````
+Print Jobs besitzen eine eigene unveränderliche Projektzuordnung. CSVs und PDFs
+liegen weiterhin in MinIO. Benutzer, Projektmitgliedschaften, Einladungen und
+Projektzustände bleiben eigenständige Datenmodelle.

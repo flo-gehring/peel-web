@@ -17,6 +17,7 @@ public class RunService {
         if (request.script().isBlank()) {
             throw new IllegalArgumentException("script must not be blank");
         }
+        ExpectedBindings.require(request.expectedBindings(), request.bindings().keySet());
         TraceProgram traceProgram = peelExecutionService.execute(request.script(), request.bindings());
         return new RunResponse(
                 TraceMapOutput.fromProgram(traceProgram),

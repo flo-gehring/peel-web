@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
@@ -13,7 +14,7 @@ export const useRunBindingsStore = defineStore('runBindings', () => {
       const parsed = JSON.parse(rawJson.value) as unknown
 
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        parseError.value = 'Bindings JSON must be an object at the top level.'
+        parseError.value = t('bindingsJsonMustBeAnObjectAtTheTop')
         return null
       }
 
@@ -23,7 +24,7 @@ export const useRunBindingsStore = defineStore('runBindings', () => {
       parseError.value = null
       return bindings
     } catch (error) {
-      parseError.value = error instanceof Error ? error.message : 'Invalid JSON.'
+      parseError.value = error instanceof Error ? error.message : t('invalidJson2')
       return null
     }
   }
@@ -33,11 +34,26 @@ export const useRunBindingsStore = defineStore('runBindings', () => {
     parseBindings()
   }
 
+  function fillExpectedBindings(names: string[]): void {
+    const bindings = parseBindings()
+    if (!bindings) return
+    const missing = names.filter((name) => name.trim() && !Object.hasOwn(bindings, name))
+    if (!missing.length) return
+    setRawJson(
+      JSON.stringify(
+        { ...bindings, ...Object.fromEntries(missing.map((name) => [name, 0])) },
+        null,
+        2,
+      ),
+    )
+  }
+
   return {
     rawJson,
     parseError,
     lastValidBindings,
     setRawJson,
     parseBindings,
+    fillExpectedBindings,
   }
 })

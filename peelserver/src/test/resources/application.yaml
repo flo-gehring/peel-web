@@ -1,0 +1,8 @@
+peel:
+  auth:
+    public-base-url: http://localhost:5173
+    mail-from: noreply@peel.test
+spring:
+  mail:
+    host: localhost
+    port: 11025

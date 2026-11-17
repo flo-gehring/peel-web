@@ -1,90 +1,387 @@
+<script setup lang="ts">
+import { t } from '@/i18n'
+import { computed, nextTick, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { Printer, Settings } from '@lucide/vue'
+import { useProjectStore } from '@/stores/projects'
+import peelLogo from '@/assets/peel-logo.png'
+import ReceivedInvitations from '@/components/ReceivedInvitations.vue'
+
+const router = useRouter()
+const projectStore = useProjectStore()
+const newProjectName = ref('')
+const nameInput = ref<HTMLInputElement | null>(null)
+const createButton = ref<HTMLButtonElement | null>(null)
+const isCreating = ref(false)
+const isLoading = ref(true)
+const showCreate = ref(false)
+const loadError = ref<string | null>(null)
+const createError = ref<string | null>(null)
+const projectFilter = ref('active')
+const visibleProjects = computed(() =>
+  projectStore.projects.filter((project) =>
+    projectFilter.value === 'archived'
+      ? project.state === 'ARCHIVED'
+      : project.state !== 'ARCHIVED',
+  ),
+)
+
+async function loadProjects(): Promise<void> {
+  isLoading.value = true
+  loadError.value = null
+  try {
+    await projectStore.loadProjects()
+  } catch {
+    loadError.value = t('projectsCouldNotBeLoadedCheckYourConnectionAnd')
+  } finally {
+    isLoading.value = false
+  }
+}
+async function openCreate(): Promise<void> {
+  showCreate.value = true
+  await nextTick()
+  nameInput.value?.focus()
+}
+async function cancelCreate(): Promise<void> {
+  if (isCreating.value) return
+  showCreate.value = false
+  newProjectName.value = ''
+  createError.value = null
+  await nextTick()
+  createButton.value?.focus()
+}
+async function createProject(): Promise<void> {
+  const name = newProjectName.value.trim()
+  if (!name || isCreating.value) return
+  isCreating.value = true
+  createError.value = null
+  try {
+    const project = await projectStore.createProject(name)
+    const id = project.projectIdApi?.id
+    if (!id) throw new Error(t('missingProjectId'))
+    await router.push({ name: 'project', params: { projectId: id } })
+  } catch {
+    createError.value = t('theProjectCouldNotBeCreatedPleaseTryAgain')
+  } finally {
+    isCreating.value = false
+  }
+}
+onMounted(loadProjects)
+</script>
+
 <template>
   <main class="home-view">
-    <section>
-      <p class="eyebrow">Peel</p>
-      <h1>Arbeitsbereiche</h1>
-      <nav aria-label="Arbeitsbereiche">
-        <RouterLink class="workspace-card" to="/project">
-          <span class="card-number">01</span>
-          <strong>Project</strong>
-          <span>Dokumente, Skripte und Vorschauen bearbeiten</span>
-        </RouterLink>
-        <RouterLink class="workspace-card" to="/print-jobs">
-          <span class="card-number">02</span>
-          <strong>Druckaufträge</strong>
-          <span>Druckdateien zu Dokumenten verwalten</span>
-        </RouterLink>
-      </nav>
+    <section class="projects-section" aria-labelledby="projects-title">
+      <div class="projects-heading">
+        <img
+          :src="peelLogo"
+          :alt="t('peelBananaLogo')"
+          class="welcome-logo"
+          width="112"
+          height="96"
+        />
+        <div class="projects-intro">
+          <h1 id="projects-title">{{ t('projects') }}</h1>
+          <p>{{ t('yourDocumentsScriptsAndRenderConfigurations') }}</p>
+        </div>
+        <button
+          ref="createButton"
+          class="primary-button"
+          :aria-expanded="showCreate"
+          aria-controls="new-project-form"
+          @click="openCreate"
+        >
+          <span aria-hidden="true">＋</span>{{ t('newProject') }}
+        </button>
+      </div>
+      <ReceivedInvitations />
+      <div class="project-collection" :aria-busy="isLoading">
+        <label class="project-filter"
+          >{{ t('show')
+          }}<select v-model="projectFilter" :aria-label="t('projectStatus')">
+            <option value="active">{{ t('activeProjects') }}</option>
+            <option value="archived">{{ t('archivedProjects') }}</option>
+          </select></label
+        >
+        <form
+          v-if="showCreate"
+          id="new-project-form"
+          class="create-project"
+          @submit.prevent="createProject"
+          @keydown.esc.prevent="cancelCreate"
+        >
+          <span class="new-project-icon" aria-hidden="true">＋</span>
+          <label class="sr-only" for="new-project-name">{{ t('newProjectName') }}</label>
+          <input
+            id="new-project-name"
+            ref="nameInput"
+            v-model="newProjectName"
+            :disabled="isCreating"
+            :placeholder="t('newProjectName')"
+            required
+            :aria-invalid="!!createError"
+            :aria-describedby="createError ? 'create-project-error' : undefined"
+          />
+          <div class="create-actions">
+            <button
+              class="primary-button"
+              type="submit"
+              :disabled="!newProjectName.trim() || isCreating"
+            >
+              {{ isCreating ? t('creating') : t('create') }}
+            </button>
+            <button type="button" class="quiet-button" :disabled="isCreating" @click="cancelCreate">
+              {{ t('cancel') }}
+            </button>
+          </div>
+          <p v-if="createError" id="create-project-error" role="alert" class="project-error">
+            {{ createError }}
+          </p>
+        </form>
+        <div v-if="isLoading" class="collection-message" role="status">
+          {{ t('loadingProjects') }}
+        </div>
+        <div v-else-if="loadError" class="collection-message">
+          <p role="alert" class="project-error">{{ loadError }}</p>
+          <button class="quiet-button" @click="loadProjects">{{ t('tryAgain') }}</button>
+        </div>
+        <div v-else-if="!visibleProjects.length" class="collection-message">
+          <p>{{ t('noProjectsYetCreateYourFirstProjectToGet') }}</p>
+        </div>
+        <nav v-else :aria-label="t('projects')" class="project-list">
+          <div
+            v-for="project in visibleProjects"
+            :key="project.projectIdApi?.id"
+            class="project-entry"
+          >
+            <RouterLink
+              :key="project.projectIdApi?.id"
+              class="project-row"
+              :to="{ name: 'project', params: { projectId: project.projectIdApi?.id } }"
+            >
+              <svg
+                class="folder-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.7"
+                aria-hidden="true"
+              >
+                <path
+                  d="M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"
+                />
+              </svg>
+              <strong>{{ project.name }}</strong
+              ><span class="project-description"
+                >{{ project.description || t('documentsScriptsRenderConfigurations')
+                }}{{ project.state === 'DELETING' ? t('cleanupIncomplete') : '' }}</span
+              ><span class="open-arrow" aria-hidden="true">→</span>
+            </RouterLink>
+            <RouterLink
+              v-if="project.state !== 'DELETING'"
+              class="manage-project project-print-jobs"
+              :to="`/projects/${project.projectIdApi?.id}/print-jobs`"
+              :title="t('printJobs')"
+              :aria-label="t('printJobs')"
+              ><Printer :size="18" aria-hidden="true"
+            /></RouterLink>
+            <RouterLink
+              class="manage-project"
+              :to="`/projects/${project.projectIdApi?.id}/settings`"
+              :title="t('settings')"
+              :aria-label="t('settings')"
+              ><Settings :size="18" aria-hidden="true"
+            /></RouterLink>
+          </div>
+        </nav>
+      </div>
     </section>
   </main>
 </template>
 
 <style scoped>
+.project-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--peel-border);
+  color: var(--peel-muted);
+}
+.project-entry {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--peel-border);
+}
+.project-entry .project-row {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 0;
+}
+.manage-project {
+  margin-right: 24px;
+  color: var(--peel-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+.manage-project.project-print-jobs {
+  margin-right: 8px;
+}
+.manage-project:hover {
+  background: var(--peel-raised);
+}
 .home-view {
-  display: grid;
-  min-height: 100vh;
-  padding: 48px 24px;
-  place-items: center;
-  background: #17191d;
-  color: #f2f4f6;
+  min-height: calc(100dvh - var(--app-header-height));
+  padding: 56px 32px;
+  background: var(--peel-background);
 }
-
-section {
-  width: min(860px, 100%);
+.projects-section {
+  max-width: 1120px;
+  margin: 0 auto;
 }
-
-.eyebrow,
-.card-number {
-  color: #89c6ff;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.78rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+.projects-heading {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-bottom: 28px;
 }
-
+.welcome-logo {
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.projects-intro {
+  flex: 1;
+}
 h1 {
-  margin: 4px 0 34px;
-  font-size: clamp(2.4rem, 8vw, 5rem);
-  letter-spacing: -0.06em;
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.2;
+  margin-bottom: 8px;
 }
-
-nav {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+.projects-intro p {
+  color: var(--peel-muted);
 }
-
-.workspace-card {
+.project-collection {
+  border: 1px solid var(--peel-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--peel-surface);
+}
+.project-row {
   display: grid;
-  min-height: 230px;
-  padding: 22px;
-  align-content: start;
-  gap: 18px;
-  border: 1px solid #3a4049;
-  background: #20242a;
-  color: inherit;
+  grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1.25fr) 24px;
+  gap: 20px;
+  align-items: center;
+  min-height: 88px;
+  padding: 18px 28px;
+  color: var(--peel-text);
   text-decoration: none;
-  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+  border-bottom: 1px solid var(--peel-border);
+  transition: background 140ms;
 }
-
-.workspace-card:hover,
-.workspace-card:focus-visible {
-  border-color: #89c6ff;
-  background: #272d35;
-  transform: translateY(-3px);
+.project-row:last-child {
+  border-bottom: 0;
 }
-
-.workspace-card strong {
-  font-size: 1.65rem;
+.project-row:hover,
+.project-row:focus-visible {
+  background: var(--peel-raised);
 }
-
-.workspace-card span:last-child {
-  color: #b2bbc7;
+.project-row strong {
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
-
-@media (max-width: 600px) {
-  nav {
-    grid-template-columns: 1fr;
+.folder-icon {
+  width: 28px;
+  height: 28px;
+  color: var(--peel-accent);
+}
+.project-description {
+  color: var(--peel-muted);
+  font-size: 13px;
+}
+.open-arrow {
+  font-size: 25px;
+  color: var(--peel-muted);
+}
+.project-row:hover .open-arrow {
+  color: var(--peel-accent);
+}
+.create-project {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 28px;
+  border-bottom: 1px solid var(--peel-border);
+  background: var(--peel-raised);
+}
+.new-project-icon {
+  font-size: 28px;
+  color: var(--peel-muted);
+}
+.create-project input {
+  width: min(100%, 420px);
+}
+.create-actions {
+  display: flex;
+  gap: 10px;
+}
+.project-error {
+  color: var(--peel-error);
+  grid-column: 2 / -1;
+}
+.collection-message {
+  padding: 32px 28px;
+  color: var(--peel-muted);
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+@media (max-width: 680px) {
+  .home-view {
+    padding: 28px 16px;
+  }
+  .projects-heading {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .welcome-logo {
+    width: 72px;
+    height: 72px;
+  }
+  .projects-intro {
+    min-width: 180px;
+  }
+  .projects-intro p {
+    font-size: 13px;
+  }
+  .project-description {
+    display: none;
+  }
+  .project-row {
+    grid-template-columns: 28px minmax(0, 1fr) 24px;
+    padding: 18px;
+    gap: 14px;
+    min-height: 76px;
+  }
+  .create-project {
+    padding: 18px;
+    gap: 12px;
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+  .create-actions {
+    grid-column: 2;
+  }
+  .project-error {
+    grid-column: 1 / -1;
   }
 }
 </style>

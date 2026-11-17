@@ -4,9 +4,27 @@ import type { PeelWorkspaceDocument } from '@/adapter/ClientTypeDefinition'
 
 export const useWorkspaceSelectionStore = defineStore('workspaceSelection', () => {
   const selectedDocument = ref<PeelWorkspaceDocument | null>(null)
+  const activeScriptId = ref<string | null>(null)
   const selectionVersion = ref(0)
   const deletedDocument = ref<PeelWorkspaceDocument | null>(null)
   const deletionVersion = ref(0)
+  const reloadedDocument = ref<PeelWorkspaceDocument | null>(null)
+  const reloadVersion = ref(0)
+  const outputVersion = ref(0)
+  function requestOutput(): void {
+    outputVersion.value += 1
+  }
+  const fileAction = ref<{ id: string; action: 'save' | 'execute' } | null>(null)
+  const actionVersion = ref(0)
+  function requestFileAction(id: string, action: 'save' | 'execute'): void {
+    fileAction.value = { id, action }
+    actionVersion.value += 1
+  }
+
+  function reloadDocument(document: PeelWorkspaceDocument): void {
+    reloadedDocument.value = document
+    reloadVersion.value += 1
+  }
 
   function selectDocument(document: PeelWorkspaceDocument): void {
     selectedDocument.value = document
@@ -25,13 +43,31 @@ export const useWorkspaceSelectionStore = defineStore('workspaceSelection', () =
     deletionVersion.value += 1
   }
 
+  function clear(): void {
+    activeScriptId.value = null
+    selectedDocument.value = null
+    deletedDocument.value = null
+    reloadedDocument.value = null
+    fileAction.value = null
+  }
+
   return {
+    activeScriptId,
     selectedDocument,
     selectionVersion,
     deletedDocument,
     deletionVersion,
+    reloadedDocument,
+    reloadVersion,
+    outputVersion,
+    requestOutput,
+    fileAction,
+    actionVersion,
+    requestFileAction,
+    reloadDocument,
     selectDocument,
     clearSelection,
     deleteDocument,
+    clear,
   }
 })

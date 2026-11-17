@@ -1,4 +1,6 @@
 package de.flogehring.peelserver.impl.documenttemplates;
 
-public record DocumentId(String id) {
+import jakarta.validation.constraints.NotBlank;
+
+public record DocumentId(@NotBlank String id) {
 }

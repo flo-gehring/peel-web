@@ -1,6 +1,89 @@
 @import './base.css';
 
 #app {
-  width: 100vw;
-  height: 100vh;
+  min-height: 100dvh;
+}
+
+:root {
+  color-scheme: dark;
+  --app-header-height: 48px;
+  --peel-background: #1b1e20;
+  --peel-surface: #24282b;
+  --peel-raised: #2e3337;
+  --peel-border: #3b4145;
+  --peel-text: #f3f1e9;
+  --peel-muted: #adb3b7;
+  --peel-accent: #ffcf32;
+  --peel-error: #ffaca0;
+  --color-background: var(--peel-background);
+  --color-text: var(--peel-text);
+}
+body {
+  background: var(--peel-background);
+  color: var(--peel-text);
+  font-family: 'Segoe UI', Inter, system-ui, sans-serif;
+  font-size: 14px;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+button,
+input,
+select {
+  border-radius: 8px;
+}
+button {
+  padding: 8px 14px;
+  border: 1px solid var(--peel-border);
+  color: var(--peel-text);
+  background: var(--peel-raised);
+}
+input,
+select {
+  padding: 10px 12px;
+  border: 1px solid var(--peel-border);
+  background: var(--peel-background);
+  color: var(--peel-text);
+}
+input::placeholder {
+  color: var(--peel-muted);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+button:not(:disabled):hover {
+  filter: brightness(1.1);
+}
+:focus-visible {
+  outline: 2px solid var(--peel-accent);
+  outline-offset: 3px;
+}
+.primary-button {
+  background: var(--peel-accent);
+  border-color: var(--peel-accent);
+  color: #221d0c;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.quiet-button {
+  background: transparent;
+  border-color: transparent;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }

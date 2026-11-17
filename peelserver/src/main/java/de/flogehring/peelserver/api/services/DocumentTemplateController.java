@@ -1,39 +1,30 @@
 package de.flogehring.peelserver.api.services;
 
-import de.flogehring.peelserver.api.data.template.*;
+import de.flogehring.peelserver.api.data.template.DocumentPreviewRequest;
+import de.flogehring.peelserver.api.data.template.DocumentPreviewResponse;
+import de.flogehring.peelserver.impl.users.SpringUserDetails;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-import java.util.List;
 import java.util.Map;
 
 @RequestMapping(path = "/api/documents", produces = MediaType.APPLICATION_JSON_VALUE)
 public interface DocumentTemplateController {
 
-    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    DocumentTemplateSaveResponse saveDocument(@RequestBody DocumentTemplateSaveRequest request);
-
-    @GetMapping
-    List<DocumentTemplateSummaryResponse> listDocuments();
-
-    @GetMapping("/{id}")
-    DocumentTemplate getDocument(@PathVariable String id);
-
-    @DeleteMapping("/{id}")
-    void deleteDocument(@PathVariable String id);
-
     @PostMapping(path = "/preview", consumes = MediaType.APPLICATION_JSON_VALUE)
-    DocumentPreviewResponse previewDocument(@RequestBody DocumentPreviewRequest request);
+    DocumentPreviewResponse previewDocument(@Valid @RequestBody DocumentPreviewRequest request, @AuthenticationPrincipal SpringUserDetails user);
 
     @PostMapping(path = "/preview-stored/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     DocumentPreviewResponse previewDocument(
             @PathVariable String id,
-            @RequestBody @Schema(type = "object", additionalProperties = Schema.AdditionalPropertiesValue.TRUE) Map<String, Object> bindings
+            @RequestBody @Schema(type = "object", additionalProperties = Schema.AdditionalPropertiesValue.TRUE)
+            Map<String, Object> bindings,
+            @AuthenticationPrincipal SpringUserDetails user
     );
 }

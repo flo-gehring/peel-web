@@ -1,9 +1,11 @@
 package de.flogehring.peelserver.api.data.print.jobs;
 
 import de.flogehring.peelserver.impl.documenttemplates.DocumentId;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 
 public record PrintJobInitRequestDto(
-        DocumentId documentId,
-        String name
+        @NotNull @Valid DocumentId documentId,
+        @jakarta.validation.constraints.NotBlank String name
 ) {
 }
