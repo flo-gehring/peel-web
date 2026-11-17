@@ -94,6 +94,7 @@ watch(
 )
 
 function toggleHeading(level: 1 | 2 | 3): void {
+  if (inTableColumn.value) return
   editor.value?.chain().focus().toggleHeading({ level }).run()
 }
 
@@ -106,21 +107,28 @@ function toggleItalic(): void {
 }
 
 function toggleBulletList(): void {
+  if (inTableColumn.value) return
   editor.value?.chain().focus().toggleBulletList().run()
 }
 
 function toggleOrderedList(): void {
+  if (inTableColumn.value) return
   editor.value?.chain().focus().toggleOrderedList().run()
 }
 
 function toggleBlockquote(): void {
+  if (inTableColumn.value) return
   editor.value?.chain().focus().toggleBlockquote().run()
 }
 
-function insertTraceBlock(type: 'peelCalculation' | 'peelRepeat' | 'peelValue'): void {
+const inTableColumn = computed(() => editor.value?.isActive('peelTableColumn') ?? false)
+function insertTraceBlock(
+  type: 'peelCalculation' | 'peelRepeat' | 'peelValue' | 'peelTable',
+): void {
   const instance = editor.value
   if (!instance || projectStore.isReadOnly) return
-  const relative = instance.isActive('peelRepeat')
+  if (inTableColumn.value && (type === 'peelRepeat' || type === 'peelTable')) return
+  const relative = instance.isActive('peelRepeat') || instance.isActive('peelTable')
   const attrs = {
     scriptId: relative ? '' : (projectStore.activeProject?.scripts?.[0]?.id ?? ''),
     block: '',
@@ -128,12 +136,20 @@ function insertTraceBlock(type: 'peelCalculation' | 'peelRepeat' | 'peelValue'):
     mode: 'detailed',
   }
   const content =
-    type === 'peelRepeat'
-      ? [
-          { type: 'paragraph' },
-          { type: 'peelCalculation', attrs: { scope: 'current', mode: 'detailed' } },
-        ]
-      : undefined
+    type === 'peelTable'
+      ? [1, 2].map((index) => ({
+          type: 'peelTableColumn',
+          attrs: { title: `${t('traceColumn')} ${index}`, align: 'left' },
+          content: [
+            { type: 'paragraph', content: [{ type: 'peelValue', attrs: { scope: 'current' } }] },
+          ],
+        }))
+      : type === 'peelRepeat'
+        ? [
+            { type: 'paragraph' },
+            { type: 'peelCalculation', attrs: { scope: 'current', mode: 'detailed' } },
+          ]
+        : undefined
   const inserted = instance
     .chain()
     .focus()
@@ -278,11 +294,20 @@ async function previewDocument(): Promise<void> {
             >
               {{ t('traceCalculation') }}
             </button>
-            <button :disabled="projectStore.isReadOnly" @click="insertTraceBlock('peelRepeat')">
+            <button
+              :disabled="projectStore.isReadOnly || inTableColumn"
+              @click="insertTraceBlock('peelRepeat')"
+            >
               {{ t('traceRepeat') }}
             </button>
             <button :disabled="projectStore.isReadOnly" @click="insertTraceBlock('peelValue')">
               {{ t('traceValue') }}
+            </button>
+            <button
+              :disabled="projectStore.isReadOnly || inTableColumn"
+              @click="insertTraceBlock('peelTable')"
+            >
+              {{ t('traceTable') }}
             </button>
             <p>{{ t('traceSavedScripts') }}</p>
           </div>
@@ -325,6 +350,7 @@ async function previewDocument(): Promise<void> {
           <button
             :class="{ active: editor?.isActive('heading', { level: 1 }) }"
             :title="t('heading1')"
+            :disabled="inTableColumn"
             @click="toggleHeading(1)"
           >
             H1
@@ -332,6 +358,7 @@ async function previewDocument(): Promise<void> {
           <button
             :class="{ active: editor?.isActive('heading', { level: 2 }) }"
             :title="t('heading2')"
+            :disabled="inTableColumn"
             @click="toggleHeading(2)"
           >
             H2
@@ -362,6 +389,7 @@ async function previewDocument(): Promise<void> {
           <button
             :class="{ active: editor?.isActive('bulletList') }"
             :title="t('bulletList')"
+            :disabled="inTableColumn"
             @click="toggleBulletList"
           >
             {{ t('list') }}
@@ -369,6 +397,7 @@ async function previewDocument(): Promise<void> {
           <button
             :class="{ active: editor?.isActive('orderedList') }"
             :title="t('numberedList')"
+            :disabled="inTableColumn"
             @click="toggleOrderedList"
           >
             1.
@@ -376,6 +405,7 @@ async function previewDocument(): Promise<void> {
           <button
             :class="{ active: editor?.isActive('blockquote') }"
             :title="t('quote')"
+            :disabled="inTableColumn"
             @click="toggleBlockquote"
           >
             {{ t('quote') }}

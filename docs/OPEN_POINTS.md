@@ -1,8 +1,25 @@
 # PEEL: offene Punkte aus der Produktbesprechung
 
-Stand: 15. November 2026. Diese Liste wird bei weiteren Beobachtungen und
+Stand: 17. November 2026. Diese Liste wird bei weiteren Beobachtungen und
 Entscheidungen im Gespräch ergänzt. Ein Eintrag ist keine automatische Freigabe
 zur Umsetzung. Bestehende fremde Änderungen bleiben erhalten.
+
+## Ergänzung vom 17. November 2026: Darstellung und Tabellen
+
+- Neuer Berechnungsmodus: „Eingesetzte Werte und Ergebnis“ (`substituted`).
+  Die symbolische Formel entfällt; Zuweisungsnamen bleiben erhalten.
+- Tabellendarstellung für wiederholte Blöcke wurde freigegeben und umgesetzt.
+  Spezifikation und Abnahme stehen in [REPEAT_TABLE_PLAN.md](REPEAT_TABLE_PLAN.md).
+
+## Leere Dokumente löschen
+
+- Nutzerbeobachtung vom 17. November 2026: Löschen scheiterte bei einem vollständig
+  leeren Dokument mit `DocumentContent.document() == null`; beliebiger Text
+  umging das Problem.
+- Korrektur: Der projektweite Referenzscan beim Löschen behandelt fehlenden
+  Dokumentinhalt als ohne Skriptreferenzen. Eine vorhandene Renderkonfigurations-
+  Referenz bleibt geschützt. Leere gültige Dokumente und gespeicherte Datensätze
+  ohne Dokumentwurzel sind durch Regressionstests abgedeckt.
 
 ## 1. Lesbarkeit eingebetteter Bausteine im Dokument
 

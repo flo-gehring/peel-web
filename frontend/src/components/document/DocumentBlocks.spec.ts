@@ -73,10 +73,10 @@ describe('editing trace blocks', () => {
       .findAll('.peel-node')
       .find((node) => node.text().startsWith('Calculation'))!
     const display = calculation.findAll('select').at(-1)!
-    await display.setValue('compact')
+    await display.setValue('substituted')
     expect(
       useDocumentDraftStore().getDraft('d')?.document.content?.[0]?.content?.[1]?.attrs?.mode,
-    ).toBe('compact')
+    ).toBe('substituted')
     expect(useDocumentDraftStore().getDraft('d')?.dirty).toBe(true)
     expect(get).toHaveBeenCalledWith('/api/projects/{projectId}/files/{fileId}/blocks', {
       params: { path: { projectId: 'p', fileId: 's' } },

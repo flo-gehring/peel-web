@@ -1,5 +1,6 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
+import { shallowRef } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DocumentPanel from './DocumentPanel.vue'
 import { useDocumentDraftStore } from '@/stores/documentDrafts'
@@ -21,7 +22,7 @@ const { post, put } = vi.hoisted(() => ({ post: vi.fn(), put: vi.fn() }))
 vi.mock('@/adapter/client', () => ({ api: { POST: post, PUT: put } }))
 vi.mock('@tiptap/vue-3', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@tiptap/vue-3')>()),
-  useEditor: () => null,
+  useEditor: () => shallowRef(null),
   EditorContent: { template: '<div />' },
 }))
 

@@ -41,11 +41,14 @@ Unterstützte PEEL-Knoten:
 
 | Typ | Inhalt / Attribute |
 | --- | --- |
-| `peelCalculation` | Blockelement ohne Kinder; `mode`: `detailed`, `compact`, `result`. |
+| `peelCalculation` | Blockelement ohne Kinder; `mode`: `detailed`, `compact`, `substituted`, `result`. |
 | `peelValue` | Inline-Element; `binding` leer für das Blockergebnis, sonst sichtbarer Variablenname mit optionalem Map-Pfad, z. B. `bauteil.name`. |
 | `peelRepeat` | Blockcontainer mit editierbaren Blockelementen; Ausgabe einmal je Vorkommen. |
+| `peelTable` | Tabellenbaustein mit `scope`, `scriptId`, `block`; eine Datenzeile je Vorkommen. |
+| `peelTableColumn` | Nur innerhalb einer Tabelle; `title` als konstanter Text, `align`: `left`, `center`, `right`; Zellvorlage aus Absätzen und Berechnungen. |
 
-Alle drei verwenden `scope: "script"` mit `scriptId` oder `scope: "current"`
+Werte, Berechnungen, Wiederholungen und Tabellen verwenden `scope: "script"`
+mit `scriptId` oder `scope: "current"`
 innerhalb einer Wiederholung. `block: ""` bedeutet das gesamte Skript bzw. das
 aktuelle Vorkommen; ein Name wählt diesen Block im jeweiligen Kontext, inklusive
 des aktuellen Blocks selbst. Bei `current` wird die Skript-ID des umgebenden
@@ -118,6 +121,11 @@ Der Server validiert den Dokumentbaum, löst Trace-Referenzen auf und erzeugt HT
 Pebble rendert weiterhin die Ausdrucksfragmente; die Auswahl- und
 Wiederholungssemantik liegt in Java. Die ausführliche Darstellung ergänzt
 eingesetzte Werte und Ergebnisse, die kompakte Darstellung Formel und Ergebnis.
+„Eingesetzte Werte und Ergebnis“ (`substituted`) lässt die symbolische Formel weg,
+zum Beispiel `zinsen = (1000 * 0.05) = 50`. Zuweisungsnamen und `return` bleiben zur
+Zuordnung erhalten. Bedingungen und aufgezeichnete Funktionskörper verwenden
+ebenfalls eingesetzte Werte. Bereits aufgelöste Einzelwerte/Selektoren werden
+ohne redundantes `Wert = Wert` dargestellt; Rundung betrifft nur die Ausgabe.
 Unbenannte Blöcke und alle aufgezeichneten Schleifendurchläufe werden beim Rendern
 eines übergeordneten Blocks berücksichtigt. Die ausführliche Darstellung zeigt
 auch aufgezeichnete Funktionskörper. Rundung betrifft nur die Darstellung.
@@ -126,11 +134,24 @@ Vorschau und Print Jobs verwenden dieselbe HTML-/OpenPDF-Pipeline.
 ## Prüfungen
 
 - Kern: `./gradlew.bat test` im benachbarten `peel`-Repository.
-- Server: `StructuredDocumentTest`, `ExpressionRendererTest`, `ProjectFileTest`,
+- Server: `TableDocumentTest`, `StructuredDocumentTest`, `ExpressionRendererTest`, `ProjectFileTest`,
   `ProjectAuthorizationTest`, `ProjectPrintJobsTest`, `ProjectPrintJobCompletionTest`.
 - `DocumentOpenApiTest` exportiert den aktuellen Vertrag nach `build/openapi.json`.
 - Frontend: Tiptap-Roundtrip, echte Vue-Node-Views, Dokument-/Datei-Lifecycle,
   Vorschau-Request-Zuordnung, Typprüfung und Produktionsbuild.
 
-Eigene Nutzerbausteine, freie Selektorausdrücke und neue Tabellenbausteine sind
-nicht Bestandteil dieses ersten Umfangs.
+Tabellen bearbeiten eine Musterzeile mit einer oder mehreren Spalten. Zellen
+enthalten Absätze mit Text/Inline-Werten oder Berechnungsbausteine. Deren relative
+Quelle bezieht sich auf das konkrete Zeilen-Vorkommen. Tabellen dürfen innerhalb
+freier Wiederholungen stehen; verschachtelte Tabellen, Zellverbindungen und freie
+Wiederholungen in Zellen sind nicht erlaubt. Bei null Treffern wird die gesamte
+Tabelle ausgelassen und eine Warnung ausgegeben. Fehlerpfade enthalten Zeile und Spalte.
+
+Die PDF-Ausgabe verwendet gleich breite Spalten, wiederholt Kopfzeilen auf
+Folgeseiten und hält normale Zeilen möglichst zusammen. Überhohe Zeilen können
+über Seiten umbrechen. Die Tests prüfen Kopfzeilen und vollständigen Text auch
+in mehrseitigen Tabellen und überhohen Zellen.
+
+Eigene Nutzerbausteine, freie Selektorausdrücke, Summenzeilen und Gruppierung
+sind nicht Bestandteil dieses Umfangs. Spezifikation und Testkatalog stehen in
+[REPEAT_TABLE_PLAN.md](../../docs/REPEAT_TABLE_PLAN.md).

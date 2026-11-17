@@ -1,6 +1,7 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import { VueNodeViewRenderer } from '@tiptap/vue-3'
 import PeelNodeView from './PeelNodeView.vue'
+import PeelTableColumnView from './PeelTableColumnView.vue'
 
 const attributes = () => ({
   scriptId: { default: '' },
@@ -67,4 +68,36 @@ export const PeelValue = Node.create({
   addNodeView: () => VueNodeViewRenderer(PeelNodeView),
 })
 
-export const peelNodes = [PeelCalculation, PeelRepeat, PeelValue]
+export const PeelTable = Node.create({
+  name: 'peelTable',
+  group: 'block',
+  content: 'peelTableColumn+',
+  defining: true,
+  isolating: true,
+  draggable: true,
+  addAttributes: attributes,
+  parseHTML: () => [{ tag: 'section[data-peel="table"]' }],
+  renderHTML: ({ HTMLAttributes }) => [
+    'section',
+    mergeAttributes(HTMLAttributes, { 'data-peel': 'table' }),
+    0,
+  ],
+  addNodeView: () => VueNodeViewRenderer(PeelNodeView),
+})
+
+export const PeelTableColumn = Node.create({
+  name: 'peelTableColumn',
+  content: '(paragraph | peelCalculation)+',
+  defining: true,
+  isolating: true,
+  addAttributes: () => ({ title: { default: '' }, align: { default: 'left' } }),
+  parseHTML: () => [{ tag: 'div[data-peel="column"]' }],
+  renderHTML: ({ HTMLAttributes }) => [
+    'div',
+    mergeAttributes(HTMLAttributes, { 'data-peel': 'column' }),
+    0,
+  ],
+  addNodeView: () => VueNodeViewRenderer(PeelTableColumnView),
+})
+
+export const peelNodes = [PeelCalculation, PeelRepeat, PeelValue, PeelTable, PeelTableColumn]

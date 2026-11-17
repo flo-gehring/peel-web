@@ -256,6 +256,46 @@ class ProjectFileTest {
         mvc.perform(get(base()+"/"+id+"/blocks").with(user(member))).andExpect(status().isBadRequest());
     }
 
+    @Test void tablesRetainVersionsReferencesAndDeleteProtection() throws Exception {
+        create(id, "Script", script("1;"));
+        String template = UUID.randomUUID().toString();
+        var content = Map.of("type", "document", "document", doc(table(id)));
+        create(template, "Table", content);
+        mvc.perform(get(base()+"/"+template).with(user(member))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.document.content[0].content[0].attrs.title").value("Value"));
+        update(template, 0, "Updated table", "", content, 200);
+        update(template, 0, "Stale table", "", content, 409);
+        mvc.perform(delete(base()+"/"+id).param("expectedVersion","0").with(user(member)).with(csrf()))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.details.usages[0].id").value(template));
+        mvc.perform(body(post(base()), Map.of("id", UUID.randomUUID().toString(), "name", "Invalid", "content",
+                Map.of("type", "document", "document", doc(table("missing"))))).with(user(member))).andExpect(status().isNotFound());
+    }
+
+    @Test void emptyDocumentsCanBeDeletedWithoutAddingTextOrScripts() throws Exception {
+        for (var root : List.of(doc(), doc(new de.flogehring.peelserver.api.data.template.DocumentNode(
+                "paragraph", Map.of(), List.of(), null, List.of())))) {
+            String empty = UUID.randomUUID().toString();
+            create(empty, "Empty", Map.of("type", "document", "document", root));
+            mvc.perform(delete(base()+"/"+empty).param("expectedVersion", "0").with(user(member)).with(csrf()))
+                    .andExpect(status().isNoContent());
+        }
+    }
+
+    @Test void missingDocumentBodiesDoNotCrashDeletionOrDisableRenderConfigProtection() throws Exception {
+        create(id, "Script", script("1;"));
+        String config = UUID.randomUUID().toString(); create(config, "Config", config());
+        String empty = UUID.randomUUID().toString();
+        var now = java.time.Instant.now();
+        files.insert(new ProjectFile(empty, new ProjectId(project), "Empty", "", 0,
+                new FileContent.DocumentContent(null, config), now, now));
+        mvc.perform(delete(base()+"/"+id).param("expectedVersion", "0").with(user(member)).with(csrf()))
+                .andExpect(status().isNoContent());
+        mvc.perform(delete(base()+"/"+config).param("expectedVersion", "0").with(user(member)).with(csrf()))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.details.usages[0].id").value(empty));
+        mvc.perform(delete(base()+"/"+empty).param("expectedVersion", "0").with(user(member)).with(csrf()))
+                .andExpect(status().isNoContent());
+    }
+
     @Test void blockCatalogIncludesStructuralAndCalledDescendantsWithoutRunning() throws Exception {
         create(id, "Script", script("fun f() function:{1/0;} outer:{round:{if(False) conditional:{} f();}} sibling:{}"));
         mvc.perform(get(base()+"/"+id+"/blocks").with(user(member))).andExpect(status().isOk())

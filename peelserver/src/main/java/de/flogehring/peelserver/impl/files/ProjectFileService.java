@@ -91,7 +91,8 @@ public class ProjectFileService {
             if (existing.isEmpty()) return null;
             if (existing.get().version() != expectedVersion) throw versionConflict(existing.get());
             var uses = files.findByProjectId(project).stream().filter(file -> file.content() instanceof FileContent.DocumentContent document
-                    && (id.equals(document.renderConfigurationId()) || document.document().scriptIds().contains(id)))
+                    && (id.equals(document.renderConfigurationId())
+                    || (document.document() != null && document.document().scriptIds().contains(id))))
                     .map(FileSummary::of).toList();
             if (!uses.isEmpty()) throw new FileConflictException("file_in_use", "Remove file references before deleting this file.", Map.of("usages", uses));
             var result = mongo.remove(Query.query(Criteria.where("id").is(id).and("projectId").is(project)

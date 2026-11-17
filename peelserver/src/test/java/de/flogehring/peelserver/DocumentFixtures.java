@@ -11,4 +11,10 @@ public final class DocumentFixtures {
     public static DocumentNode textDocument() {
         return doc(new DocumentNode("paragraph", Map.of(), List.of(new DocumentNode("text", Map.of(), List.of(), "Test", List.of())), null, List.of()));
     }
+    public static DocumentNode table(String scriptId) {
+        var cell = new DocumentNode("peelValue", Map.of("scope", "current"), List.of(), null, List.of());
+        var paragraph = new DocumentNode("paragraph", Map.of(), List.of(cell), null, List.of());
+        var column = new DocumentNode("peelTableColumn", Map.of("title", "Value", "align", "right"), List.of(paragraph), null, List.of());
+        return new DocumentNode("peelTable", Map.of("scope", "script", "scriptId", scriptId), List.of(column), null, List.of());
+    }
 }

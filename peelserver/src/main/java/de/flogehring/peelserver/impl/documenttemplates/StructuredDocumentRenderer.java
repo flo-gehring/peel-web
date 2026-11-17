@@ -23,6 +23,7 @@ final class StructuredDocumentRenderer {
     private String render(DocumentNode node, TraceSelection.Occurrence current, String path) {
         try {
             String type = node.type();
+            if (type.equals("peelTable")) return table(node, current, path);
             if (type.equals("peelRepeat")) {
                 var occurrences = select(node, current);
                 if (occurrences.isEmpty()) warnings.add(path + ": block '" + node.attribute("block") + "' was not executed");
@@ -80,6 +81,32 @@ final class StructuredDocumentRenderer {
         return selection.select(node.attribute("scriptId"), node.attribute("block"), current, node.attribute("scope").equals("current"));
     }
 
+    private String table(DocumentNode node, TraceSelection.Occurrence current, String path) {
+        var occurrences = select(node, current);
+        if (occurrences.isEmpty()) {
+            warnings.add(path + ": block '" + node.attribute("block") + "' was not executed");
+            return "";
+        }
+        var html = new StringBuilder("<table class=\"peel-table\"><thead><tr>");
+        for (var column : node.content()) html.append("<th scope=\"col\" style=\"text-align:")
+                .append(alignment(column)).append("\">").append(escape(column.attribute("title"))).append("</th>");
+        html.append("</tr></thead><tbody>");
+        for (int row = 0; row < occurrences.size(); row++) {
+            html.append("<tr>");
+            for (int col = 0; col < node.content().size(); col++) {
+                var column = node.content().get(col);
+                html.append("<td style=\"text-align:").append(alignment(column)).append("\">")
+                        .append(children(column, occurrences.get(row), path + "/row/" + row + "/column/" + col)).append("</td>");
+            }
+            html.append("</tr>");
+        }
+        return html.append("</tbody></table>").toString();
+    }
+
+    private static String alignment(DocumentNode column) {
+        return column.attribute("align").isBlank() ? "left" : column.attribute("align");
+    }
+
     private String children(DocumentNode node, TraceSelection.Occurrence current, String path) {
         var html = new StringBuilder();
         for (int i = 0; i < node.content().size(); i++) html.append(render(node.content().get(i), current, path + "/" + i));
@@ -131,7 +158,7 @@ final class StructuredDocumentRenderer {
             StringBuilder html = new StringBuilder();
             for (Object condition : list(expression.get("conditions"))) {
                 Map<String, Object> item = map(condition);
-                html.append("<p class=\"peel-condition\">if ").append(expressions.render(item)).append(" → ")
+                html.append("<p class=\"peel-condition\">if ").append(expressionText(item, mode, decimals)).append(" → ")
                         .append(escape(valueText(item.get("value"), null))).append("</p>");
             }
             if (expression.get("executedBlock") != null) html.append(calculation(map(expression.get("executedBlock")), mode, decimals));
@@ -147,22 +174,36 @@ final class StructuredDocumentRenderer {
                             .append(" = ").append(escape(valueText(binding.get("value"), decimals))).append("</p>");
                 } else if (iteration.get("condition") != null) {
                     var condition = map(iteration.get("condition"));
-                    html.append("<p class=\"peel-condition\">while ").append(expressions.render(condition)).append(" → ")
+                    html.append("<p class=\"peel-condition\">while ").append(expressionText(condition, mode, decimals)).append(" → ")
                             .append(escape(valueText(condition.get("value"), null))).append("</p>");
                 }
                 if (iteration.get("body") != null) html.append(calculation(map(iteration.get("body")), mode, decimals));
             }
             return html.toString();
         }
-        String html = "<p class=\"peel-equation\">" + expressions.render(expression);
+        String html = "<p class=\"peel-equation\">" + expressionText(expression, mode, decimals);
         if (mode.equals("detailed")) {
             Map<String, Object> rhs = Set.of("assignment", "return_expression").contains(type) ? map(expression.get("expression")) : expression;
             if (Set.of("binary_operator", "unary_prefix_operator", "function_call", "selector").contains(rhs.get("type")))
                 html += " = " + escape(substituted(rhs, decimals));
         }
         boolean literalAssignment = type.equals("assignment") && "literal".equals(map(expression.get("expression")).get("type"));
-        if (!type.equals("literal") && !literalAssignment) html += " = " + escape(valueText(expression.get("value"), decimals));
-        return html + "</p>" + (mode.equals("detailed") ? functionDetails(expression, mode, decimals) : "");
+        Map<String, Object> rhs = Set.of("assignment", "return_expression").contains(type) ? map(expression.get("expression")) : expression;
+        boolean showResult = mode.equals("substituted")
+                ? Set.of("binary_operator", "unary_prefix_operator", "function_call").contains(rhs.get("type"))
+                : !type.equals("literal") && !literalAssignment;
+        if (showResult) html += " = " + escape(valueText(expression.get("value"), decimals));
+        return html + "</p>" + (Set.of("detailed", "substituted").contains(mode) ? functionDetails(expression, mode, decimals) : "");
+    }
+
+    private String expressionText(Map<String, Object> expression, String mode, Integer decimals) {
+        if (!mode.equals("substituted")) return expressions.render(expression);
+        String text = switch (String.valueOf(expression.get("type"))) {
+            case "assignment" -> expression.get("variableName") + " = " + substituted(map(expression.get("expression")), decimals);
+            case "return_expression" -> "return " + substituted(map(expression.get("expression")), decimals);
+            default -> substituted(expression, decimals);
+        };
+        return escape(text);
     }
 
     private String functionDetails(Map<String, Object> expression, String mode, Integer decimals) {

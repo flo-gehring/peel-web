@@ -46,6 +46,11 @@ public class DocumentTemplateRenderService {
                 .peel-equation { font-family: monospace; overflow-wrap: break-word; }
                 .peel-calculation { margin: 8pt 0; }
                 .peel-repeat { margin: 10pt 0; }
+                .peel-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin: 10pt 0; -fs-table-paginate: paginate; }
+                .peel-table thead { display: table-header-group; }
+                .peel-table tr { page-break-inside: avoid; }
+                .peel-table th,.peel-table td { border: 1px solid #b8b8b8; padding: 5pt; vertical-align: top; overflow-wrap: break-word; word-wrap: break-word; }
+                .peel-table td p { margin: 0 0 3pt; }
                 .peel-function { margin-left: 12pt; border-left: 1pt solid #ddd; padding-left: 6pt; }
                 .peel-condition,.peel-iteration { color: #555; }
                 pre { white-space: pre-wrap; }

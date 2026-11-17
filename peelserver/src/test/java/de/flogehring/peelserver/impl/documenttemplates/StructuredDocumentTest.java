@@ -5,6 +5,8 @@ import de.flogehring.peelserver.impl.run.*;
 import de.flogehring.peelserver.impl.scripts.PeelScript;
 import de.flogehring.peelserver.impl.renderconfig.ExpressionRenderConfiguration;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import java.util.*;
 import static de.flogehring.peelserver.DocumentFixtures.*;
 import static org.assertj.core.api.Assertions.*;
@@ -13,6 +15,43 @@ import static org.mockito.Mockito.*;
 class StructuredDocumentTest {
     final PeelExecutionService execution = spy(new PeelExecutionService(new BindingsMapper()));
     final DocumentTemplateRenderService renderer = new DocumentTemplateRenderService(execution);
+
+    @ParameterizedTest
+    @CsvSource(value = {
+            "detailed|<p class=\"peel-equation\">total = (a * b) = (2 * 3) = 6</p>",
+            "compact|<p class=\"peel-equation\">total = (a * b) = 6</p>",
+            "substituted|<p class=\"peel-equation\">total = (2 * 3) = 6</p>",
+            "result|<p>6</p>"
+    }, delimiter = '|')
+    void calculationModesSelectFormulaSubstitutionAndResult(String mode, String expected) {
+        var body = doc(node("peelCalculation", Map.of("scope", "script", "scriptId", "script", "block", "calc", "mode", mode)));
+        assertThat(renderer.render(document("calc:{var total=a*b;}", body), Map.of("a", 2, "b", 3))).contains(expected);
+    }
+
+    @Test void substitutedModeKeepsEachIterationsValuesAndShowsSubstitutedFunctionBodies() {
+        String source = "fun scale(x){return x*3;} for(i in [1,2]) calc:{var amount=scale(i);}";
+        var body = doc(node("peelRepeat", Map.of("scope", "script", "scriptId", "script", "block", "calc"),
+                node("peelCalculation", Map.of("scope", "current", "mode", "substituted"))));
+        String html = renderer.render(document(source, body), Map.of());
+        assertThat(html).containsSubsequence("amount = scale(1) = 3", "return (1 * 3) = 3", "amount = scale(2) = 6", "return (2 * 3) = 6")
+                .doesNotContain("scale(i)", "return (x * 3)");
+        assertThat(renderer.preview(document(source, body), Map.of()).pdfData()).isNotEmpty();
+    }
+
+    @Test void substitutedModeEscapesAndRoundsResolvedValuesWithoutDuplicatingLiteralResults() {
+        var body = doc(node("peelCalculation", Map.of("scope", "script", "scriptId", "script", "mode", "substituted", "decimals", 2)));
+        String source = "var amount=items[0];var copy=amount;var literal=7;var text=label;";
+        String html = renderer.render(document(source, body), Map.of("items", List.of(1.234), "label", "<A>&"));
+        assertThat(html).contains("amount = 1.23</p>", "copy = 1.23</p>", "literal = 7.00</p>", "text = &lt;A&gt;&amp;</p>")
+                .doesNotContain("items[0]", "1.23 = 1.23", "7.00 = 7.00");
+    }
+
+    @Test void substitutedModeUsesRecordedConditionsAndDoesNotEvaluateSkippedOperands() {
+        var body = doc(node("peelCalculation", Map.of("scope", "script", "scriptId", "script", "mode", "substituted")));
+        String html = renderer.render(document("var n=0;while(n==0){if(False && (1/0==0)){99;}n=n+1;}", body), Map.of());
+        assertThat(html).contains("while (0 == 0)", "while (1 == 0)", "(false &amp;&amp; …)")
+                .doesNotContain("while (n == 0)", "1 / 0");
+    }
 
     @Test void repeatsCalculationsWithTheirOwnLoopBindingAndProducesPdf() {
         String source = "for (bauteil in bauteile) nachweis: { var spannung = bauteil[\"kraft\"] / bauteil[\"flaeche\"]; }";

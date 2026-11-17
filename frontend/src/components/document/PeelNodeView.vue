@@ -18,10 +18,19 @@ onBeforeUnmount(() => props.editor.off('transaction', onTransaction))
 const error = ref('')
 const loading = ref(false)
 let generation = 0
-const repeat = computed(() => props.node.type.name === 'peelRepeat')
+const table = computed(() => props.node.type.name === 'peelTable')
+const repeat = computed(() => props.node.type.name === 'peelRepeat' || table.value)
 const inline = computed(() => props.node.type.name === 'peelValue')
 const title = computed(() =>
-  t(repeat.value ? 'traceRepeat' : inline.value ? 'traceValue' : 'traceCalculation'),
+  t(
+    table.value
+      ? 'traceTable'
+      : repeat.value
+        ? 'traceRepeat'
+        : inline.value
+          ? 'traceValue'
+          : 'traceCalculation',
+  ),
 )
 const editable = computed(() => props.editor.isEditable && !projects.isReadOnly)
 const scripts = computed(() => projects.activeProject?.scripts ?? [])
@@ -34,7 +43,7 @@ const repeatContext = computed(() => {
   let found = false
   for (let depth = 1; depth <= resolved.depth; depth++) {
     const ancestor = resolved.node(depth)
-    if (ancestor.type.name !== 'peelRepeat') continue
+    if (!['peelRepeat', 'peelTable'].includes(ancestor.type.name)) continue
     found = true
     if (ancestor.attrs.scope === 'script') {
       context.scriptId = ancestor.attrs.scriptId
@@ -96,6 +105,15 @@ function update(name: string, event: Event) {
 function changeScript(event: Event) {
   if (editable.value)
     props.updateAttributes({ scriptId: (event.target as HTMLSelectElement).value, block: '' })
+}
+function addColumn() {
+  const pos = props.getPos()
+  if (!editable.value || pos === undefined) return
+  props.editor.commands.insertContentAt(pos + props.node.nodeSize - 1, {
+    type: 'peelTableColumn',
+    attrs: { title: t('traceColumnTitle'), align: 'left' },
+    content: [{ type: 'paragraph' }],
+  })
 }
 </script>
 
@@ -182,6 +200,7 @@ function changeScript(event: Event) {
           <select :value="node.attrs.mode" @change="update('mode', $event)">
             <option value="detailed">{{ t('traceDetailed') }}</option>
             <option value="compact">{{ t('traceCompact') }}</option>
+            <option value="substituted">{{ t('traceSubstituted') }}</option>
             <option value="result">{{ t('traceResult') }}</option>
           </select>
         </label>
@@ -207,10 +226,24 @@ function changeScript(event: Event) {
       </fieldset>
       <p v-if="error" role="alert" class="trace-error">{{ error }}</p>
       <p class="trace-hint">
-        {{ t(inline ? 'traceVariableHint' : repeat ? 'traceRepeatHint' : 'tracePreviewHint') }}
+        {{
+          t(
+            table
+              ? 'traceTableHint'
+              : inline
+                ? 'traceVariableHint'
+                : repeat
+                  ? 'traceRepeatHint'
+                  : 'tracePreviewHint',
+          )
+        }}
       </p>
+      <button v-if="table" type="button" :disabled="!editable" @click="addColumn">
+        {{ t('traceAddColumn') }}
+      </button>
     </details>
-    <NodeViewContent v-if="repeat" class="peel-repeat-content" />
+    <div v-if="table" class="peel-table-scroll"><NodeViewContent class="peel-table-columns" /></div>
+    <NodeViewContent v-else-if="repeat" class="peel-repeat-content" />
   </NodeViewWrapper>
 </template>
 
@@ -318,5 +351,12 @@ button {
 .peel-repeat-content {
   padding: 8px 12px;
   border-top: 1px dashed #53513d;
+}
+.peel-table-scroll {
+  overflow-x: auto;
+  padding: 8px;
+}
+.peel-table-columns {
+  display: flex;
 }
 </style>

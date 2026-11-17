@@ -30,7 +30,7 @@ describe('structured calculation documents', () => {
               content: [
                 {
                   type: 'peelCalculation',
-                  attrs: { scope: 'current', mode: 'compact' },
+                  attrs: { scope: 'current', mode: 'substituted' },
                 },
               ],
             },
@@ -51,7 +51,7 @@ describe('structured calculation documents', () => {
     })
     expect(saved.content?.[0]?.content?.[1]?.content?.[0]?.attrs).toMatchObject({
       scope: 'current',
-      mode: 'compact',
+      mode: 'substituted',
     })
   })
 
@@ -74,7 +74,10 @@ describe('structured calculation documents', () => {
     const source = {
       type: 'doc',
       content: [
-        { type: 'peelCalculation', attrs: { scriptId: 's', block: 'report', decimals: 2 } },
+        {
+          type: 'peelCalculation',
+          attrs: { scriptId: 's', block: 'report', decimals: 2, mode: 'substituted' },
+        },
       ],
     }
     const reopened = getSchema(extensions).nodeFromJSON(
@@ -85,6 +88,7 @@ describe('structured calculation documents', () => {
       scriptId: 's',
       block: 'report',
       decimals: 2,
+      mode: 'substituted',
     })
   })
 })

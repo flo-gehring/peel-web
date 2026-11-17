@@ -156,6 +156,29 @@ class ProjectAuthorizationTest {
         verifyNoInteractions(runner, storage);
     }
 
+    @Test void tablesUseAuthorizedReferencesAndPassAnImmutableTemplateToPrintJobs() throws Exception {
+        var original = files.findById(documentId).orElseThrow();
+        var tableDocument = doc(table(scriptId));
+        files.save(new ProjectFile(original.id(), original.projectId(), original.name(), original.description(), original.version(),
+                new FileContent.DocumentContent(tableDocument, configId), original.createdAt(), original.updatedAt()));
+        mvc.perform(body(post("/api/documents/preview-stored/" + documentId), Map.of()).with(user(owner)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.pdfData").isNotEmpty());
+        String job = createJob(owner);
+        mvc.perform(post("/api/print-jobs/" + job + "/run").with(user(owner)).with(csrf())).andExpect(status().isOk());
+        var captured = org.mockito.ArgumentCaptor.forClass(Document.class);
+        verify(runner).run(any(), captured.capture());
+        assertThat(captured.getValue().document()).isEqualTo(tableDocument);
+        String foreign = UUID.randomUUID().toString();
+        files.insert(new ProjectFile(foreign, otherProject, "Foreign", "", 0, new FileContent.ScriptContent("99;"), Instant.now(), Instant.now()));
+        files.save(new ProjectFile(original.id(), original.projectId(), original.name(), original.description(), original.version(),
+                new FileContent.DocumentContent(doc(table(foreign)), configId), original.createdAt(), original.updatedAt()));
+        assertThat(captured.getValue().document()).isEqualTo(tableDocument);
+        mvc.perform(body(post("/api/documents/preview-stored/" + documentId), Map.of()).with(user(owner))).andExpect(status().isNotFound());
+        String invalidJob = createJob(owner);
+        mvc.perform(post("/api/print-jobs/" + invalidJob + "/run").with(user(owner)).with(csrf())).andExpect(status().isNotFound());
+        verifyNoMoreInteractions(runner);
+    }
+
     private void insert(String id, String name, FileContent content) {
         files.insert(new ProjectFile(id,project,name,"",0,content,Instant.now(),Instant.now()));
     }
