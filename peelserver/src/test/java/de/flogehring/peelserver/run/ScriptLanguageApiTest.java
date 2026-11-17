@@ -37,7 +37,9 @@ class ScriptLanguageApiTest {
                 .content("""
                         {"projectId":{"id":"project"},"script":"amount + 1;","expectedBindings":[{"name":"amount","description":"Input"}]}
                         """)).andExpect(status().isOk()).andExpect(jsonPath("$.diagnostics").isEmpty())
-                .andExpect(jsonPath("$.symbols[?(@.name=='amount')].origin").value("external"));
+                .andExpect(jsonPath("$.symbols[?(@.name=='amount')].origin").value("EXTERNAL"))
+                .andExpect(jsonPath("$.symbols[?(@.name=='amount')].kind").value("VARIABLE"))
+                .andExpect(jsonPath("$.occurrences[0].role").value("REFERENCE"));
         verify(access).requireProjectAccess(new ProjectId("project"), principal.getUserId());
         mvc.perform(post("/api/scripts/analyze").with(user(principal)).with(csrf()).contentType("application/json")
                 .content("""
@@ -51,6 +53,17 @@ class ScriptLanguageApiTest {
         doThrow(ProjectAccessService.notFound()).when(access).requireProjectAccess(new ProjectId("foreign"), principal.getUserId());
         mvc.perform(post("/api/scripts/analyze").with(user(principal)).with(csrf()).contentType("application/json").content(body))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test void serializesTypedDiagnosticCodesAndSeverities() throws Exception {
+        mvc.perform(post("/api/scripts/analyze").with(user(principal)).with(csrf()).contentType("application/json")
+                .content("""
+                        {"projectId":{"id":"project"},"script":"missing; return 1;","expectedBindings":[]}
+                        """)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.diagnostics[0].code").value("UNKNOWN_NAME"))
+                .andExpect(jsonPath("$.diagnostics[0].severity").value("WARNING"))
+                .andExpect(jsonPath("$.diagnostics[1].code").value("RETURN_OUTSIDE_FUNCTION"))
+                .andExpect(jsonPath("$.diagnostics[1].severity").value("ERROR"));
     }
     @Test void checksRequiredBindingsAndExecutesTheProvidedDraft() throws Exception {
         var body = """

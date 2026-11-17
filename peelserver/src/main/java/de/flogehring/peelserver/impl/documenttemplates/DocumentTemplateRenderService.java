@@ -1,6 +1,7 @@
 package de.flogehring.peelserver.impl.documenttemplates;
 
 import de.flogehring.peel.core.trace.TraceProgram;
+import de.flogehring.peel.core.lang.BlockCatalog;
 import de.flogehring.peel.parse.PeelGrammar;
 import de.flogehring.peelserver.api.data.template.DocumentPreviewResponse;
 import de.flogehring.peelserver.impl.run.PeelExecutionService;
@@ -35,7 +36,8 @@ public class DocumentTemplateRenderService {
         Map<String, TraceProgram> traces = new LinkedHashMap<>();
         Map<String, List<String>> definitions = new LinkedHashMap<>();
         document.scripts().forEach((id, script) -> {
-            definitions.put(id, PeelGrammar.parseWithBlocks(script.script()).blockNames());
+            var program = PeelGrammar.parse(script.script());
+            definitions.put(id, BlockCatalog.analyze(program).names());
             traces.put(id, peelExecutionService.execute(script.script(), suppliedBindings));
         });
         var renderer = new StructuredDocumentRenderer(new TraceSelection(traces, definitions),

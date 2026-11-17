@@ -31,6 +31,18 @@ class LanguageContractTest {
                         .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user(principal)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/api/scripts/analyze'].post").exists())
+                .andExpect(jsonPath("$.components.schemas.Symbol.properties.kind.enum",
+                        org.hamcrest.Matchers.containsInAnyOrder("VARIABLE", "PARAMETER", "FUNCTION")))
+                .andExpect(jsonPath("$.components.schemas.Symbol.properties.origin.enum",
+                        org.hamcrest.Matchers.containsInAnyOrder("LOCAL", "EXTERNAL", "RUNTIME")))
+                .andExpect(jsonPath("$.components.schemas.Occurrence.properties.role.enum",
+                        org.hamcrest.Matchers.containsInAnyOrder("DECLARATION", "REFERENCE", "ASSIGNMENT", "CALL")))
+                .andExpect(jsonPath("$.components.schemas.Diagnostic.properties.severity.enum",
+                        org.hamcrest.Matchers.containsInAnyOrder("WARNING", "ERROR")))
+                .andExpect(jsonPath("$.components.schemas.Diagnostic.properties.code.enum",
+                        org.hamcrest.Matchers.containsInAnyOrder("SYNTAX_ERROR", "UNKNOWN_NAME",
+                                "UNDECLARED_ASSIGNMENT", "DUPLICATE_DECLARATION", "UNINITIALIZED_VARIABLE",
+                                "RETURN_OUTSIDE_FUNCTION", "DUPLICATE_BLOCK_NAME")))
                 .andExpect(jsonPath("$.paths['/api/scripts/validate']").doesNotExist())
                 .andExpect(jsonPath("$.components.schemas.ScriptContent.properties.expectedBindings").exists())
                 .andExpect(jsonPath("$.components.schemas.RunRequest.properties.expectedBindings").exists())

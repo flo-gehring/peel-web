@@ -1,5 +1,8 @@
 package de.flogehring.peelserver.api.services;
 
+import de.flogehring.peel.analysis.DiagnosticSeverity;
+import de.flogehring.peel.core.lang.BlockCatalog;
+import de.flogehring.peel.parse.PeelGrammar;
 import de.flogehring.peelserver.api.data.files.FileData.CreateFile;
 import de.flogehring.peelserver.api.data.files.FileData.FileSummary;
 import de.flogehring.peelserver.api.data.files.FileData.UpdateFile;
@@ -51,10 +54,11 @@ public class ProjectFileController {
         if (!script.source().isBlank()) {
             var diagnostics = analysis.analyze(new de.flogehring.peelserver.api.data.scripts.AnalyzeRequest(
                     new de.flogehring.peelserver.api.data.ProjectIdApi(projectId), script.source(), script.expectedBindings()))
-                    .diagnostics().stream().filter(diagnostic -> diagnostic.severity().equals("error")).toList();
+                    .diagnostics().stream().filter(diagnostic -> diagnostic.severity() == DiagnosticSeverity.ERROR).toList();
             if (!diagnostics.isEmpty()) throw new IllegalArgumentException(diagnostics.getFirst().message());
         }
-        return de.flogehring.peel.parse.PeelGrammar.parseWithBlocks(script.source()).blockCatalog().blocks().stream()
+        var program = PeelGrammar.parse(script.source());
+        return BlockCatalog.analyze(program).blocks().stream()
                 .map(block -> new de.flogehring.peelserver.api.data.scripts.BlockDefinition(
                         block.name(), block.parentName(), block.reachableBlocks())).toList();
     }

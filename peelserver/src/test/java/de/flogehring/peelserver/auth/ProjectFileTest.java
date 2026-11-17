@@ -329,7 +329,9 @@ class ProjectFileTest {
                 .andExpect(jsonPath("$.length()").value(0));
         update(id, 0, "Script", "", script("broken: { var x = ; }"), 200);
         mvc.perform(get(base() + "/" + id + "/blocks").with(user(member))).andExpect(status().isBadRequest());
-        update(id, 1, "Script", "", script("same: {} same: {}"), 200);
+        update(id, 1, "Script", "", script("return 1;"), 200);
+        mvc.perform(get(base() + "/" + id + "/blocks").with(user(member))).andExpect(status().isBadRequest());
+        update(id, 2, "Script", "", script("same: {} same: {}"), 200);
         mvc.perform(get(base() + "/" + id + "/blocks").with(user(member))).andExpect(status().isBadRequest());
     }
 

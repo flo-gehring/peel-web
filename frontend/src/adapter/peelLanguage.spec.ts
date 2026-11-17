@@ -15,10 +15,10 @@ describe('PEEL completion scopes', () => {
         { id: 2, parentId: 1, start: 10, end: 20, openEnded: false },
       ],
       symbols: [
-        { id: 0, name: 'input', kind: 'variable', origin: 'external', scopeId: 0, visibleFrom: 0 },
-        { id: 1, name: 'x', kind: 'variable', origin: 'local', scopeId: 1, visibleFrom: 8 },
-        { id: 2, name: 'x', kind: 'parameter', origin: 'local', scopeId: 2, visibleFrom: 10 },
-        { id: 3, name: 'later', kind: 'variable', origin: 'local', scopeId: 1, visibleFrom: 22 },
+        { id: 0, name: 'input', kind: 'VARIABLE', origin: 'EXTERNAL', scopeId: 0, visibleFrom: 0 },
+        { id: 1, name: 'x', kind: 'VARIABLE', origin: 'LOCAL', scopeId: 1, visibleFrom: 8 },
+        { id: 2, name: 'x', kind: 'PARAMETER', origin: 'LOCAL', scopeId: 2, visibleFrom: 10 },
+        { id: 3, name: 'later', kind: 'VARIABLE', origin: 'LOCAL', scopeId: 1, visibleFrom: 22 },
       ],
     }
     expect(visibleSymbols(analysis, 15).map((symbol) => symbol.id)).toEqual([2, 0])

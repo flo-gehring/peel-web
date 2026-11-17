@@ -160,8 +160,8 @@ export function registerPeelLanguage(monaco: MonacoApi): void {
               id: -i - 1,
               name: binding.name,
               description: binding.description,
-              kind: 'variable',
-              origin: 'external',
+              kind: 'VARIABLE',
+              origin: 'EXTERNAL',
               arity: -1,
             })),
             ...session.runtime,
@@ -173,13 +173,13 @@ export function registerPeelLanguage(monaco: MonacoApi): void {
           insertText: symbol.name!,
           range: replace,
           kind:
-            symbol.kind === 'function'
+            symbol.kind === 'FUNCTION'
               ? monaco.languages.CompletionItemKind.Function
               : monaco.languages.CompletionItemKind.Variable,
           detail:
-            symbol.origin === 'external'
+            symbol.origin === 'EXTERNAL'
               ? t('externalBinding')
-              : symbol.kind === 'function'
+              : symbol.kind === 'FUNCTION'
                 ? symbol.name +
                   '(' +
                   Array.from(
@@ -189,7 +189,7 @@ export function registerPeelLanguage(monaco: MonacoApi): void {
                   ')'
                 : symbol.kind,
           documentation: symbol.description ?? '',
-          sortText: (symbol.origin === 'local' ? '0' : '1') + symbol.name,
+          sortText: (symbol.origin === 'LOCAL' ? '0' : '1') + symbol.name,
         }))
       suggestions.push(
         ...peelKeywords.concat(['True', 'False']).map((keyword) => ({
@@ -216,7 +216,7 @@ export function registerPeelLanguage(monaco: MonacoApi): void {
         range: range(model, occurrence.start, occurrence.end),
         contents: [
           { value: symbol.name ?? '' },
-          { value: symbol.origin === 'external' ? t('externalBinding') : (symbol.kind ?? '') },
+          { value: symbol.origin === 'EXTERNAL' ? t('externalBinding') : (symbol.kind ?? '') },
           { value: symbol.description ?? '' },
         ],
       }
@@ -244,13 +244,13 @@ export function registerPeelLanguage(monaco: MonacoApi): void {
         const position = model.getPositionAt(item.start ?? 0)
         const nextLine = position.lineNumber - 1,
           nextColumn = position.column - 1
-        const type = symbol.kind === 'function' ? 1 : symbol.kind === 'parameter' ? 2 : 0
+        const type = symbol.kind === 'FUNCTION' ? 1 : symbol.kind === 'PARAMETER' ? 2 : 0
         data.push(
           nextLine - line,
           nextLine === line ? nextColumn - column : nextColumn,
           (item.end ?? 0) - (item.start ?? 0),
           type,
-          (item.role === 'declaration' ? 1 : 0) | (symbol.origin === 'external' ? 2 : 0),
+          (item.role === 'DECLARATION' ? 1 : 0) | (symbol.origin === 'EXTERNAL' ? 2 : 0),
         )
         line = nextLine
         column = nextColumn
@@ -298,14 +298,14 @@ export function bindPeelModel(
           return
         }
         session.analysis = data
-        session.runtime = (data.symbols ?? []).filter((symbol) => symbol.origin === 'runtime')
+        session.runtime = (data.symbols ?? []).filter((symbol) => symbol.origin === 'RUNTIME')
         monaco.editor.setModelMarkers(
           model,
           'peel-analysis',
           (data.diagnostics ?? []).map((item) => ({
             ...range(model, item.start, item.end),
             severity:
-              item.severity === 'warning'
+              item.severity === 'WARNING'
                 ? monaco.MarkerSeverity.Warning
                 : monaco.MarkerSeverity.Error,
             message: item.message ?? '',

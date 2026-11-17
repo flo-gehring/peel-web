@@ -36,6 +36,11 @@ highlighted separately and do not become variables or completion suggestions.
 Duplicate block names are diagnosed across the complete script, including
 unexecuted branches and functions.
 
+Parsing does not build a block catalog. Consumers needing block definitions or
+possible descendants explicitly call `BlockCatalog.analyze(PeelGrammar.parse(source))`.
+The block endpoint and document rendering request this analysis; ordinary script
+execution only parses and runs the program.
+
 Ctrl+Space offers visible local names, expected inputs, runtime symbols and
 keywords. Descriptions appear in completion and hover. Expected inputs require no
 test values. Analysis runs after 300 ms of inactivity, and old/cancelled responses
@@ -50,6 +55,11 @@ become syntax diagnostics or disable local syntax colors.
 access and accepts empty or unfinished source. It returns symbols, occurrences,
 scopes and diagnostics. All ranges are zero-based UTF-16 offsets with exclusive
 ends. Unknown reads are warnings. Analysis executes no script or host function.
+The flat analysis fields use enum names in JSON: kind is VARIABLE, PARAMETER or
+FUNCTION; origin is LOCAL, EXTERNAL or RUNTIME; role is DECLARATION, REFERENCE,
+ASSIGNMENT or CALL. Diagnostic severity is WARNING or ERROR; diagnostic codes
+such as UNKNOWN_NAME and SYNTAX_ERROR are enums as well. OpenAPI lists their
+allowed values, and the generated TypeScript definitions expose string unions.
 Runtime names/arity come from the same RuntimeBuilder configuration used to
 register the functions.
 
