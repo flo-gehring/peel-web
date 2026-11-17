@@ -67,7 +67,10 @@ const pendingProjectRoute = shallowRef<RouteLocationNormalized | null>(null)
 const skipProjectSwitchGuard = shallowRef(false)
 let disposePanelListener: (() => void) | undefined
 let lastEditorPanel: string | undefined
-onUnmounted(() => disposePanelListener?.())
+onUnmounted(() => {
+  disposePanelListener?.()
+  selectionStore.activeScriptId = null
+})
 function showOutput(): void {
   const dock = dockviewApi.value
   if (!dock) return
@@ -291,6 +294,11 @@ const onReady = (event: DockviewReadyEvent) => {
   })
   disposePanelListener?.()
   const listener = dockApi.onDidActivePanelChange(({ panel }) => {
+    if (panel?.id.startsWith('editor-') || panel?.id === 'workspace-welcome') {
+      selectionStore.activeScriptId = panel.id.startsWith('editor-script-')
+        ? panel.id.slice('editor-script-'.length)
+        : null
+    }
     if (!panel?.id.startsWith('editor-') || panel.id === lastEditorPanel) return
     lastEditorPanel = panel.id
     if (panel.id.startsWith('editor-document-')) dockApi.getPanel('output-console')?.api.close()
@@ -300,7 +308,14 @@ const onReady = (event: DockviewReadyEvent) => {
       panel.api.setActive()
     }
   })
-  disposePanelListener = () => listener.dispose()
+  const removalListener = dockApi.onDidRemovePanel((panel) => {
+    if (panel.id === `editor-script-${selectionStore.activeScriptId}`)
+      selectionStore.activeScriptId = null
+  })
+  disposePanelListener = () => {
+    listener.dispose()
+    removalListener.dispose()
+  }
   dockApi.getPanel('workspace-welcome')?.api.setActive()
 }
 

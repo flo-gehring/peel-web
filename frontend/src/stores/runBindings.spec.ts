@@ -33,4 +33,37 @@ describe('run bindings', () => {
 
     expect(store.lastValidBindings).toEqual({ valid: true })
   })
+
+  it('adds missing expected inputs without overwriting any existing values', () => {
+    const store = useRunBindingsStore()
+    store.setRawJson('{"a":1,"c":2,"nullable":null,"disabled":false,"text":"","nested":{"x":3}}')
+    store.fillExpectedBindings(['a', 'b', 'nullable', 'disabled', 'text', 'nested', 'b', ''])
+    expect(store.parseBindings()).toEqual({
+      a: 1,
+      c: 2,
+      nullable: null,
+      disabled: false,
+      text: '',
+      nested: { x: 3 },
+      b: 0,
+    })
+    const filled = store.rawJson
+    store.fillExpectedBindings(['a', 'b'])
+    expect(store.rawJson).toBe(filled)
+  })
+
+  it('preserves invalid JSON instead of replacing it with the last valid bindings', () => {
+    const store = useRunBindingsStore()
+    store.setRawJson('{"a":1}')
+    store.setRawJson('{"a":')
+    store.fillExpectedBindings(['b'])
+    expect(store.rawJson).toBe('{"a":')
+    expect(store.parseError).toBeTruthy()
+  })
+
+  it('handles property names inherited from Object.prototype as missing inputs', () => {
+    const store = useRunBindingsStore()
+    store.fillExpectedBindings(['constructor', '__proto__'])
+    expect(store.parseBindings()).toEqual(JSON.parse('{"constructor":0,"__proto__":0}'))
+  })
 })

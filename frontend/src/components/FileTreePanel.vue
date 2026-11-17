@@ -4,10 +4,7 @@ import {
   Banana,
   Palette,
   FileText,
-  Check,
-  Copy,
   Trash2,
-  Pencil,
   RotateCcw,
   RefreshCw,
   Plus,
@@ -40,10 +37,6 @@ const versions = ref<Record<string, number>>({})
 const errorMessage = ref<string | null>(null)
 const pendingCreate = ref<{ id: string; state: FileState } | null>(null)
 const newDescription = ref('')
-const editingId = ref<string | null>(null)
-const editName = ref('')
-const editDescription = ref('')
-const isEditing = ref(false)
 const errorText = (error: unknown) =>
   error instanceof Error ? error.message : t('theRequestFailed')
 const projectId = computed(() => projectStore.activeProject?.projectIdApi?.id ?? '')
@@ -69,7 +62,6 @@ const isCreating = ref(false)
 const deletingScriptId = ref<string | null>(null)
 const deletingRenderConfigId = ref<string | null>(null)
 const deletingDocumentId = ref<string | null>(null)
-const copiedId = ref<string | null>(null)
 
 async function fetchFiles() {
   isLoading.value = true
@@ -173,18 +165,6 @@ async function createDocument() {
   }
 }
 
-async function copyId(file: PeelWorkspaceDocument): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(file.id)
-    copiedId.value = `${file.kind}-${file.id}`
-    window.setTimeout(() => {
-      if (copiedId.value === `${file.kind}-${file.id}`) copiedId.value = null
-    }, 1500)
-  } catch (error) {
-    console.error('Failed to copy workspace item ID:', error)
-  }
-}
-
 async function deleteFile(file: PeelWorkspaceDocument, busy: { value: string | null }) {
   if (
     projectStore.isReadOnly ||
@@ -215,43 +195,6 @@ function reloadFile(file: PeelWorkspaceDocument) {
   if (window.confirm(t('discardLocalEditsToThisFileAndLoadThe')))
     selectionStore.reloadDocument(file)
 }
-async function editMetadata(file: PeelWorkspaceDocument) {
-  errorMessage.value = null
-  try {
-    const baseline = await files.load(projectId.value, file.id)
-    editingId.value = file.id
-    editName.value = baseline.name ?? ''
-    editDescription.value = baseline.description ?? ''
-  } catch (error) {
-    errorMessage.value = errorText(error)
-  }
-}
-async function saveMetadata() {
-  const id = editingId.value
-  if (!id || isEditing.value || projectStore.isReadOnly) return
-  isEditing.value = true
-  errorMessage.value = null
-  try {
-    const baseline = files.loaded[id]
-    if (!baseline?.content) throw new Error(t('reopenTheFileBeforeSaving'))
-    await files.save(projectId.value, id, {
-      name: editName.value,
-      description: editDescription.value,
-      content: baseline.content,
-    })
-    editingId.value = null
-    await fetchFiles()
-    const updated = [...scripts.value, ...renderConfigs.value, ...documents.value].find(
-      (file) => file.id === id,
-    )
-    if (updated) selectDocument(updated)
-  } catch (error) {
-    errorMessage.value = errorText(error)
-  } finally {
-    isEditing.value = false
-  }
-}
-
 watch(projectId, () => void fetchFiles(), { immediate: true })
 watch(
   () => Object.values(files.loaded).map((file) => [file.id, file.name]),
@@ -314,22 +257,14 @@ watch(
         >
           <button class="file-name" @click.stop="selectDocument(file)">{{ file.name }}</button>
           <button
-            class="copy-id-button"
+            class="file-action-button"
             :title="t('reloadFile')"
             :aria-label="t('reloadFile')"
             @click.stop="reloadFile(file)"
           >
             <RotateCcw :size="14" />
           </button>
-          <button
-            class="copy-id-button"
-            :title="t('editNameAndDescription')"
-            :aria-label="t('editNameAndDescription')"
-            :disabled="projectStore.isReadOnly"
-            @click.stop="editMetadata(file)"
-          >
-            <Pencil :size="14" />
-          </button>
+
           <button
             class="delete-button"
             :disabled="projectStore.isReadOnly || deletingScriptId === file.id"
@@ -339,20 +274,6 @@ watch(
             @click.stop="deletePeelScript(file)"
           >
             <Trash2 :size="16" aria-hidden="true" />
-          </button>
-          <button
-            class="copy-id-button"
-            :title="copiedId === `peel-${file.id}` ? t('idCopied') : t('copyId')"
-            :aria-label="t('copyId')"
-            @click.stop="copyId(file)"
-          >
-            <Check
-              v-if="copiedId === `peel-${file.id}`"
-              :size="16"
-              class="copied-icon"
-              aria-hidden="true"
-            />
-            <Copy v-else :size="16" aria-hidden="true" />
           </button>
         </li>
       </ul>
@@ -393,37 +314,16 @@ watch(
           @click="selectDocument(file)"
         >
           <button class="file-name" @click.stop="selectDocument(file)">{{ file.name }}</button>
+
           <button
-            class="copy-id-button"
-            :title="copiedId === `document-${file.id}` ? t('idCopied') : t('copyId')"
-            :aria-label="t('copyId')"
-            @click.stop="copyId(file)"
-          >
-            <Check
-              v-if="copiedId === `document-${file.id}`"
-              :size="16"
-              class="copied-icon"
-              aria-hidden="true"
-            />
-            <Copy v-else :size="16" aria-hidden="true" />
-          </button>
-          <button
-            class="copy-id-button"
+            class="file-action-button"
             :title="t('reloadFile')"
             :aria-label="t('reloadFile')"
             @click.stop="reloadFile(file)"
           >
             <RotateCcw :size="14" />
           </button>
-          <button
-            class="copy-id-button"
-            :title="t('editNameAndDescription')"
-            :aria-label="t('editNameAndDescription')"
-            :disabled="projectStore.isReadOnly"
-            @click.stop="editMetadata(file)"
-          >
-            <Pencil :size="14" />
-          </button>
+
           <button
             class="delete-button"
             :disabled="projectStore.isReadOnly || deletingDocumentId === file.id"
@@ -490,22 +390,14 @@ watch(
             >
               <button class="file-name" @click.stop="selectDocument(file)">{{ file.name }}</button>
               <button
-                class="copy-id-button"
+                class="file-action-button"
                 :title="t('reloadFile')"
                 :aria-label="t('reloadFile')"
                 @click.stop="reloadFile(file)"
               >
                 <RotateCcw :size="14" />
               </button>
-              <button
-                class="copy-id-button"
-                :title="t('editNameAndDescription')"
-                :aria-label="t('editNameAndDescription')"
-                :disabled="projectStore.isReadOnly"
-                @click.stop="editMetadata(file)"
-              >
-                <Pencil :size="14" />
-              </button>
+
               <button
                 class="delete-button"
                 :disabled="projectStore.isReadOnly || deletingRenderConfigId === file.id"
@@ -516,27 +408,11 @@ watch(
               >
                 <Trash2 :size="16" aria-hidden="true" />
               </button>
-              <button
-                class="copy-id-button"
-                :title="copiedId === `renderConfig-${file.id}` ? t('idCopied') : t('copyId')"
-                :aria-label="t('copyId')"
-                @click.stop="copyId(file)"
-              >
-                <Check
-                  v-if="copiedId === `renderConfig-${file.id}`"
-                  :size="16"
-                  class="copied-icon"
-                  aria-hidden="true"
-                />
-                <Copy v-else :size="16" aria-hidden="true" />
-              </button>
             </li>
           </ul>
         </section>
       </div>
     </section>
-
-    <span class="sr-only" role="status">{{ copiedId ? t('idCopiedToClipboard') : '' }}</span>
 
     <div
       v-if="isCreateDialogOpen"
@@ -582,21 +458,6 @@ watch(
           <button type="submit" :disabled="!newDocumentName.trim() || isCreating">
             {{ isCreating ? t('creating2') : pendingCreate ? t('retry') : t('create') }}
           </button>
-        </div>
-      </form>
-    </div>
-    <div v-if="editingId" class="create-dialog-backdrop">
-      <form class="create-dialog" @submit.prevent="saveMetadata">
-        <h2>{{ t('fileDetails') }}</h2>
-        <p v-if="errorMessage" role="alert" class="file-error">{{ errorMessage }}</p>
-        <label for="edit-name">{{ t('name') }}</label
-        ><input id="edit-name" v-model="editName" required :disabled="isEditing" />
-        <label for="edit-description">{{ t('description') }}</label
-        ><input id="edit-description" v-model="editDescription" :disabled="isEditing" />
-        <div class="dialog-actions">
-          <button type="button" :disabled="isEditing" @click="editingId = null">
-            {{ t('cancel') }}</button
-          ><button :disabled="isEditing || !editName.trim()">{{ t('save') }}</button>
         </div>
       </form>
     </div>
@@ -744,7 +605,7 @@ watch(
   font-size: 18px;
   line-height: 16px;
 }
-.copy-id-button {
+.file-action-button {
   display: none;
   flex: 0 0 24px;
   width: 24px;
@@ -759,15 +620,12 @@ watch(
   font-size: 11px;
   padding: 0;
 }
-.copied-icon {
-  color: #a6e3a1;
-}
 .file-list li:hover .delete-button,
 .file-list li.active .delete-button,
-.file-list li:hover .copy-id-button,
+.file-list li:hover .file-action-button,
 .file-list li:focus-within .delete-button,
-.file-list li:focus-within .copy-id-button,
-.file-list li.active .copy-id-button {
+.file-list li:focus-within .file-action-button,
+.file-list li.active .file-action-button {
   display: inline-flex;
 }
 .delete-button:hover {

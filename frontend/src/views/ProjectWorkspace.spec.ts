@@ -5,6 +5,8 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { DockviewVue, type DockviewReadyEvent } from 'dockview-vue'
 import ProjectView from './ProjectView.vue'
 import { useWorkspaceSelectionStore } from '@/stores/workspaceSelection'
+import { useProjectFileStore } from '@/stores/projectFiles'
+import { useRunBindingsStore } from '@/stores/runBindings'
 import { setLocale } from '@/i18n'
 const testDocument = {
   type: 'doc',
@@ -91,10 +93,29 @@ describe('Dockview workspace integration', () => {
     expect(dock.getPanel('bindings-json')).toBeDefined()
     expect(dock.getPanel('output-console')).toBeDefined()
     const selection = useWorkspaceSelectionStore(pinia)
+    const files = useProjectFileStore(pinia)
+    const bindings = useRunBindingsStore(pinia)
+    files.setExpectedBindings('script-1', [
+      { name: 'a', description: '' },
+      { name: 'b', description: '' },
+    ])
+    bindings.setRawJson('{"a":1,"c":2}')
+    dock.getPanel('bindings-json')?.api.setActive()
+    await flushPromises()
+    expect(selection.activeScriptId).toBe('script-1')
+    await wrapper.get('.fill-bindings').trigger('click')
+    expect(bindings.parseBindings()).toEqual({ a: 1, c: 2, b: 0 })
+    expect(wrapper.get('.fill-bindings').attributes('title')).toContain('Existing values')
+    bindings.setRawJson('{"unfinished":')
+    await flushPromises()
+    expect(wrapper.get('.fill-bindings').attributes('disabled')).toBeDefined()
+    bindings.setRawJson('{}')
     selection.selectDocument({ kind: 'document', id: 'document-1', name: 'Invoice', icon: 'DOC' })
     await flushPromises()
     expect(dock.getPanel('editor-document-document-1')).toBeDefined()
     expect(dock.getPanel('output-console')).toBeUndefined()
+    expect(selection.activeScriptId).toBeNull()
+    expect(wrapper.get('.fill-bindings').attributes('disabled')).toBeDefined()
     expect(wrapper.findAll('.file-toolbar').length).toBeGreaterThan(0)
     selection.requestOutput()
     await flushPromises()
@@ -103,5 +124,11 @@ describe('Dockview workspace integration', () => {
     dock.getPanel('editor-document-document-1')?.api.setActive()
     await flushPromises()
     expect(dock.getPanel('output-console')).toBeUndefined()
+    dock.getPanel('editor-script-script-1')?.api.setActive()
+    dock.getPanel('bindings-json')?.api.setActive()
+    dock.getPanel('editor-script-script-1')?.api.close()
+    await flushPromises()
+    expect(selection.activeScriptId).toBeNull()
+    expect(wrapper.get('.fill-bindings').attributes('disabled')).toBeDefined()
   })
 })

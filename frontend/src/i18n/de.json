@@ -67,6 +67,8 @@
   "tryAgain": "Erneut versuchen",
   "invalidJson": "Ungültiges JSON:",
   "validJson": "✓ Gültiges JSON",
+  "fillExpectedBindings": "Erwartete Eingaben ergänzen",
+  "fillExpectedBindingsHint": "Fehlende erwartete Eingaben des offenen Skripts mit 0 ergänzen. Vorhandene Werte bleiben erhalten.",
   "creating": "Wird angelegt…",
   "saveAndCreatePrintJob": "Speichern und Auftrag anlegen",
   "createPrintJob": "Druckauftrag anlegen",

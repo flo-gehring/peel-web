@@ -1,11 +1,23 @@
 <script setup lang="ts">
 import { t } from '@/i18n'
 import { computed } from 'vue'
+import { ListPlus } from '@lucide/vue'
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
 import { useRunBindingsStore } from '@/stores/runBindings'
 import { definePeelEditorTheme } from '@/adapter/editorTheme'
+import { useWorkspaceSelectionStore } from '@/stores/workspaceSelection'
+import { useProjectFileStore } from '@/stores/projectFiles'
 
 const bindingsStore = useRunBindingsStore()
+const selection = useWorkspaceSelectionStore()
+const files = useProjectFileStore()
+const expectedNames = computed(() =>
+  selection.activeScriptId
+    ? files
+        .expectedBindings(selection.activeScriptId)
+        .flatMap((binding) => (binding.name ? [binding.name] : []))
+    : [],
+)
 
 const bindingsJson = computed({
   get: () => bindingsStore.rawJson,
@@ -31,6 +43,16 @@ const editorOptions = {
         >{{ t('invalidJson') }} {{ bindingsStore.parseError }}</span
       >
       <span v-else>{{ t('validJson') }}</span>
+      <button
+        type="button"
+        class="fill-bindings"
+        :disabled="!!bindingsStore.parseError || !expectedNames.length"
+        :title="t('fillExpectedBindingsHint')"
+        :aria-label="t('fillExpectedBindings')"
+        @click="bindingsStore.fillExpectedBindings(expectedNames)"
+      >
+        <ListPlus :size="16" aria-hidden="true" />
+      </button>
     </div>
     <VueMonacoEditor
       v-model:value="bindingsJson"
@@ -52,6 +74,11 @@ const editorOptions = {
 }
 
 .bindings-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   padding: 8px 14px;
   font-size: 12px;
   color: #a6e3a1;
@@ -61,6 +88,29 @@ const editorOptions = {
 
 .bindings-status.invalid {
   color: #f38ba8;
+}
+
+.fill-bindings {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid var(--peel-border);
+  border-radius: 6px;
+  background: var(--peel-background);
+  color: var(--peel-text);
+  cursor: pointer;
+}
+.fill-bindings:hover:not(:disabled) {
+  background: var(--peel-border);
+}
+.fill-bindings:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.fill-bindings:focus-visible {
+  outline: 2px solid var(--peel-accent);
+  outline-offset: 2px;
 }
 
 .bindings-editor {

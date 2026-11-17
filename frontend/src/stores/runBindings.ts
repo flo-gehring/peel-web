@@ -34,11 +34,26 @@ export const useRunBindingsStore = defineStore('runBindings', () => {
     parseBindings()
   }
 
+  function fillExpectedBindings(names: string[]): void {
+    const bindings = parseBindings()
+    if (!bindings) return
+    const missing = names.filter((name) => name.trim() && !Object.hasOwn(bindings, name))
+    if (!missing.length) return
+    setRawJson(
+      JSON.stringify(
+        { ...bindings, ...Object.fromEntries(missing.map((name) => [name, 0])) },
+        null,
+        2,
+      ),
+    )
+  }
+
   return {
     rawJson,
     parseError,
     lastValidBindings,
     setRawJson,
     parseBindings,
+    fillExpectedBindings,
   }
 })

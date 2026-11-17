@@ -67,6 +67,8 @@
   "tryAgain": "Try again",
   "invalidJson": "Invalid JSON:",
   "validJson": "✓ Valid JSON",
+  "fillExpectedBindings": "Fill expected inputs",
+  "fillExpectedBindingsHint": "Add missing expected inputs of the open script with 0. Existing values are preserved.",
   "creating": "Creating…",
   "saveAndCreatePrintJob": "Save and create print job",
   "createPrintJob": "Create print job",

@@ -4,6 +4,7 @@ import type { PeelWorkspaceDocument } from '@/adapter/ClientTypeDefinition'
 
 export const useWorkspaceSelectionStore = defineStore('workspaceSelection', () => {
   const selectedDocument = ref<PeelWorkspaceDocument | null>(null)
+  const activeScriptId = ref<string | null>(null)
   const selectionVersion = ref(0)
   const deletedDocument = ref<PeelWorkspaceDocument | null>(null)
   const deletionVersion = ref(0)
@@ -43,6 +44,7 @@ export const useWorkspaceSelectionStore = defineStore('workspaceSelection', () =
   }
 
   function clear(): void {
+    activeScriptId.value = null
     selectedDocument.value = null
     deletedDocument.value = null
     reloadedDocument.value = null
@@ -50,6 +52,7 @@ export const useWorkspaceSelectionStore = defineStore('workspaceSelection', () =
   }
 
   return {
+    activeScriptId,
     selectedDocument,
     selectionVersion,
     deletedDocument,

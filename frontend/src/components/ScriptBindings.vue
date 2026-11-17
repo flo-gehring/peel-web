@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { t } from '@/i18n'
+import { Info, Plus, Trash2 } from '@lucide/vue'
 import { useProjectFileStore, type ExpectedBinding } from '@/stores/projectFiles'
 const props = defineProps<{ documentId: string }>()
 const files = useProjectFileStore()
@@ -23,19 +24,49 @@ function add(): void {
 </script>
 <template>
   <section class="script-bindings">
-    <h3>{{ t('expectedBindings') }}</h3>
-    <p>{{ t('expectedBindingsHint') }}</p>
+    <div class="bindings-header">
+      <h3>{{ t('expectedBindings') }}</h3>
+      <span
+        class="help-icon"
+        role="img"
+        tabindex="0"
+        :title="t('expectedBindingsHint')"
+        :aria-label="t('expectedBindingsHint')"
+      >
+        <Info :size="14" aria-hidden="true" />
+      </span>
+      <button
+        type="button"
+        class="icon-button add-button"
+        :title="t('addExpectedBinding')"
+        :aria-label="t('addExpectedBinding')"
+        @click="add"
+      >
+        <Plus :size="17" aria-hidden="true" />
+      </button>
+    </div>
     <div
       v-for="(binding, index) in files.expectedBindings(documentId)"
       :key="index"
       class="binding"
     >
       <label :for="`binding-name-${documentId}-${index}`">{{ t('name') }}</label>
-      <input
-        :id="`binding-name-${documentId}-${index}`"
-        :value="binding.name"
-        @input="update(index, 'name', ($event.target as HTMLInputElement).value)"
-      />
+      <div class="binding-name">
+        <input
+          :id="`binding-name-${documentId}-${index}`"
+          :value="binding.name"
+          @input="update(index, 'name', ($event.target as HTMLInputElement).value)"
+        />
+        <button
+          type="button"
+          class="icon-button remove-button"
+          :title="t('removeExpectedBinding')"
+          :aria-label="t('removeExpectedBinding')"
+          @click="remove(index)"
+        >
+          <Trash2 :size="16" aria-hidden="true" />
+        </button>
+      </div>
       <label :for="`binding-description-${documentId}-${index}`">{{ t('description') }}</label>
       <textarea
         :id="`binding-description-${documentId}-${index}`"
@@ -43,9 +74,7 @@ function add(): void {
         rows="2"
         @input="update(index, 'description', ($event.target as HTMLTextAreaElement).value)"
       />
-      <button type="button" @click="remove(index)">{{ t('removeExpectedBinding') }}</button>
     </div>
-    <button type="button" @click="add">{{ t('addExpectedBinding') }}</button>
   </section>
 </template>
 <style scoped>
@@ -59,19 +88,34 @@ function add(): void {
   padding-bottom: 12px;
 }
 h3 {
-  margin: 12px 0 0;
+  margin: 0;
   font-size: 13px;
 }
-p,
 label {
   font-size: 12px;
 }
-p {
+.bindings-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+.help-icon {
+  display: flex;
   color: var(--peel-muted);
+  cursor: help;
+}
+.add-button {
+  margin-left: auto;
+}
+.binding-name {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 6px;
 }
 input,
-textarea,
-button {
+textarea {
   width: 100%;
   box-sizing: border-box;
   padding: 7px;
@@ -83,7 +127,27 @@ button {
 textarea {
   resize: vertical;
 }
-button {
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--peel-text);
   cursor: pointer;
+}
+.icon-button:hover:not(:disabled) {
+  background: var(--peel-border);
+}
+.remove-button:hover:not(:disabled) {
+  color: #ff6b6b;
+}
+.icon-button:focus-visible,
+.help-icon:focus-visible {
+  outline: 2px solid var(--peel-accent);
+  outline-offset: 2px;
 }
 </style>
