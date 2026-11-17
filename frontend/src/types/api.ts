@@ -512,6 +512,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{projectId}/files/{fileId}/blocks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Analyze named blocks and possible trace descendants without executing the saved script */
+        get: operations["blocks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/list": {
         parameters: {
             query?: never;
@@ -691,21 +708,32 @@ export interface components {
             };
         };
         DocumentContent: {
-            scriptNameTags: {
-                [key: string]: string;
-            };
-            templateHtml: string;
-            editorStateJson: string;
-            renderConfigurationId: string;
+            document: components["schemas"]["DocumentNode"];
+            renderConfigurationId?: string;
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
             type: "document";
         };
+        DocumentNode: {
+            type: string;
+            attrs?: {
+                [key: string]: unknown;
+            };
+            content?: components["schemas"]["DocumentNode"][];
+            text?: string;
+            marks?: components["schemas"]["Mark"][];
+        };
         FileContent: {
             type: string;
         } & (components["schemas"]["ScriptContent"] | components["schemas"]["RenderConfigContent"] | components["schemas"]["DocumentContent"]);
+        Mark: {
+            type: string;
+            attrs?: {
+                [key: string]: unknown;
+            };
+        };
         RenderConfigContent: {
             renderConfigurations: {
                 [key: string]: string;
@@ -851,21 +879,16 @@ export interface components {
         };
         DocumentPreviewRequest: {
             projectId: components["schemas"]["ProjectIdApi"];
-            scriptTags: {
-                [key: string]: components["schemas"]["PeelScriptId"];
-            };
+            document: components["schemas"]["DocumentNode"];
             bindings?: {
                 [key: string]: unknown;
             };
             renderConfigId?: string;
-            template?: string;
-        };
-        PeelScriptId: {
-            id: string;
         };
         DocumentPreviewResponse: {
             /** Format: byte */
             pdfData?: string;
+            warnings?: string[];
         };
         RenderConfigurationDto: {
             renderConfigurations?: {
@@ -921,6 +944,11 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        BlockDefinition: {
+            name: string;
+            parentName?: string;
+            reachableBlocks: string[];
         };
         DocumentTemplateSummaryResponse: {
             id?: string;
@@ -2238,6 +2266,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectPrintJobDetails"];
+                };
+            };
+        };
+    };
+    blocks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Static block catalog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BlockDefinition"][];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Invalid CSRF token */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Resource unavailable */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Version, name, creation or reference conflict; or archived project */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiErrorResponse"];
                 };
             };
         };

@@ -14,6 +14,7 @@ export function definePeelEditorTheme(monaco: typeof Monaco): void {
       { token: 'comment.peel', foreground: '858e94', fontStyle: 'italic' },
       { token: 'operator.peel', foreground: '89ddff' },
       { token: 'function', foreground: 'ffcf32' },
+      { token: 'type.identifier.peel', foreground: 'ffcf32' },
       { token: 'parameter', foreground: '82aaff' },
       { token: 'variable', foreground: 'f3f1e9' },
       { token: 'variable.readonly', foreground: 'c3e88d' },

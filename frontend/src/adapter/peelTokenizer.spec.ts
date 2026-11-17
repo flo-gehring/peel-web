@@ -4,6 +4,12 @@ import { registerPeelLanguage } from './peelLanguage'
 
 registerPeelLanguage(monaco)
 describe('PEEL Monarch tokenizer', () => {
+  it('recognizes named block labels separately from variables and map keys', () => {
+    const tokens = monaco.editor.tokenize('report: { var value = {"key": 1}; }', 'peel')[0] ?? []
+    expect(tokens[0]?.type).toBe('type.identifier.peel')
+    expect(tokens.some((token) => token.type === 'string.peel')).toBe(true)
+    expect(monaco.editor.tokenize('report:\n{ 1; }', 'peel')[0]?.[0]?.type).toBe('identifier.peel')
+  })
   it('keeps comment markers inside strings and recognizes real comments and operators', () => {
     const lines = monaco.editor.tokenize(
       'var url = "https://peel"; // comment\nTrue && 2 ** 3;',

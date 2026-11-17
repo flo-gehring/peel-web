@@ -53,6 +53,7 @@ const activeFileId = ref<string | null>(null)
 const isCreateDialogOpen = ref(false)
 const newDocumentName = ref('')
 const newDocumentKind = ref<CreatableDocumentKind>('peel')
+const advancedOpen = ref(false)
 const expanded = ref<Record<CreatableDocumentKind, boolean>>({
   peel: true,
   renderConfig: true,
@@ -131,13 +132,9 @@ async function createDocument() {
       if (newDocumentKind.value === 'peel')
         content = { type: 'script', source: '', expectedBindings: [] }
       else if (newDocumentKind.value === 'document') {
-        if (!newDocumentRenderConfigurationId.value)
-          throw new Error(t('selectARenderConfiguration'))
         content = {
           type: 'document',
-          scriptNameTags: {},
-          templateHtml: '<p></p>',
-          editorStateJson: '{"type":"doc","content":[{"type":"paragraph"}]}',
+          document: { type: 'doc', content: [{ type: 'paragraph' }] },
           renderConfigurationId: newDocumentRenderConfigurationId.value,
         }
       } else {
@@ -360,85 +357,7 @@ watch(
         </li>
       </ul>
     </section>
-    <section class="document-section">
-      <div class="section-header">
-        <h2>
-          <button
-            class="section-toggle"
-            :aria-expanded="expanded.renderConfig"
-            aria-controls="files-renderConfig"
-            @click="expanded.renderConfig = !expanded.renderConfig"
-            :title="t('renderConfigurations')"
-          >
-            <ChevronRight
-              :size="14"
-              :class="{ expanded: expanded.renderConfig }"
-              aria-hidden="true"
-            /><Palette :size="16" aria-hidden="true" /><span>{{ t('renderConfigurations') }}</span>
-          </button>
-        </h2>
-        <button
-          class="header-icon-button"
-          :title="t('newRenderConfiguration')"
-          :aria-label="t('newRenderConfiguration')"
-          :disabled="projectStore.isReadOnly"
-          @click="openCreateDialog('renderConfig')"
-        >
-          <Plus :size="16" aria-hidden="true" />
-        </button>
-      </div>
-      <ul v-show="expanded.renderConfig" id="files-renderConfig" class="file-list">
-        <li
-          v-for="file in renderConfigs"
-          :key="`renderConfig-${file.id}`"
-          :class="{ active: activeFileId === `renderConfig-${file.id}` }"
-          @click="selectDocument(file)"
-        >
-          <button class="file-name" @click.stop="selectDocument(file)">{{ file.name }}</button>
-          <button
-            class="copy-id-button"
-            :title="t('reloadFile')"
-            :aria-label="t('reloadFile')"
-            @click.stop="reloadFile(file)"
-          >
-            <RotateCcw :size="14" />
-          </button>
-          <button
-            class="copy-id-button"
-            :title="t('editNameAndDescription')"
-            :aria-label="t('editNameAndDescription')"
-            :disabled="projectStore.isReadOnly"
-            @click.stop="editMetadata(file)"
-          >
-            <Pencil :size="14" />
-          </button>
-          <button
-            class="delete-button"
-            :disabled="projectStore.isReadOnly || deletingRenderConfigId === file.id"
-            :title="t('delete')"
-            :aria-label="t('delete')"
-            :aria-busy="deletingRenderConfigId === file.id"
-            @click.stop="deleteRenderConfig(file)"
-          >
-            <Trash2 :size="16" aria-hidden="true" />
-          </button>
-          <button
-            class="copy-id-button"
-            :title="copiedId === `renderConfig-${file.id}` ? t('idCopied') : t('copyId')"
-            :aria-label="t('copyId')"
-            @click.stop="copyId(file)"
-          >
-            <Check
-              v-if="copiedId === `renderConfig-${file.id}`"
-              :size="16"
-              class="copied-icon"
-              aria-hidden="true"
-            />
-            <Copy v-else :size="16" aria-hidden="true" />
-          </button>
-        </li>
-      </ul>
-    </section>
+
     <section class="document-section">
       <div class="section-header">
         <h2>
@@ -518,6 +437,105 @@ watch(
       </ul>
     </section>
 
+    <section class="document-section">
+      <div class="section-header">
+        <h2>
+          <button
+            class="section-toggle"
+            :aria-expanded="advancedOpen"
+            aria-controls="files-advanced"
+            @click="advancedOpen = !advancedOpen"
+          >
+            <ChevronRight :size="14" :class="{ expanded: advancedOpen }" aria-hidden="true" />
+            <span>{{ t('advanced') }}</span>
+          </button>
+        </h2>
+      </div>
+      <div v-show="advancedOpen" id="files-advanced">
+        <section class="document-section">
+          <div class="section-header">
+            <h3>
+              <button
+                class="section-toggle"
+                :aria-expanded="expanded.renderConfig"
+                aria-controls="files-renderConfig"
+                @click="expanded.renderConfig = !expanded.renderConfig"
+                :title="t('renderConfigurations')"
+              >
+                <ChevronRight
+                  :size="14"
+                  :class="{ expanded: expanded.renderConfig }"
+                  aria-hidden="true"
+                /><Palette :size="16" aria-hidden="true" /><span>{{
+                  t('renderConfigurations')
+                }}</span>
+              </button>
+            </h3>
+            <button
+              class="header-icon-button"
+              :title="t('newRenderConfiguration')"
+              :aria-label="t('newRenderConfiguration')"
+              :disabled="projectStore.isReadOnly"
+              @click="openCreateDialog('renderConfig')"
+            >
+              <Plus :size="16" aria-hidden="true" />
+            </button>
+          </div>
+          <ul v-show="expanded.renderConfig" id="files-renderConfig" class="file-list">
+            <li
+              v-for="file in renderConfigs"
+              :key="`renderConfig-${file.id}`"
+              :class="{ active: activeFileId === `renderConfig-${file.id}` }"
+              @click="selectDocument(file)"
+            >
+              <button class="file-name" @click.stop="selectDocument(file)">{{ file.name }}</button>
+              <button
+                class="copy-id-button"
+                :title="t('reloadFile')"
+                :aria-label="t('reloadFile')"
+                @click.stop="reloadFile(file)"
+              >
+                <RotateCcw :size="14" />
+              </button>
+              <button
+                class="copy-id-button"
+                :title="t('editNameAndDescription')"
+                :aria-label="t('editNameAndDescription')"
+                :disabled="projectStore.isReadOnly"
+                @click.stop="editMetadata(file)"
+              >
+                <Pencil :size="14" />
+              </button>
+              <button
+                class="delete-button"
+                :disabled="projectStore.isReadOnly || deletingRenderConfigId === file.id"
+                :title="t('delete')"
+                :aria-label="t('delete')"
+                :aria-busy="deletingRenderConfigId === file.id"
+                @click.stop="deleteRenderConfig(file)"
+              >
+                <Trash2 :size="16" aria-hidden="true" />
+              </button>
+              <button
+                class="copy-id-button"
+                :title="copiedId === `renderConfig-${file.id}` ? t('idCopied') : t('copyId')"
+                :aria-label="t('copyId')"
+                @click.stop="copyId(file)"
+              >
+                <Check
+                  v-if="copiedId === `renderConfig-${file.id}`"
+                  :size="16"
+                  class="copied-icon"
+                  aria-hidden="true"
+                />
+                <Copy v-else :size="16" aria-hidden="true" />
+              </button>
+            </li>
+          </ul>
+        </section>
+      </div>
+    </section>
+
     <span class="sr-only" role="status">{{ copiedId ? t('idCopiedToClipboard') : '' }}</span>
 
     <div
@@ -552,7 +570,7 @@ watch(
           v-model="newDocumentRenderConfigurationId"
           :disabled="!!pendingCreate || isCreating"
         >
-          <option value="">{{ t('selectARenderConfig') }}</option>
+          <option value="">{{ t('standardRendering') }}</option>
           <option v-for="config in renderConfigs" :key="config.id" :value="config.id">
             {{ config.name }}
           </option>
@@ -561,14 +579,7 @@ watch(
           <button type="button" :disabled="isCreating" @click="isCreateDialogOpen = false">
             {{ t('cancel') }}
           </button>
-          <button
-            type="submit"
-            :disabled="
-              !newDocumentName.trim() ||
-              isCreating ||
-              (newDocumentKind === 'document' && !newDocumentRenderConfigurationId)
-            "
-          >
+          <button type="submit" :disabled="!newDocumentName.trim() || isCreating">
             {{ isCreating ? t('creating2') : pendingCreate ? t('retry') : t('create') }}
           </button>
         </div>
@@ -645,7 +656,8 @@ watch(
   gap: 4px;
   margin: 12px 8px 2px;
 }
-.section-header h2 {
+.section-header h2,
+.section-header h3 {
   flex: 1;
   min-width: 0;
   margin: 0;

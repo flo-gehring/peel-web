@@ -23,7 +23,13 @@ public class PrintJobPersistence {
     private final java.time.Instant createdAt;
     private PrintJobPersistenceData printJobPersistenceData;
 
-    private PrintJobPersistence(String id, ProjectId projectId, String documentName, java.time.Instant createdAt, PrintJobPersistenceData printJobPersistenceData) {
+    private PrintJobPersistence(
+            String id,
+            ProjectId projectId,
+            String documentName,
+            java.time.Instant createdAt,
+            PrintJobPersistenceData printJobPersistenceData
+    ) {
         this.id = id;
         this.projectId = projectId;
         this.documentName = documentName;
@@ -31,7 +37,13 @@ public class PrintJobPersistence {
         this.printJobPersistenceData = printJobPersistenceData;
     }
 
-    public static PrintJobPersistence init(PrintJobId printJobId, DocumentId documentId, ProjectId projectId, String name, String documentName) {
+    public static PrintJobPersistence init(
+            PrintJobId printJobId,
+            DocumentId documentId,
+            ProjectId projectId,
+            String name,
+            String documentName
+    ) {
         return new PrintJobPersistence(
                 printJobId.id(),
                 projectId,

@@ -1,16 +1,24 @@
 package de.flogehring.peelserver.impl.files;
 
-import de.flogehring.peelserver.api.data.files.FileData.*;
-import de.flogehring.peelserver.impl.project.*;
+import de.flogehring.peelserver.api.data.files.FileData.CreateFile;
+import de.flogehring.peelserver.api.data.files.FileData.FileSummary;
+import de.flogehring.peelserver.api.data.files.FileData.UpdateFile;
+import de.flogehring.peelserver.impl.project.ProjectAccessService;
+import de.flogehring.peelserver.impl.project.ProjectId;
 import de.flogehring.peelserver.impl.users.SpringUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
-import org.springframework.data.mongodb.core.query.*;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
+
 import java.time.Instant;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -47,14 +55,16 @@ public class ProjectFileService {
             String name = request.name().strip();
             String description = description(request.description());
             var existing = files.findById(id);
-            if (existing.isPresent()) return repeatedCreate(project, existing.get(), name, description, request.content());
+            if (existing.isPresent())
+                return repeatedCreate(project, existing.get(), name, description, request.content());
             validateReferences(project, request.content());
             Instant now = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
             try {
                 return files.insert(new ProjectFile(id, project, name, description, 0, request.content(), now, now));
             } catch (DuplicateKeyException exception) {
                 var concurrent = files.findById(id);
-                if (concurrent.isPresent()) return repeatedCreate(project, concurrent.get(), name, description, request.content());
+                if (concurrent.isPresent())
+                    return repeatedCreate(project, concurrent.get(), name, description, request.content());
                 throw nameConflict();
             }
         });
@@ -77,7 +87,9 @@ public class ProjectFileService {
             try {
                 var saved = mongo.findAndModify(query, update, FindAndModifyOptions.options().returnNew(true), ProjectFile.class);
                 if (saved != null) return saved;
-            } catch (DuplicateKeyException exception) { throw nameConflict(); }
+            } catch (DuplicateKeyException exception) {
+                throw nameConflict();
+            }
             var latest = requireFile(project, id);
             if (sameState(latest, name, description, request.content())) return latest;
             throw versionConflict(latest);
@@ -91,9 +103,11 @@ public class ProjectFileService {
             if (existing.isEmpty()) return null;
             if (existing.get().version() != expectedVersion) throw versionConflict(existing.get());
             var uses = files.findByProjectId(project).stream().filter(file -> file.content() instanceof FileContent.DocumentContent document
-                    && (document.renderConfigurationId().equals(id) || document.scriptNameTags().containsValue(id)))
+                            && (id.equals(document.renderConfigurationId())
+                            || (document.document() != null && document.document().scriptIds().contains(id))))
                     .map(FileSummary::of).toList();
-            if (!uses.isEmpty()) throw new FileConflictException("file_in_use", "Remove file references before deleting this file.", Map.of("usages", uses));
+            if (!uses.isEmpty())
+                throw new FileConflictException("file_in_use", "Remove file references before deleting this file.", Map.of("usages", uses));
             var result = mongo.remove(Query.query(Criteria.where("id").is(id).and("projectId").is(project)
                     .and("version").is(expectedVersion)), ProjectFile.class);
             if (result.getDeletedCount() == 0) {
@@ -108,7 +122,13 @@ public class ProjectFileService {
         return files.findById(id).filter(file -> project.equals(file.projectId())).orElseThrow(ProjectAccessService::notFound);
     }
 
-    private ProjectFile repeatedCreate(ProjectId project, ProjectFile existing, String name, String description, FileContent content) {
+    private ProjectFile repeatedCreate(
+            ProjectId project,
+            ProjectFile existing,
+            String name,
+            String description,
+            FileContent content
+    ) {
         if (!project.equals(existing.projectId())) throw ProjectAccessService.notFound();
         if (existing.version() == 0 && sameState(existing, name, description, content)) return existing;
         throw new FileConflictException("file_already_exists", "This file ID already exists. Creation never overwrites a file.", Map.of("currentVersion", existing.version()));
@@ -118,25 +138,33 @@ public class ProjectFileService {
         if (content instanceof FileContent.ScriptContent script)
             de.flogehring.peelserver.impl.run.ExpectedBindings.validate(script.expectedBindings());
         if (content instanceof FileContent.DocumentContent document) {
-            if (!(requireFile(project, document.renderConfigurationId()).content() instanceof FileContent.RenderConfigContent))
+            document.document().validateDocument();
+            if (document.renderConfigurationId() != null && !document.renderConfigurationId().isBlank()
+                    && !(requireFile(project, document.renderConfigurationId()).content() instanceof FileContent.RenderConfigContent))
                 throw new IllegalArgumentException("The render configuration reference must point to a render configuration");
-            var ids = new HashSet<>(document.scriptNameTags().values());
+            var ids = document.document().scriptIds();
             var referenced = files.findAllById(ids);
             if (referenced.size() != ids.size()) throw ProjectAccessService.notFound();
             for (var file : referenced) {
                 if (!project.equals(file.projectId())) throw ProjectAccessService.notFound();
-                if (!(file.content() instanceof FileContent.ScriptContent)) throw new IllegalArgumentException("Script references must point to scripts");
+                if (!(file.content() instanceof FileContent.ScriptContent))
+                    throw new IllegalArgumentException("Script references must point to scripts");
             }
         }
     }
 
-    private static String description(String description) { return description == null ? "" : description; }
+    private static String description(String description) {
+        return description == null ? "" : description;
+    }
+
     private static boolean sameState(ProjectFile file, String name, String description, FileContent content) {
         return file.name().equals(name) && file.description().equals(description) && file.content().equals(content);
     }
+
     private static FileConflictException versionConflict(ProjectFile file) {
         return new FileConflictException("file_version_conflict", "The file changed. Reload and merge your changes before saving.", Map.of("currentVersion", file.version()));
     }
+
     private static FileConflictException nameConflict() {
         return new FileConflictException("file_name_conflict", "A file of this type with this name already exists in the project.", Map.of());
     }

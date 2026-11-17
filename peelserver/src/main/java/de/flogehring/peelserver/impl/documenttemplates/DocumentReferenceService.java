@@ -1,35 +1,48 @@
 package de.flogehring.peelserver.impl.documenttemplates;
-import de.flogehring.peelserver.impl.files.*;
+
+import de.flogehring.peelserver.api.data.template.DocumentNode;
+import de.flogehring.peelserver.impl.files.FileContent;
+import de.flogehring.peelserver.impl.files.ProjectFile;
+import de.flogehring.peelserver.impl.files.ProjectFileRepository;
 import de.flogehring.peelserver.impl.project.ProjectId;
+import de.flogehring.peelserver.impl.renderconfig.ExpressionRenderConfiguration;
 import de.flogehring.peelserver.impl.scripts.PeelScript;
-import de.flogehring.peelserver.impl.scripts.PeelScriptId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import java.util.*;
-import java.util.stream.Collectors;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
 import static de.flogehring.peelserver.impl.project.ProjectAccessService.notFound;
-@Service @RequiredArgsConstructor
+
+@Service
+@RequiredArgsConstructor
 public class DocumentReferenceService {
     private final ProjectFileRepository files;
-    public Document resolve(ProjectId project, String name, Map<String, PeelScriptId> tags, String template, String configId) {
-        if (project == null || tags == null || configId == null || configId.isBlank()
-                || tags.values().stream().anyMatch(id -> id == null || id.id() == null || id.id().isBlank())) throw notFound();
-        var config = files.findById(configId).filter(value -> project.equals(value.projectId())
-                && value.content() instanceof FileContent.RenderConfigContent).orElseThrow(() -> notFound());
-        Set<String> ids = tags.values().stream().map(PeelScriptId::id).collect(Collectors.toSet());
+
+    public Document resolve(ProjectId project, String name, DocumentNode document, String configId) {
+        if (project == null || document == null) throw new IllegalArgumentException("A document is required");
+        document.validateDocument();
+        ExpressionRenderConfiguration configuration = ExpressionRenderConfiguration.defaultConfig();
+        if (configId != null && !configId.isBlank()) {
+            var config = files.findById(configId).filter(value -> project.equals(value.projectId())
+                    && value.content() instanceof FileContent.RenderConfigContent).orElseThrow(() -> notFound());
+            configuration = ((FileContent.RenderConfigContent) config.content()).configuration();
+        }
+        Set<String> ids = document.scriptIds();
         Map<String, PeelScript> byId = new HashMap<>();
         files.findAllById(ids).forEach(file -> {
-            if (!project.equals(file.projectId()) || !(file.content() instanceof FileContent.ScriptContent script)) throw notFound();
+            if (!project.equals(file.projectId()) || !(file.content() instanceof FileContent.ScriptContent script))
+                throw notFound();
             byId.put(file.id(), new PeelScript(file.name(), script.source(), script.expectedBindings()));
         });
         if (byId.size() != ids.size()) throw notFound();
-        Map<String, PeelScript> resolved = new HashMap<>();
-        tags.forEach((tag, id) -> resolved.put(tag, byId.get(id.id())));
-        return new Document(name, resolved, template, ((FileContent.RenderConfigContent) config.content()).configuration());
+        return new Document(name, Map.copyOf(byId), document, configuration);
     }
+
     public Document resolve(ProjectFile file) {
         if (!(file.content() instanceof FileContent.DocumentContent data)) throw notFound();
-        var tags = data.scriptNameTags().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, entry -> new PeelScriptId(entry.getValue())));
-        return resolve(file.projectId(), file.name(), tags, data.templateHtml(), data.renderConfigurationId());
+        return resolve(file.projectId(), file.name(), data.document(), data.renderConfigurationId());
     }
 }

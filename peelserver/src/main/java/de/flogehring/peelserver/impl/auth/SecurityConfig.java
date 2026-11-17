@@ -16,10 +16,11 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.ott.OneTimeTokenAuthenticationFilter;
-import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.web.filter.OncePerRequestFilter;
 import tools.jackson.databind.ObjectMapper;
+
 import java.io.IOException;
 
 @Configuration
@@ -27,15 +28,20 @@ import java.io.IOException;
 @EnableConfigurationProperties(AuthProperties.class)
 public class SecurityConfig {
     @Bean
-    OneTimeTokenService oneTimeTokenService() { return new InMemoryOneTimeTokenService(); }
+    OneTimeTokenService oneTimeTokenService() {
+        return new InMemoryOneTimeTokenService();
+    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, OneTimeTokenService tokens, ObjectMapper mapper) throws Exception {
         // Reject account switches before the authentication filter can clear an existing session on failure.
         http.addFilterBefore(new OncePerRequestFilter() {
             @Override
-            protected void doFilterInternal(jakarta.servlet.http.HttpServletRequest request, HttpServletResponse response,
-                    jakarta.servlet.FilterChain chain) throws jakarta.servlet.ServletException, IOException {
+            protected void doFilterInternal(
+                    jakarta.servlet.http.HttpServletRequest request,
+                    HttpServletResponse response,
+                    jakarta.servlet.FilterChain chain
+            ) throws jakarta.servlet.ServletException, IOException {
                 var current = SecurityContextHolder.getContext().getAuthentication();
                 if (request.getMethod().equals("POST") && request.getRequestURI().equals(request.getContextPath() + "/api/auth/login")
                         && current != null && current.isAuthenticated() && !(current instanceof AnonymousAuthenticationToken)) {
@@ -79,7 +85,13 @@ public class SecurityConfig {
         return http.build();
     }
 
-    private static void writeError(ObjectMapper mapper, HttpServletResponse response, int status, String code, String message) throws IOException {
+    private static void writeError(
+            ObjectMapper mapper,
+            HttpServletResponse response,
+            int status,
+            String code,
+            String message
+    ) throws IOException {
         response.setStatus(status);
         response.setContentType("application/json");
         mapper.writeValue(response.getWriter(), ApiErrorResponse.of(code, message));

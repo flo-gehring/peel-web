@@ -17,12 +17,11 @@ public class ExpressionRenderConfiguration {
     private ExpressionRenderConfiguration(
             ExpressionRenderTemplate defaultTemplates,
             Map<String, ExpressionRenderTemplate> namedOverrides
-
     ) {
         this.defaultTemplates = defaultTemplates;
         this.namedOverrides = namedOverrides;
     }
- 
+
     public static ExpressionRenderConfiguration of(
             Map<TraceExpressionKind, String> render,
             Map<String, Map<TraceExpressionKind, String>> namedOverrides
@@ -45,11 +44,11 @@ public class ExpressionRenderConfiguration {
 
     public static ExpressionRenderConfiguration defaultConfig() {
         Map<TraceExpressionKind, String> templates = new EnumMap<>(TraceExpressionKind.class);
-        templates.put(TraceExpressionKind.FUNCTION_CALL, "{{name}}({% for argument in arguments %}{{argument.value.value}}{% if not loop.last %}, {% endif %}{% endfor %})");
-        templates.put(TraceExpressionKind.BINARY_OPERATOR, "{{  lhs | renderTraceExpression }} {{ operator }} {{ rhs | renderTraceExpression }}");
+        templates.put(TraceExpressionKind.FUNCTION_CALL, "{{name}}({% for argument in arguments %}{{ argument | renderTraceExpression }}{% if not loop.last %}, {% endif %}{% endfor %})");
+        templates.put(TraceExpressionKind.BINARY_OPERATOR, "({{ lhs | renderTraceExpression }} {{ operator }} {% if rhs != null %}{{ rhs | renderTraceExpression }}{% else %}…{% endif %})");
         templates.put(TraceExpressionKind.LITERAL, "{{ valueText }}");
         templates.put(TraceExpressionKind.UNARY_PREFIX_OPERATOR, "{{ operator }}{{ argument | renderTraceExpression }}");
-        templates.put(TraceExpressionKind.VARIABLE_NAME, "{{valueText}}");
+        templates.put(TraceExpressionKind.VARIABLE_NAME, "{{name}}");
         templates.put(TraceExpressionKind.RETURN_EXPR, "return {{ expression | renderTraceExpression }}");
         templates.put(TraceExpressionKind.ASSIGNMENT, "{{ variableName }} = {{ expression | renderTraceExpression }}");
         templates.put(

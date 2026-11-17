@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AuthService implements AuthController {
     private final AuthLinkService links;
+
     @Override
     public void sendLink(AuthLinkRequest body, HttpServletRequest request) {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -23,6 +24,7 @@ public class AuthService implements AuthController {
         // Forwarded headers require an explicitly trusted deployment proxy.
         links.send(body, request.getRemoteAddr());
     }
+
     @Override
     public CsrfResponse csrf(HttpServletRequest request) {
         CsrfToken token = (CsrfToken) request.getAttribute(CsrfToken.class.getName());

@@ -16,7 +16,9 @@ class CsvInputTest {
     private final Document document = new Document("invoice", Map.of(
             "first", new PeelScript("first", "", List.of(new ExpectedBinding("amount", ""))),
             "second", new PeelScript("second", "", List.of(new ExpectedBinding("customer", ""), new ExpectedBinding("amount", "")))
-    ), "", null);
+    ), de.flogehring.peelserver.DocumentFixtures.doc(
+            de.flogehring.peelserver.DocumentFixtures.calculation("first"),
+            de.flogehring.peelserver.DocumentFixtures.calculation("second")), null);
 
     private void validate(String csv) {
         CsvInput.validate(new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)), document);

@@ -26,6 +26,7 @@ export const peelLanguage: Monaco.languages.IMonarchLanguage = {
   booleans: ['True', 'False'],
   tokenizer: {
     root: [
+      [/[a-zA-Z_][a-zA-Z0-9_]*(?=\s*:\s*\{)/, 'type.identifier'],
       [/\/\/.*$/, 'comment'],
       [
         /"/,

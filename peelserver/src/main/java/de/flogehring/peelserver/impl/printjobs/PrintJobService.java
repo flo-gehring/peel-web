@@ -1,24 +1,25 @@
 package de.flogehring.peelserver.impl.printjobs;
 
-import de.flogehring.peelserver.api.services.PrintJobController;
 import de.flogehring.peelserver.api.data.ProjectIdApi;
 import de.flogehring.peelserver.api.data.print.jobs.*;
+import de.flogehring.peelserver.api.services.PrintJobController;
 import de.flogehring.peelserver.impl.documenttemplates.DocumentId;
 import de.flogehring.peelserver.impl.documenttemplates.DocumentReferenceService;
-import de.flogehring.peelserver.impl.files.*;
+import de.flogehring.peelserver.impl.files.FileContent;
+import de.flogehring.peelserver.impl.files.ProjectFile;
+import de.flogehring.peelserver.impl.files.ProjectFileRepository;
+import de.flogehring.peelserver.impl.files.ProjectFileService;
 import de.flogehring.peelserver.impl.filestorage.StorageService;
 import de.flogehring.peelserver.impl.project.ProjectAccessService;
 import de.flogehring.peelserver.impl.project.ProjectId;
-import java.util.*;
-import java.util.stream.Collectors;
 import de.flogehring.peelserver.impl.users.SpringUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+
 import java.io.IOException;
-import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
@@ -85,8 +86,13 @@ public class PrintJobService implements PrintJobController {
             if (fileName == null || !fileName.toLowerCase(Locale.ROOT).endsWith(".csv")) {
                 throw new IllegalArgumentException("only CSV files can be uploaded");
             }
-            if (!"text/csv".equals(file.getContentType())) throw new IllegalArgumentException("CSV uploads must use content type text/csv");
-            try { storage.uploadFile(BUCKET_NAME, id, file.getInputStream(), file.getContentType()); } catch (IOException exception) { throw new java.io.UncheckedIOException(exception); }
+            if (!"text/csv".equals(file.getContentType()))
+                throw new IllegalArgumentException("CSV uploads must use content type text/csv");
+            try {
+                storage.uploadFile(BUCKET_NAME, id, file.getInputStream(), file.getContentType());
+            } catch (IOException exception) {
+                throw new java.io.UncheckedIOException(exception);
+            }
             job.updateFileName(fileName);
             jobs.save(job);
             return null;
@@ -109,7 +115,7 @@ public class PrintJobService implements PrintJobController {
             job.updateStatus(PrintJobStatus.CALCULATING);
             jobs.save(job);
             try {
-            runner.run(job, resolved);
+                runner.run(job, resolved);
             } catch (RuntimeException exception) {
                 job.updateStatus(PrintJobStatus.FAILED);
                 jobs.save(job);

@@ -73,7 +73,8 @@ describe('FileTreePanel', () => {
     const wrapper = mount(FileTreePanel)
     await flushPromises()
 
-    await wrapper.get('.document-section:nth-of-type(2) [title="Delete"]').trigger('click')
+    await wrapper.get('[aria-controls="files-advanced"]').trigger('click')
+    await wrapper.get('#files-renderConfig [title="Delete"]').trigger('click')
     await flushPromises()
 
     expect(mockApi.DELETE).toHaveBeenCalledTimes(1)
@@ -103,7 +104,8 @@ describe('FileTreePanel', () => {
     const wrapper = mount(FileTreePanel)
     await flushPromises()
 
-    await wrapper.get('.document-section:nth-of-type(2) [title="Delete"]').trigger('click')
+    await wrapper.get('[aria-controls="files-advanced"]').trigger('click')
+    await wrapper.get('#files-renderConfig [title="Delete"]').trigger('click')
 
     expect(mockApi.DELETE).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('Config')
@@ -145,7 +147,8 @@ describe('FileTreePanel', () => {
     } as never)
     const wrapper = mount(FileTreePanel)
     await flushPromises()
-    await wrapper.get('.document-section:nth-of-type(2) [title="Delete"]').trigger('click')
+    await wrapper.get('[aria-controls="files-advanced"]').trigger('click')
+    await wrapper.get('#files-renderConfig [title="Delete"]').trigger('click')
     await flushPromises()
     expect(wrapper.get('[role="alert"]').text()).toContain('Invoice')
     expect(wrapper.text()).toContain('Config')
@@ -157,6 +160,11 @@ describe('FileTreePanel', () => {
     const wrapper = mount(FileTreePanel)
     await flushPromises()
     const toggle = wrapper.get('[aria-controls="files-peel"]')
+    const advanced = wrapper.get('[aria-controls="files-advanced"]')
+    expect(advanced.attributes('aria-expanded')).toBe('false')
+    expect((wrapper.get('#files-advanced').element as HTMLElement).style.display).toBe('none')
+    await advanced.trigger('click')
+    expect((wrapper.get('#files-advanced').element as HTMLElement).style.display).not.toBe('none')
     await toggle.trigger('click')
     expect(toggle.attributes('aria-expanded')).toBe('false')
     expect((wrapper.get('#files-peel').element as HTMLElement).style.display).toBe('none')
@@ -174,6 +182,8 @@ describe('FileTreePanel', () => {
       useProjectStore().activeProject = { projectIdApi: { id: 'project-1' } }
       const wrapper = mount(FileTreePanel)
       await flushPromises()
+      if (title === 'New render configuration')
+        await wrapper.get('[aria-controls="files-advanced"]').trigger('click')
       await wrapper.get(`[title="${title}"]`).trigger('click')
       expect(wrapper.get('.create-dialog h2').text()).toBe(title)
       expect(wrapper.find('#workspace-item-type').exists()).toBe(false)

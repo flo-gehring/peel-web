@@ -70,9 +70,7 @@ async function save(): Promise<boolean> {
       if (!document) throw new Error(t('theDocumentDraftIsUnavailable'))
       content = {
         type: 'document',
-        scriptNameTags: { ...document.scriptNameTags },
-        templateHtml: document.templateHtml,
-        editorStateJson: document.editorStateJson,
+        document: document.document,
         renderConfigurationId: document.renderConfigurationId,
       }
     } else if (props.documentKind === 'renderConfig') {

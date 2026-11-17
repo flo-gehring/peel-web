@@ -3,6 +3,7 @@ package de.flogehring.peelserver.auth;
 import de.flogehring.peelserver.impl.users.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DuplicateKeyException;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 

@@ -29,11 +29,11 @@ public final class ExpectedBindings {
     public static void requireDocument(de.flogehring.peelserver.impl.documenttemplates.Document document,
                                        Collection<String> available, boolean csv) {
         var missingByScript = new java.util.TreeMap<String, List<String>>();
-        document.scriptNameTags().forEach((tag, script) -> {
+        document.scripts().forEach((id, script) -> {
             validate(script.expectedBindings());
             var missing = script.expectedBindings().stream().map(ExpectedBinding::name)
                     .filter(name -> !available.contains(name)).sorted().toList();
-            if (!missing.isEmpty()) missingByScript.put(tag, missing);
+            if (!missing.isEmpty()) missingByScript.put(script.name().isBlank() ? id : script.name(), missing);
         });
         if (!missingByScript.isEmpty()) {
             var missing = missingByScript.values().stream().flatMap(List::stream).distinct().sorted().toList();

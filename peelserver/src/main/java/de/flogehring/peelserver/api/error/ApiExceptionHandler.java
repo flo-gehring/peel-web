@@ -15,9 +15,12 @@ public class ApiExceptionHandler {
         return ResponseEntity.badRequest().body(ApiErrorResponse.of(ex.code(), ex.getMessage(), ex.details()));
     }
     @ExceptionHandler(de.flogehring.peelserver.impl.files.FileConflictException.class)
-    public ResponseEntity<ApiErrorResponse> handleFileConflict(de.flogehring.peelserver.impl.files.FileConflictException ex) {
+    public ResponseEntity<ApiErrorResponse> handleFileConflict(
+            de.flogehring.peelserver.impl.files.FileConflictException ex
+    ) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorResponse.of(ex.code(), ex.getMessage(), ex.details()));
     }
+
     @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
     public ResponseEntity<ApiErrorResponse> handleStatus(org.springframework.web.server.ResponseStatusException ex) {
         return ResponseEntity.status(ex.getStatusCode()).body(ApiErrorResponse.of("project_error", ex.getReason()));

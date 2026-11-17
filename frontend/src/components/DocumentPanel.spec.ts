@@ -1,15 +1,30 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
+import { shallowRef } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DocumentPanel from './DocumentPanel.vue'
 import { useDocumentDraftStore } from '@/stores/documentDrafts'
 import { useProjectStore } from '@/stores/projects'
 import { useProjectFileStore } from '@/stores/projectFiles'
 import { createMemoryHistory, createRouter } from 'vue-router'
+const testDocument = {
+  type: 'doc',
+  content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Test' }] }],
+}
+const calculationDocument = {
+  type: 'doc',
+  content: [
+    { type: 'peelCalculation', attrs: { scriptId: 'script', scope: 'script', mode: 'detailed' } },
+  ],
+}
 
 const { post, put } = vi.hoisted(() => ({ post: vi.fn(), put: vi.fn() }))
 vi.mock('@/adapter/client', () => ({ api: { POST: post, PUT: put } }))
-vi.mock('@tiptap/vue-3', () => ({ useEditor: () => null, EditorContent: { template: '<div />' } }))
+vi.mock('@tiptap/vue-3', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tiptap/vue-3')>()),
+  useEditor: () => shallowRef(null),
+  EditorContent: { template: '<div />' },
+}))
 
 describe('DocumentPanel preview project context', () => {
   it.each([true, false])(
@@ -24,13 +39,13 @@ describe('DocumentPanel preview project context', () => {
         description: '',
         content: {
           type: 'document',
-          templateHtml: '<p>Test</p>',
-          editorStateJson: '{}',
-          scriptNameTags: {},
+          document: testDocument,
           renderConfigurationId: 'config',
         },
       }
-      useDocumentDraftStore().updateDraft('document', { templateHtml: '<p>Changed</p>' })
+      useDocumentDraftStore().updateDraft('document', {
+        document: { type: 'doc', content: [{ type: 'paragraph' }] },
+      })
       put.mockResolvedValueOnce(
         success
           ? { data: { ...files.loaded.document, version: 1 } }
@@ -81,9 +96,7 @@ describe('DocumentPanel preview project context', () => {
     vi.resetAllMocks()
     useDocumentDraftStore().setDraft('document', {
       name: 'Template',
-      templateHtml: '<p>Test</p>',
-      editorStateJson: '{}',
-      scriptNameTags: {},
+      document: testDocument,
       renderConfigurationId: 'config',
       renderConfigurations: [],
       dirty: false,
@@ -144,13 +157,11 @@ describe('DocumentPanel preview project context', () => {
       description: 'Purpose',
       content: {
         type: 'document',
-        scriptNameTags: {},
-        templateHtml: '<p>Test</p>',
-        editorStateJson: '{}',
+        document: testDocument,
         renderConfigurationId: 'config',
       },
     }
-    useDocumentDraftStore().updateDraft('document', { scriptNameTags: { calculation: 'script' } })
+    useDocumentDraftStore().updateDraft('document', { document: calculationDocument })
     put.mockResolvedValueOnce({ data: { ...files.loaded.document, version: 6 } })
     const wrapper = mount(DocumentPanel, {
       props: { params: { params: { documentId: 'document' } } },
@@ -168,9 +179,7 @@ describe('DocumentPanel preview project context', () => {
         description: 'Purpose',
         content: {
           type: 'document',
-          scriptNameTags: { calculation: 'script' },
-          templateHtml: '<p>Test</p>',
-          editorStateJson: '{}',
+          document: calculationDocument,
           renderConfigurationId: 'config',
         },
       },
@@ -201,7 +210,7 @@ describe('DocumentPanel preview project context', () => {
     expect(wrapper.find('.render-preview-panel').exists()).toBe(true)
     await wrapper.get('[aria-label="Document view"] button:first-child').trigger('click')
     expect((wrapper.get('.document-edit').element as HTMLElement).style.display).not.toBe('none')
-    expect(useDocumentDraftStore().getDraft('document')?.templateHtml).toBe('<p>Test</p>')
+    expect(useDocumentDraftStore().getDraft('document')?.document).toEqual(testDocument)
     wrapper.unmount()
   })
 
@@ -215,9 +224,7 @@ describe('DocumentPanel preview project context', () => {
       description: '',
       content: {
         type: 'document',
-        scriptNameTags: {},
-        templateHtml: '<p>Test</p>',
-        editorStateJson: '{}',
+        document: testDocument,
         renderConfigurationId: 'config',
       },
     }

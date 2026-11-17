@@ -6,6 +6,10 @@ import { DockviewVue, type DockviewReadyEvent } from 'dockview-vue'
 import ProjectView from './ProjectView.vue'
 import { useWorkspaceSelectionStore } from '@/stores/workspaceSelection'
 import { setLocale } from '@/i18n'
+const testDocument = {
+  type: 'doc',
+  content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Test' }] }],
+}
 
 vi.mock('@guolao/vue-monaco-editor', () => ({
   VueMonacoEditor: { template: '<div class="test-monaco" />' },
@@ -23,9 +27,7 @@ vi.mock('@/adapter/client', () => ({
                 name: 'Invoice',
                 content: {
                   type: 'document',
-                  templateHtml: '<p>Invoice</p>',
-                  editorStateJson: '{}',
-                  scriptNameTags: {},
+                  document: testDocument,
                   renderConfigurationId: 'config',
                 },
               }

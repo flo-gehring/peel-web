@@ -31,6 +31,11 @@ The PEEL core analyzer supplies semantic colors, scopes, references and diagnost
 Functions, parameters and variables are distinguished; external inputs are readonly
 global values. Variables holding functions remain variables without type inference.
 
+Named blocks retain their interpreter scopes. Labels such as `report: {` are
+highlighted separately and do not become variables or completion suggestions.
+Duplicate block names are diagnosed across the complete script, including
+unexecuted branches and functions.
+
 Ctrl+Space offers visible local names, expected inputs, runtime symbols and
 keywords. Descriptions appear in completion and hover. Expected inputs require no
 test values. Analysis runs after 300 ms of inactivity, and old/cancelled responses
@@ -61,8 +66,10 @@ case-sensitive. Extra columns and empty cells are allowed; duplicate/unnamed
 headers are invalid. Validation and execution share one CSV format.
 
 Missing columns return HTTP 400 with code `missing_csv_columns`, a
-`missingColumns` list and a `scripts` map assigning names to document script
-tags in `error.details`. The job stays CREATED so a corrected upload can start.
+`missingColumns` list and a `scripts` map assigning missing inputs to script
+names in `error.details`. Structured document references are resolved by file ID;
+their contracts are checked together before any referenced script executes.
+The job stays CREATED so a corrected upload can start.
 CSV replacement is restricted to CREATED. The worker uses the same resolved
 scripts/contracts checked before scheduling; later file edits do not change them.
 

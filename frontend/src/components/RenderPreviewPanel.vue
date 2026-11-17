@@ -17,6 +17,9 @@ const preview = computed(() => previewStore.previews[props.documentId])
     <p v-if="stale && preview?.pdfUrl" class="stale-notice">
       {{ t('theDraftChangedSinceThisPreviewUseRenderPreview') }}
     </p>
+    <ul v-if="preview?.warnings?.length" class="stale-notice" role="status">
+      <li v-for="warning in preview.warnings" :key="warning">{{ warning }}</li>
+    </ul>
     <p v-if="preview?.isLoading" class="preview-message">{{ t('renderingDocument') }}</p>
     <p v-else-if="preview?.error" class="preview-message preview-error">{{ preview?.error }}</p>
     <iframe

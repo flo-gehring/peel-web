@@ -13,6 +13,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class AuthSmtpTest {
@@ -32,7 +33,7 @@ class AuthSmtpTest {
             links.send(new AuthLinkRequest("developer@example.test", "/projects/one"), "127.0.0.1");
             try (var client = HttpClient.newHttpClient()) {
                 var request = HttpRequest.newBuilder(URI.create("http://" + mailpit.getHost() + ":"
-                        + mailpit.getMappedPort(8025) + "/api/v1/message/latest"))
+                                + mailpit.getMappedPort(8025) + "/api/v1/message/latest"))
                         .timeout(Duration.ofSeconds(10)).build();
                 var response = client.send(request, HttpResponse.BodyHandlers.ofString());
                 assertThat(response.statusCode()).isEqualTo(200);

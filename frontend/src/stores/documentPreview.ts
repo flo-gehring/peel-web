@@ -9,6 +9,7 @@ type Preview = {
   signature: string
   renderedAt: number | null
   requestId: number
+  warnings: string[]
 }
 export const useDocumentPreviewStore = defineStore('documentPreview', () => {
   const previews = ref<Record<string, Preview>>({})
@@ -25,16 +26,23 @@ export const useDocumentPreviewStore = defineStore('documentPreview', () => {
       signature,
       renderedAt: null,
       requestId,
+      warnings: [],
     }
     return requestId
   }
-  function setPreview(id: string, requestId: number, pdfData: string): void {
+  function setPreview(
+    id: string,
+    requestId: number,
+    pdfData: string,
+    warnings: string[] = [],
+  ): void {
     const preview = previews.value[id]
     if (preview?.requestId !== requestId) return
     const bytes = Uint8Array.from(atob(pdfData), (character) => character.charCodeAt(0))
     preview.pdfUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }))
     preview.isLoading = false
     preview.error = null
+    preview.warnings = warnings
     preview.renderedAt = Date.now()
   }
   function setError(id: string, requestId: number, error: string): void {

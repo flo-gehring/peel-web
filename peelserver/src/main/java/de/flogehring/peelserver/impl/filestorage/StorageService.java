@@ -48,7 +48,9 @@ public class StorageService {
                 if (name.equals(jobId) || name.startsWith(jobId + "_"))
                     minioClient.removeObject(io.minio.RemoveObjectArgs.builder().bucket(bucket).object(name).build());
             }
-        } catch (Exception exception) { throw new IllegalStateException("Project file cleanup failed", exception); }
+        } catch (Exception exception) {
+            throw new IllegalStateException("Project file cleanup failed", exception);
+        }
     }
 
     private void ensureBucketExists(String bucketName) {

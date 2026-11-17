@@ -1,58 +1,88 @@
 package de.flogehring.peelserver.auth;
 
+import de.flogehring.peelserver.api.data.print.jobs.PrintJobId;
+import de.flogehring.peelserver.api.data.print.jobs.PrintJobStatus;
 import de.flogehring.peelserver.config.PeelModuleTest;
+import de.flogehring.peelserver.impl.documenttemplates.DocumentId;
+import de.flogehring.peelserver.impl.files.FileContent;
+import de.flogehring.peelserver.impl.files.ProjectFile;
+import de.flogehring.peelserver.impl.files.ProjectFileRepository;
+import de.flogehring.peelserver.impl.filestorage.StorageService;
+import de.flogehring.peelserver.impl.printjobs.PrintJobPersistence;
+import de.flogehring.peelserver.impl.printjobs.PrintJobRepository;
 import de.flogehring.peelserver.impl.project.*;
 import de.flogehring.peelserver.impl.users.*;
-import de.flogehring.peelserver.impl.filestorage.StorageService;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.mail.MailSender;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.*;
-import de.flogehring.peelserver.impl.printjobs.*;
-import de.flogehring.peelserver.impl.files.*;
-import de.flogehring.peelserver.impl.documenttemplates.*;
-import de.flogehring.peelserver.impl.renderconfig.*;
-import de.flogehring.peelserver.api.data.print.jobs.*;
-import java.time.Instant;
 import tools.jackson.databind.ObjectMapper;
-import java.util.*;
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.Mockito.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@PeelModuleTest @AutoConfigureMockMvc
+import java.time.Instant;
+import java.util.Map;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@PeelModuleTest
+@AutoConfigureMockMvc
 class ProjectManagementTest {
-    @Autowired MockMvc mvc;
-    @Autowired ObjectMapper json;
-    @Autowired ProjectRepository projects;
-    @Autowired UserRepository users;
-    @Autowired ProjectInvitationRepository invitations;
-    @Autowired MongoTemplate mongo;
-    @Autowired PrintJobRepository jobs;
-    @Autowired ProjectFileRepository scripts;
-    @MockitoBean MailSender mail;
-    @MockitoBean StorageService storage;
+    @Autowired
+    MockMvc mvc;
+    @Autowired
+    ObjectMapper json;
+    @Autowired
+    ProjectRepository projects;
+    @Autowired
+    UserRepository users;
+    @Autowired
+    ProjectInvitationRepository invitations;
+    @Autowired
+    MongoTemplate mongo;
+    @Autowired
+    PrintJobRepository jobs;
+    @Autowired
+    ProjectFileRepository scripts;
+    @MockitoBean
+    MailSender mail;
+    @MockitoBean
+    StorageService storage;
     SpringUserDetails owner, member, guest;
     String id;
 
-    @BeforeEach void setup() {
+    @BeforeEach
+    void setup() {
         String prefix = UUID.randomUUID().toString();
-        owner = account(prefix + "-owner"); member = account(prefix + "-member"); guest = account(prefix + "-guest");
+        owner = account(prefix + "-owner");
+        member = account(prefix + "-member");
+        guest = account(prefix + "-guest");
         var project = ProjectPersistence.newProject(owner.getUserId(), "Test project");
         id = projects.save(project).getId();
     }
+
     private SpringUserDetails account(String name) {
         var user = users.insert(new UserPersistence(null, new UserPersistenceData(name + "@example.test", name)));
         return new SpringUserDetails(new UserId(user.getId()), user.getUserPersistenceData());
     }
-    private String body(Object value) { return json.writeValueAsString(value); }
+
+    private String body(Object value) {
+        return json.writeValueAsString(value);
+    }
+
     private String invite(SpringUserDetails inviter, String email) throws Exception {
         clearInvocations(mail);
         mvc.perform(post("/api/projects/" + id + "/invitations").with(user(inviter)).with(csrf()).contentType("application/json")
@@ -61,11 +91,14 @@ class ProjectManagementTest {
         verify(mail).send(captor.capture());
         return captor.getValue().getText().split("/invitations/")[1].split("\\s")[0];
     }
+
     private void join(SpringUserDetails user) throws Exception {
         String token = invite(owner, user.getUsername());
         mvc.perform(post("/api/invitations/" + token + "/accept").with(user(user)).with(csrf())).andExpect(status().isNoContent());
     }
-    @Test void invitationRequiresMatchingAccountAndExplicitAcceptance() throws Exception {
+
+    @Test
+    void invitationRequiresMatchingAccountAndExplicitAcceptance() throws Exception {
         String token = invite(owner, member.getUsername());
         mvc.perform(get("/api/invitations/" + token).with(user(member))).andExpect(status().isOk());
         mvc.perform(get("/api/projects/" + id).with(user(member))).andExpect(status().isNotFound());
@@ -74,7 +107,9 @@ class ProjectManagementTest {
         mvc.perform(get("/api/projects/" + id).with(user(member))).andExpect(status().isOk());
         mvc.perform(post("/api/invitations/" + token + "/accept").with(user(member)).with(csrf())).andExpect(status().isNotFound());
     }
-    @Test void receivedInvitationsArePrivateAndRequireExplicitAcceptance() throws Exception {
+
+    @Test
+    void receivedInvitationsArePrivateAndRequireExplicitAcceptance() throws Exception {
         invite(owner, member.getUsername());
         var invitation = invitations.findByProjectId(new ProjectId(id)).getFirst();
         mvc.perform(get("/api/invitations/received")).andExpect(status().isUnauthorized());
@@ -94,7 +129,8 @@ class ProjectManagementTest {
         mvc.perform(post("/api/invitations/received/" + invitation.id() + "/accept").with(user(member)).with(csrf())).andExpect(status().isNotFound());
     }
 
-    @Test void receivedInvitationsCanBeDeclinedAndHideExpiredArchivedOrRevokedEntries() throws Exception {
+    @Test
+    void receivedInvitationsCanBeDeclinedAndHideExpiredArchivedOrRevokedEntries() throws Exception {
         String token = invite(owner, member.getUsername());
         var invitation = invitations.findByProjectId(new ProjectId(id)).getFirst();
         mongo.updateFirst(Query.query(Criteria.where("id").is(id)), new Update().set("state", ProjectState.ARCHIVED), ProjectPersistence.class);
@@ -116,7 +152,8 @@ class ProjectManagementTest {
         mvc.perform(get("/api/invitations/received").with(user(guest))).andExpect(jsonPath("$.length()").value(0));
     }
 
-    @Test void invitesUnregisteredAddressesWithoutAccountDisclosure() throws Exception {
+    @Test
+    void invitesUnregisteredAddressesWithoutAccountDisclosure() throws Exception {
         String email = UUID.randomUUID() + "@example.test";
         String token = invite(owner, email);
         assertThat(users.findByUsername(email)).isNull();
@@ -124,7 +161,9 @@ class ProjectManagementTest {
         var recipient = new SpringUserDetails(new UserId(created.getId()), created.getUserPersistenceData());
         mvc.perform(post("/api/invitations/" + token + "/accept").with(user(recipient)).with(csrf())).andExpect(status().isNoContent());
     }
-    @Test void onlyOwnerAppointsAdminsAndAdminsCanInvite() throws Exception {
+
+    @Test
+    void onlyOwnerAppointsAdminsAndAdminsCanInvite() throws Exception {
         join(member);
         mvc.perform(put("/api/projects/" + id + "/members/" + member.getUserId().id() + "/admin").with(user(member)).with(csrf())
                 .contentType("application/json").content(body(Map.of("admin", true)))).andExpect(status().isForbidden());
@@ -134,7 +173,9 @@ class ProjectManagementTest {
         mvc.perform(put("/api/projects/" + id + "/members/" + member.getUserId().id() + "/admin").with(user(member)).with(csrf())
                 .contentType("application/json").content(body(Map.of("admin", true)))).andExpect(status().isForbidden());
     }
-    @Test void transferNeedsBothConfirmationsAndRecipientConsent() throws Exception {
+
+    @Test
+    void transferNeedsBothConfirmationsAndRecipientConsent() throws Exception {
         join(member);
         mvc.perform(post("/api/projects/" + id + "/transfer").with(user(owner)).with(csrf()).contentType("application/json")
                 .content(body(Map.of("email", member.getUsername(), "confirmation", "wrong")))).andExpect(status().isBadRequest());
@@ -148,7 +189,9 @@ class ProjectManagementTest {
         assertThat(projects.findById(id).orElseThrow().getPersistenceData().ownerId()).isEqualTo(member.getUserId());
         mvc.perform(get("/api/projects/" + id + "/settings").with(user(owner))).andExpect(jsonPath("$.role").value("ADMIN"));
     }
-    @Test void archivedProjectsAreReadOnlyAndDeletionRequiresConfirmation() throws Exception {
+
+    @Test
+    void archivedProjectsAreReadOnlyAndDeletionRequiresConfirmation() throws Exception {
         mvc.perform(post("/api/projects/" + id + "/archive").with(user(owner)).with(csrf())).andExpect(status().isNoContent());
         mvc.perform(get("/api/projects/" + id).with(user(owner))).andExpect(status().isOk());
         mvc.perform(post("/api/projects/" + id + "/files").with(user(owner)).with(csrf()).contentType("application/json")
@@ -159,12 +202,15 @@ class ProjectManagementTest {
                 .content(body(Map.of("confirmation", "Test project")))).andExpect(status().isNoContent());
         assertThat(projects.existsById(id)).isFalse();
     }
-    @Test void exportsCurrentOpenApiContract() throws Exception {
+
+    @Test
+    void exportsCurrentOpenApiContract() throws Exception {
         var response = mvc.perform(get("/v3/api-docs")).andExpect(status().isOk()).andReturn();
         java.nio.file.Files.writeString(java.nio.file.Path.of("build/openapi.json"), response.getResponse().getContentAsString());
     }
 
-    @Test void membersEditMetadataButCannotManageOtherMembersOrArchive() throws Exception {
+    @Test
+    void membersEditMetadataButCannotManageOtherMembersOrArchive() throws Exception {
         join(member);
         mvc.perform(put("/api/projects/" + id + "/settings").with(user(member)).with(csrf()).contentType("application/json")
                 .content(body(Map.of("name", "Updated", "description", "By a member")))).andExpect(status().isNoContent());
@@ -176,7 +222,8 @@ class ProjectManagementTest {
         mvc.perform(get("/api/projects/" + id).with(user(member))).andExpect(status().isNotFound());
     }
 
-    @Test void revokedExpiredAndDeclinedInvitationsCannotGrantMembership() throws Exception {
+    @Test
+    void revokedExpiredAndDeclinedInvitationsCannotGrantMembership() throws Exception {
         String token = invite(owner, member.getUsername());
         var invitation = invitations.findByProjectId(new ProjectId(id)).getFirst();
         assertThat(invitation.tokenHash()).isNotEqualTo(token);
@@ -191,7 +238,8 @@ class ProjectManagementTest {
         mvc.perform(get("/api/projects/" + id).with(user(guest))).andExpect(status().isNotFound());
     }
 
-    @Test void failedEmailDoesNotLeaveAnInvitationOrRevealWhetherAnAccountExists() throws Exception {
+    @Test
+    void failedEmailDoesNotLeaveAnInvitationOrRevealWhetherAnAccountExists() throws Exception {
         doThrow(new org.springframework.mail.MailSendException("unavailable")).when(mail).send(any(SimpleMailMessage.class));
         mvc.perform(post("/api/projects/" + id + "/invitations").with(user(owner)).with(csrf()).contentType("application/json")
                 .content(body(Map.of("email", UUID.randomUUID() + "@example.test")))).andExpect(status().isServiceUnavailable());
@@ -203,7 +251,9 @@ class ProjectManagementTest {
                 .content(body(Map.of("email", member.getUsername(), "confirmation", "TRANSFER Test project")))).andExpect(status().isNoContent());
         return projects.findById(id).orElseThrow().getTransfer().id();
     }
-    @Test void transferCanBeDeclinedWithdrawnOrExpireAndOnlyOneCanBePending() throws Exception {
+
+    @Test
+    void transferCanBeDeclinedWithdrawnOrExpireAndOnlyOneCanBePending() throws Exception {
         join(member);
         String request = transfer();
         mvc.perform(post("/api/projects/" + id + "/transfer").with(user(owner)).with(csrf()).contentType("application/json")
@@ -220,16 +270,19 @@ class ProjectManagementTest {
         mvc.perform(post("/api/projects/" + id + "/transfer/" + request + "/accept").with(user(member)).with(csrf())).andExpect(status().isNotFound());
     }
 
-    @Test void deletionWaitsForJobsAndCanRetryFailedFileCleanupWithoutLosingRecords() throws Exception {
+    @Test
+    void deletionWaitsForJobsAndCanRetryFailedFileCleanupWithoutLosingRecords() throws Exception {
         var project = new ProjectId(id);
         var script = scripts.insert(new ProjectFile(UUID.randomUUID().toString(), project, "Script", "", 0, new FileContent.ScriptContent("1;", java.util.List.of()), Instant.now(), Instant.now()));
         var job = PrintJobPersistence.init(new PrintJobId(UUID.randomUUID().toString()), new DocumentId("template"), project, "Job", "Template");
-        job.updateStatus(PrintJobStatus.CALCULATING); jobs.save(job);
+        job.updateStatus(PrintJobStatus.CALCULATING);
+        jobs.save(job);
         mvc.perform(post("/api/projects/" + id + "/archive").with(user(owner)).with(csrf())).andExpect(status().isNoContent());
         mvc.perform(delete("/api/projects/" + id).with(user(owner)).with(csrf()).contentType("application/json")
                 .content(body(Map.of("confirmation", "Test project")))).andExpect(status().isConflict());
         verifyNoInteractions(storage);
-        job.updateStatus(PrintJobStatus.COMPLETED); jobs.save(job);
+        job.updateStatus(PrintJobStatus.COMPLETED);
+        jobs.save(job);
         doThrow(new IllegalStateException("MinIO offline")).doNothing().when(storage).deleteFilesWithPrefix("print-jobs", job.getId());
         mvc.perform(delete("/api/projects/" + id).with(user(owner)).with(csrf()).contentType("application/json")
                 .content(body(Map.of("confirmation", "Test project")))).andExpect(status().isServiceUnavailable());
@@ -239,6 +292,8 @@ class ProjectManagementTest {
                 .content(body(Map.of("id", UUID.randomUUID(), "name", "No recreation", "content", Map.of("type","script","source","","expectedBindings",java.util.List.of()))))).andExpect(status().isNotFound());
         mvc.perform(delete("/api/projects/" + id).with(user(owner)).with(csrf()).contentType("application/json")
                 .content(body(Map.of("confirmation", "Test project")))).andExpect(status().isNoContent());
-        assertThat(projects.existsById(id)).isFalse(); assertThat(scripts.existsById(script.id())).isFalse(); assertThat(jobs.existsById(job.getId())).isFalse();
+        assertThat(projects.existsById(id)).isFalse();
+        assertThat(scripts.existsById(script.id())).isFalse();
+        assertThat(jobs.existsById(job.getId())).isFalse();
     }
 }

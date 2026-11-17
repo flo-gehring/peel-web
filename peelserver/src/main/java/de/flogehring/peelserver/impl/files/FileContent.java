@@ -3,12 +3,13 @@ package de.flogehring.peelserver.impl.files;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import de.flogehring.peel.core.trace.TraceExpressionKind;
+import de.flogehring.peelserver.api.data.template.DocumentNode;
 import de.flogehring.peelserver.impl.renderconfig.ExpressionRenderConfiguration;
 import io.swagger.v3.oas.annotations.media.DiscriminatorMapping;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.annotation.TypeAlias;
+
 import java.util.Map;
 import java.util.List;
 import jakarta.validation.Valid;
@@ -16,9 +17,9 @@ import de.flogehring.peelserver.impl.run.ExpectedBinding;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
 @JsonSubTypes({
-    @JsonSubTypes.Type(value = FileContent.ScriptContent.class, name = "script"),
-    @JsonSubTypes.Type(value = FileContent.RenderConfigContent.class, name = "render-config"),
-    @JsonSubTypes.Type(value = FileContent.DocumentContent.class, name = "document")
+        @JsonSubTypes.Type(value = FileContent.ScriptContent.class, name = "script"),
+        @JsonSubTypes.Type(value = FileContent.RenderConfigContent.class, name = "render-config"),
+        @JsonSubTypes.Type(value = FileContent.DocumentContent.class, name = "document")
 })
 @Schema(oneOf = {FileContent.ScriptContent.class, FileContent.RenderConfigContent.class, FileContent.DocumentContent.class},
         discriminatorProperty = "type", discriminatorMapping = {
@@ -35,7 +36,11 @@ public sealed interface FileContent {
     }
 
     @TypeAlias("script")
-    record ScriptContent(@NotNull String source, @NotNull List<@NotNull @Valid ExpectedBinding> expectedBindings) implements FileContent {}
+    record ScriptContent(
+            @NotNull String source,
+            @NotNull List<@NotNull @Valid ExpectedBinding> expectedBindings
+    ) implements FileContent {
+    }
 
     @TypeAlias("render-config")
     record RenderConfigContent(
@@ -49,9 +54,8 @@ public sealed interface FileContent {
 
     @TypeAlias("document")
     record DocumentContent(
-            @NotNull Map<@NotBlank String, @NotBlank String> scriptNameTags,
-            @NotBlank String templateHtml,
-            @NotNull String editorStateJson,
-            @NotBlank String renderConfigurationId
-    ) implements FileContent {}
+            @NotNull DocumentNode document,
+            String renderConfigurationId
+    ) implements FileContent {
+    }
 }

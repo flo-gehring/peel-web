@@ -1,14 +1,13 @@
 package de.flogehring.peelserver.impl.users;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-
-import org.springframework.dao.DuplicateKeyException;
-import org.springframework.dao.DataAccessException;
-import org.springframework.security.authentication.InternalAuthenticationServiceException;
 
 @Service
 @RequiredArgsConstructor
@@ -33,7 +32,8 @@ public class SpringUserDetailService implements UserDetailsService {
                 userPersistence = userRepository.insert(new UserPersistence(null, new UserPersistenceData(username, null)));
             } catch (DuplicateKeyException exception) {
                 userPersistence = userRepository.findByUsername(username);
-                if (userPersistence == null) throw new UsernameNotFoundException("Account could not be loaded", exception);
+                if (userPersistence == null)
+                    throw new UsernameNotFoundException("Account could not be loaded", exception);
             }
         }
         return new SpringUserDetails(new UserId(userPersistence.getId()), userPersistence.getUserPersistenceData());

@@ -12,6 +12,7 @@ import org.springframework.security.authentication.ott.OneTimeTokenAuthenticatio
 import org.springframework.security.authentication.ott.OneTimeTokenService;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
+
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Locale;
@@ -54,7 +55,8 @@ public class AuthLinkService {
     public static String normalizeEmail(String value) {
         String email = value == null ? "" : value.strip().toLowerCase(Locale.ROOT);
         try {
-            if (email.length() > 254 || !email.matches("[^\\s@<>]+@[^\\s@<>]+\\.[^\\s@<>]+")) throw new AddressException();
+            if (email.length() > 254 || !email.matches("[^\\s@<>]+@[^\\s@<>]+\\.[^\\s@<>]+"))
+                throw new AddressException();
             new InternetAddress(email, true).validate();
             return email;
         } catch (AddressException exception) {
@@ -80,9 +82,12 @@ public class AuthLinkService {
         ipRequests.put(clientIp, ip == null ? new IpRequests(1, now.plusSeconds(3600))
                 : new IpRequests(ip.count() + 1, ip.resetAt()));
     }
+
     private AuthRequestException limited(Instant now, Instant retryAt) {
         return new AuthRequestException(429, "rate_limited", "Please wait before requesting another sign-in email.",
                 Math.max(1, retryAt.getEpochSecond() - now.getEpochSecond() + 1));
     }
-    private record IpRequests(int count, Instant resetAt) {}
+
+    private record IpRequests(int count, Instant resetAt) {
+    }
 }

@@ -24,11 +24,19 @@ class LanguageContractTest {
     @MockitoBean(name = "userEmailIndex") InitializingBean userIndex;
 
     @Test void exportsFullContractWithAnalysisAndRequiredInputs() throws Exception {
-        var response = mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
+        var principal = new de.flogehring.peelserver.impl.users.SpringUserDetails(
+                new de.flogehring.peelserver.impl.users.UserId("language-contract"),
+                new de.flogehring.peelserver.impl.users.UserPersistenceData("contract@example.test", null));
+        var response = mvc.perform(get("/v3/api-docs")
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user(principal)))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/api/scripts/analyze'].post").exists())
                 .andExpect(jsonPath("$.paths['/api/scripts/validate']").doesNotExist())
                 .andExpect(jsonPath("$.components.schemas.ScriptContent.properties.expectedBindings").exists())
                 .andExpect(jsonPath("$.components.schemas.RunRequest.properties.expectedBindings").exists())
+                .andExpect(jsonPath("$.components.schemas.DocumentContent.properties.document").exists())
+                .andExpect(jsonPath("$.components.schemas.DocumentContent.properties.templateHtml").doesNotExist())
+                .andExpect(jsonPath("$.paths['/api/projects/{projectId}/files/{fileId}/blocks'].get").exists())
                 .andReturn().getResponse().getContentAsString();
         Files.writeString(Path.of("build/openapi.json"), response);
     }

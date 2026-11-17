@@ -1,9 +1,15 @@
 package de.flogehring.peelserver.auth;
 
-import de.flogehring.peelserver.impl.auth.*;
-import de.flogehring.peelserver.impl.users.*;
+import de.flogehring.peelserver.impl.auth.AccountService;
+import de.flogehring.peelserver.impl.auth.AuthLinkService;
+import de.flogehring.peelserver.impl.auth.AuthService;
+import de.flogehring.peelserver.impl.auth.SecurityConfig;
+import de.flogehring.peelserver.impl.users.SpringUserDetailService;
+import de.flogehring.peelserver.impl.users.UserPersistence;
+import de.flogehring.peelserver.impl.users.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -14,7 +20,6 @@ import org.springframework.security.authentication.ott.GenerateOneTimeTokenReque
 import org.springframework.security.authentication.ott.OneTimeTokenService;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.mockito.ArgumentCaptor;
 
 import java.time.Duration;
 
@@ -23,7 +28,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = {AuthService.class, AccountService.class}, properties = {
@@ -31,10 +37,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @Import({SecurityConfig.class, AuthLinkService.class, SpringUserDetailService.class})
 class AuthFlowTest {
-    @Autowired MockMvc mvc;
-    @Autowired OneTimeTokenService tokens;
-    @MockitoBean UserRepository users;
-    @MockitoBean MailSender mail;
+    @Autowired
+    MockMvc mvc;
+    @Autowired
+    OneTimeTokenService tokens;
+    @MockitoBean
+    UserRepository users;
+    @MockitoBean
+    MailSender mail;
 
     @BeforeEach
     void setUp() {

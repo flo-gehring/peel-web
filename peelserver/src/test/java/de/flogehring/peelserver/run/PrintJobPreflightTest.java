@@ -33,9 +33,11 @@ class PrintJobPreflightTest {
         var job = PrintJobPersistence.init(new PrintJobId("job"), new DocumentId("doc"), project, "Job", "Document");
         job.updateFileName("input.csv");
         var file = new ProjectFile("doc", project, "Document", "", 0,
-                new FileContent.DocumentContent(Map.of(), "html", "{}", "config"), null, null);
+                new FileContent.DocumentContent(de.flogehring.peelserver.DocumentFixtures.doc(
+                        de.flogehring.peelserver.DocumentFixtures.calculation("calculation")), null), null, null);
         var document = new Document("Document", Map.of("calculation",
-                new PeelScript("Calculation", "", List.of(new ExpectedBinding("amount", "")))), "", null);
+                new PeelScript("Calculation", "", List.of(new ExpectedBinding("amount", "")))),
+                ((FileContent.DocumentContent) file.content()).document(), null);
         when(jobs.findById("job")).thenReturn(Optional.of(job));
         when(files.findById("doc")).thenReturn(Optional.of(file));
         when(references.resolve(file)).thenReturn(document);

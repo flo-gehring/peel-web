@@ -46,7 +46,7 @@ class ExpressionRendererTest {
         Map<String, Object> expression = TraceMapOutput.fromExpression(assignment);
         String rendered = ExpressionRenderer.ofDefaultRenderers().render(expression);
 
-        assertThat(rendered).isEqualTo("x = 1 + 2");
+        assertThat(rendered).isEqualTo("x = (1 + 2)");
     }
 
     @Test
@@ -81,7 +81,7 @@ class ExpressionRendererTest {
 
         String rendered = DEFAULT_RENDERER.render(expression);
 
-        assertThat(rendered).isEqualTo("x + 2");
+        assertThat(rendered).isEqualTo("(x + 2)");
     }
 
     @Test
@@ -122,7 +122,7 @@ class ExpressionRendererTest {
     void rendersAssignmentWithDefaultConfiguration() {
         Map<String, Object> expression = assignment("x", binaryOperator("+", literal("1"), literal("2")));
         String rendered = DEFAULT_RENDERER.render(expression);
-        assertThat(rendered).isEqualTo("x = 1 + 2");
+        assertThat(rendered).isEqualTo("x = (1 + 2)");
     }
 
     @Test
@@ -167,7 +167,7 @@ class ExpressionRendererTest {
 
         String rendered = DEFAULT_RENDERER.render(expression);
 
-        assertThat(rendered).isEqualTo("while (i &lt; 3) {i = i + 1}");
+        assertThat(rendered).isEqualTo("while ((i &lt; 3)) {i = (i + 1)}");
     }
 
     @Test
@@ -189,7 +189,7 @@ class ExpressionRendererTest {
 
         String rendered = DEFAULT_RENDERER.render(expression);
 
-        assertThat(rendered).isEqualTo("while (index &lt; 10) {index = index + 1}");
+        assertThat(rendered).isEqualTo("while ((index &lt; 10)) {index = (index + 1)}");
     }
 
     @Test
@@ -291,7 +291,7 @@ class ExpressionRendererTest {
         String rendered = DEFAULT_RENDERER.render(expression);
 
         assertThat(rendered).isEqualTo(
-                "if (shouldProcess) {while (i &lt; 3) {i = i + 1}; for (item in items) {sum = sum + item}}"
+                "if (shouldProcess) {while ((i &lt; 3)) {i = (i + 1)}; for (item in items) {sum = (sum + item)}}"
         );
     }
 
@@ -340,7 +340,7 @@ class ExpressionRendererTest {
         Map<String, Object> expression = returnExpression(binaryOperator("+", literal("1"), literal("2")));
         String rendered = renderWithFilter(config, "returnOverride", expression);
 
-        assertThat(rendered).isEqualTo("ret(1 + 2)");
+        assertThat(rendered).isEqualTo("ret((1 + 2))");
     }
 
     @Test
@@ -433,13 +433,7 @@ class ExpressionRendererTest {
 
     private static Map<String, Object> functionCall(String name, String... argumentTexts) {
         List<Map<String, Object>> arguments = java.util.Arrays.stream(argumentTexts)
-                .map(argument -> {
-                    Map<String, Object> argumentValue = new LinkedHashMap<>();
-                    argumentValue.put("value", argument);
-                    Map<String, Object> argumentMap = new LinkedHashMap<>();
-                    argumentMap.put("value", argumentValue);
-                    return argumentMap;
-                })
+                .map(ExpressionRendererTest::literal)
                 .toList();
         return expression(
                 "function_call",
