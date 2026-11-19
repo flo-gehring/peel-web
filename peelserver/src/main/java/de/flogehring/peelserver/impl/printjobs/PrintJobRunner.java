@@ -6,7 +6,6 @@ import de.flogehring.peelserver.impl.documenttemplates.DocumentTemplateRenderSer
 import de.flogehring.peelserver.impl.filestorage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -19,10 +18,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 
-
-@Async
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -34,6 +30,7 @@ public class PrintJobRunner {
     private final StorageService storageService;
     private final DocumentTemplateRenderService documentTemplateRenderService;
 
+    @Async("printJobExecutor")
     public void run(PrintJobPersistence printJob, Document document) {
         PrintJobStatus status = printJob.getPrintJobPersistenceData().status();
         if (status != PrintJobStatus.CALCULATING) {
@@ -43,6 +40,7 @@ public class PrintJobRunner {
         try {
             runJob(printJob, document);
         } catch (RuntimeException exception) {
+            printJob.setDocumentIds(List.of());
             printJob.updateStatus(PrintJobStatus.FAILED);
             log.error("Print job {} failed", printJob.getId(), exception);
         } finally {
@@ -85,6 +83,7 @@ public class PrintJobRunner {
                                     PrintJobService.BUCKET_NAME,
                                     objectId,
                                     new ByteArrayInputStream(outputStream.toByteArray()),
+                                    outputStream.size(),
                                     "application/pdf"
                             );
                             return (Void) null;

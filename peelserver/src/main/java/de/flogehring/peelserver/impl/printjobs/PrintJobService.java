@@ -16,6 +16,9 @@ import de.flogehring.peelserver.impl.users.SpringUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.task.TaskRejectedException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.*;
@@ -88,8 +91,8 @@ public class PrintJobService implements PrintJobController {
             }
             if (!"text/csv".equals(file.getContentType()))
                 throw new IllegalArgumentException("CSV uploads must use content type text/csv");
-            try {
-                storage.uploadFile(BUCKET_NAME, id, file.getInputStream(), file.getContentType());
+            try (var input = file.getInputStream()) {
+                storage.uploadFile(BUCKET_NAME, id, input, file.getSize(), file.getContentType());
             } catch (IOException exception) {
                 throw new java.io.UncheckedIOException(exception);
             }
@@ -116,6 +119,11 @@ public class PrintJobService implements PrintJobController {
             jobs.save(job);
             try {
                 runner.run(job, resolved);
+            } catch (TaskRejectedException exception) {
+                job.updateStatus(PrintJobStatus.CREATED);
+                jobs.save(job);
+                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                        "Another print job is running. Try again shortly.", exception);
             } catch (RuntimeException exception) {
                 job.updateStatus(PrintJobStatus.FAILED);
                 jobs.save(job);

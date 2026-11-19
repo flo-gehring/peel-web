@@ -19,9 +19,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @AutoConfigureMockMvc
 class LanguageContractTest {
+
     @Autowired MockMvc mvc;
     @MockitoBean(name = "projectAccessIndexes") InitializingBean projectIndexes;
     @MockitoBean(name = "userEmailIndex") InitializingBean userIndex;
+    @MockitoBean(name = "recoverInterruptedPrintJobs")
+    InitializingBean jobRecovery;
 
     @Test void exportsFullContractWithAnalysisAndRequiredInputs() throws Exception {
         var principal = new de.flogehring.peelserver.impl.users.SpringUserDetails(

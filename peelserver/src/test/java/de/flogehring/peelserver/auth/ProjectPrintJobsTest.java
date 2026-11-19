@@ -1,6 +1,9 @@
 package de.flogehring.peelserver.auth;
 
+import de.flogehring.peelserver.api.data.print.jobs.PrintJobId;
+import de.flogehring.peelserver.api.data.print.jobs.PrintJobStatus;
 import de.flogehring.peelserver.config.PeelModuleTest;
+import de.flogehring.peelserver.impl.documenttemplates.DocumentId;
 import de.flogehring.peelserver.impl.files.FileContent;
 import de.flogehring.peelserver.impl.files.ProjectFile;
 import de.flogehring.peelserver.impl.files.ProjectFileRepository;
@@ -15,7 +18,9 @@ import de.flogehring.peelserver.impl.users.UserId;
 import de.flogehring.peelserver.impl.users.UserPersistenceData;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -53,8 +58,36 @@ class ProjectPrintJobsTest {
     PrintJobRepository jobs;
     @Autowired
     MongoTemplate mongo;
+    @Autowired
+    @Qualifier("recoverInterruptedPrintJobs")
+    InitializingBean jobRecovery;
     String project, document;
     SpringUserDetails owner, outsider;
+
+    @Test
+    void startupRecoveryFailsInterruptedJobsWithoutChangingOtherStatuses() throws Exception {
+        for (var status : PrintJobStatus.values()) {
+            var job = PrintJobPersistence.init(new PrintJobId(UUID.randomUUID().toString()),
+                    new DocumentId(document), new ProjectId(project), status.name(), "Template");
+            job.updateStatus(status);
+            job.updateFileName("input.csv");
+            job.setDocumentIds(List.of("output.pdf"));
+            jobs.insert(job);
+        }
+
+        jobRecovery.afterPropertiesSet();
+
+        assertThat(jobs.findByProjectId(new ProjectId(project))).hasSize(PrintJobStatus.values().length)
+                .allSatisfy(job -> {
+                    var data = job.getPrintJobPersistenceData();
+                    var originalStatus = PrintJobStatus.valueOf(data.name());
+                    boolean interrupted = originalStatus == PrintJobStatus.CALCULATING
+                            || originalStatus == PrintJobStatus.PRINTING;
+                    assertThat(data.status()).isEqualTo(interrupted ? PrintJobStatus.FAILED : originalStatus);
+                    assertThat(data.fileIds()).isEqualTo(interrupted ? List.of() : List.of("output.pdf"));
+                    assertThat(data.fileName()).isEqualTo("input.csv");
+                });
+    }
 
     @BeforeEach
     void setup() {

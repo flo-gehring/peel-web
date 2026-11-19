@@ -91,6 +91,13 @@ Metadaten ohne Inhalte. Es gibt keine Abfrage pro Auftragszeile und keine Abfrag
 nicht Bestandteil dieser Umsetzung. Die bestehende Koordination über die
 Projektsperre gilt weiterhin für eine Backend-Instanz.
 
+Pro Backend läuft höchstens ein Druckauftrag im Hintergrund. Ist der Worker
+belegt, liefert der Start `503`. Der Auftrag bleibt im Status `CREATED` und kann
+mit derselben CSV erneut gestartet werden. Beim Backend-Start werden unterbrochene
+Aufträge im Status `CALCULATING` oder `PRINTING` als `FAILED` markiert. Für eine
+erneute Berechnung wird ein neuer Auftrag angelegt. Teilweise erzeugte PDFs werden
+nicht zum Download angeboten und bei der Projektlöschung mit entfernt.
+
 `ProjectPrintJobsTest` prüft Gruppierung, leere/gelöschte Vorlagen, neue gleichnamige
 Vorlagen, historische Metadaten, fehlende Alt-Metadaten, Berechtigungen und
 Archivschutz. Frontend-Tests prüfen Projektgruppen, die gemeinsame Erstellen-Maske,

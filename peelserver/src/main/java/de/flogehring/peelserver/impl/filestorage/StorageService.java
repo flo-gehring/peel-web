@@ -20,6 +20,7 @@ public class StorageService {
             String bucketName,
             String objectId,
             InputStream inputStream,
+            long size,
             String contentType
     ) {
         try {
@@ -27,10 +28,7 @@ public class StorageService {
             minioClient.putObject(
                     PutObjectArgs.builder().bucket(bucketName)
                             .object(objectId)
-                            .stream(
-                                    inputStream,
-                                    inputStream.available(),
-                                    -1)
+                            .stream(inputStream, size, -1)
                             .contentType(contentType)
                             .build());
         } catch (Exception e) {
