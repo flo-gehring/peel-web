@@ -42,7 +42,7 @@ public class PrintJobRunner {
         } catch (RuntimeException exception) {
             printJob.setDocumentIds(List.of());
             printJob.updateStatus(PrintJobStatus.FAILED);
-            log.error("Print job {} failed", printJob.getId(), exception);
+            log.error("Print job {} failed ({})", printJob.getId(), exception.getClass().getSimpleName());
         } finally {
             // Publish a terminal status only after storage processing and stream closing have finished.
             printJobRepository.save(printJob);
@@ -93,7 +93,7 @@ public class PrintJobRunner {
             printJobPersistence.setDocumentIds(documentIds);
             printJobPersistence.updateStatus(PrintJobStatus.COMPLETED);
         } catch (Exception e) {
-            log.error("Error processing CSV for print job {}: {}", printJobPersistence.getId(), e.getMessage());
+            log.error("Could not process CSV for print job {} ({})", printJobPersistence.getId(), e.getClass().getSimpleName());
             printJobPersistence.updateStatus(PrintJobStatus.FAILED);
         }
     }

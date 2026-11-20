@@ -14,9 +14,12 @@ import de.flogehring.peelserver.impl.project.ProjectAccessService;
 import de.flogehring.peelserver.impl.project.ProjectId;
 import de.flogehring.peelserver.impl.users.SpringUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.core.task.TaskRejectedException;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -35,6 +38,7 @@ public class PrintJobService implements PrintJobController {
     private final DocumentReferenceService references;
     private final ProjectFileService files;
     private final ProjectAccessService projectAccess;
+    private final ObjectProvider<BuildProperties> buildProperties;
 
     public PrintJobId initPrintJob(String projectId, PrintJobInitRequestDto request, SpringUserDetails user) {
         var project = new ProjectId(projectId);
@@ -115,6 +119,10 @@ public class PrintJobService implements PrintJobController {
             if (job.getPrintJobPersistenceData().fileName() == null)
                 throw new IllegalArgumentException("Upload a CSV file before starting the print job");
             storage.processFile(BUCKET_NAME, id, stream -> CsvInput.validate(stream, resolved));
+            var build = buildProperties.getIfAvailable();
+            if (build != null) {
+                job.recordExecutionVersions(build.getVersion(), build.get("peel-core-version"));
+            }
             job.updateStatus(PrintJobStatus.CALCULATING);
             jobs.save(job);
             try {
@@ -134,17 +142,17 @@ public class PrintJobService implements PrintJobController {
     }
 
     @Override
-    public byte[] downloadFile(String id, SpringUserDetails user) {
+    public InputStreamResource downloadFile(String id, SpringUserDetails user) {
         var job = requireJobAccess(id, user);
         if (job.getPrintJobPersistenceData().fileName() == null) throw ProjectAccessService.notFound();
-        return storage.downloadFile(BUCKET_NAME, id);
+        return new InputStreamResource(storage.openFile(BUCKET_NAME, id));
     }
 
     @Override
-    public byte[] downloadFile(String id, String fileId, SpringUserDetails user) {
+    public InputStreamResource downloadFile(String id, String fileId, SpringUserDetails user) {
         var job = requireJobAccess(id, user);
         if (!job.getPrintJobPersistenceData().fileIds().contains(fileId)) throw ProjectAccessService.notFound();
-        return storage.downloadFile(BUCKET_NAME, fileId);
+        return new InputStreamResource(storage.openFile(BUCKET_NAME, fileId));
     }
 
     private PrintJobPersistence requireJobAccess(String id, SpringUserDetails user) {

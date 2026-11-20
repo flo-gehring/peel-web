@@ -16,10 +16,32 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ExpressionRendererTest {
 
     private static final ExpressionRenderer DEFAULT_RENDERER = ExpressionRenderer.ofDefaultRenderers();
+
+    @Test
+    void renderConfigurationsCannotLoadExternalTemplates() {
+        var renderer = ExpressionRenderer.of(ExpressionRenderConfiguration.of(
+                Map.of(TraceExpressionKind.LITERAL, "{% include 'example.html' %}"), Map.of()));
+
+        assertThatThrownBy(() -> renderer.render(literal("42")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("External templates are disabled");
+    }
+
+    @Test
+    void rejectsOversizedTemplateOutput() {
+        var renderer = ExpressionRenderer.of(ExpressionRenderConfiguration.of(
+                Map.of(TraceExpressionKind.LITERAL, "{% for i in range(1, 10000) %}" + "x".repeat(40) + "{% endfor %}"),
+                Map.of()));
+
+        assertThatThrownBy(() -> renderer.render(literal("42")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Tried to write more than 262144 chars");
+    }
 
     @Test
     void supportsExpressionMapByType() {

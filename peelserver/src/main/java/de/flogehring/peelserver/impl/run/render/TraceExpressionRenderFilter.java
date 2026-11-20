@@ -13,9 +13,13 @@ import java.util.Map;
 public final class TraceExpressionRenderFilter implements Filter {
 
     private final ExpressionRenderer expressionRenderer;
+    private final ExpressionRenderer.RenderWork work;
 
-    public TraceExpressionRenderFilter(ExpressionRenderTemplate expressionRenderTemplate, ExpressionRenderConfiguration configuration) {
+    TraceExpressionRenderFilter(ExpressionRenderTemplate expressionRenderTemplate,
+                                ExpressionRenderConfiguration configuration,
+                                ExpressionRenderer.RenderWork work) {
         this.expressionRenderer = ExpressionRenderer.of(configuration, expressionRenderTemplate);
+        this.work = work;
     }
 
     @Override
@@ -34,7 +38,8 @@ public final class TraceExpressionRenderFilter implements Filter {
         if (!ExpressionRenderer.supportsExpression(input)) {
             return input;
         }
-        String rendered = expressionRenderer.renderExpressionNode(input);
+        String rendered = work == null ? expressionRenderer.renderExpressionNode(input)
+                : expressionRenderer.renderExpressionNode(input, work);
         return new SafeString(rendered);
     }
 }

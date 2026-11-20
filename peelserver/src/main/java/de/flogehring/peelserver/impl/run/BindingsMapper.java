@@ -8,7 +8,6 @@ import de.flogehring.peel.core.values.Number;
 import de.flogehring.peel.core.values.PeelValue;
 import de.flogehring.peel.core.values.Primitives;
 import de.flogehring.peel.core.values.Text;
-import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -16,7 +15,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-@Component
 public class BindingsMapper {
 
     public RequestBindings toRequestBindings(Map<String, Object> rawBindings) {

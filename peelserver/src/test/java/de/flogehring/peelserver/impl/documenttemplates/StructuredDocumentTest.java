@@ -2,7 +2,6 @@ package de.flogehring.peelserver.impl.documenttemplates;
 
 import de.flogehring.peelserver.api.data.template.DocumentNode;
 import de.flogehring.peelserver.impl.renderconfig.ExpressionRenderConfiguration;
-import de.flogehring.peelserver.impl.run.BindingsMapper;
 import de.flogehring.peelserver.impl.run.PeelExecutionService;
 import de.flogehring.peelserver.impl.scripts.PeelScript;
 import org.junit.jupiter.api.Test;
@@ -19,8 +18,22 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 class StructuredDocumentTest {
-    final PeelExecutionService execution = spy(new PeelExecutionService(new BindingsMapper()));
+    final PeelExecutionService execution = spy(new PeelExecutionService(
+            java.time.Duration.ofSeconds(5), 2, 100_000, 64, 500_000, 65_536));
     final DocumentTemplateRenderService renderer = new DocumentTemplateRenderService(execution);
+
+    @Test
+    void rejectsOversizedRenderedHtmlAndCanRenderTheNextPreview() {
+        // Each paragraph fits individually. Their combined HTML exceeds the document limit.
+        var paragraph = node("paragraph", Map.of(), text("a".repeat(600_000)));
+        var config = ExpressionRenderConfiguration.defaultConfig();
+        assertThatThrownBy(() -> renderer.preview(new Document("Large", Map.of(), doc(paragraph, paragraph), config), Map.of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Rendered HTML can contain at most");
+
+        assertThat(renderer.preview(new Document("Small", Map.of(), doc(node("paragraph", Map.of(), text("Hello"))), config),
+                Map.of()).pdfData()).startsWith((byte) '%', (byte) 'P', (byte) 'D', (byte) 'F');
+    }
 
     @Test
     void validatesAllScriptContractsBeforeRenderingStructuredCalculationsAndTables() {

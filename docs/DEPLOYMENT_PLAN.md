@@ -30,7 +30,7 @@ flowchart TB
     External[External uptime and backup-age alerts] -->|Probe| Edge
 ```
 
-The execution box is a required boundary for resource control, not an existing component. For public users, it must provide enforceable process/container isolation. A proxy timeout alone does not stop backend computation.
+PEEL scripts run in separate JVMs with a configurable five-second default deadline. Direct runs, previews, and batch rows share two worker slots per backend by default. Each worker runs under the backend's OS identity. Review filesystem and network isolation before opening public signup.
 
 ### Minimum beta scope and deliberate deferrals
 
@@ -49,7 +49,7 @@ Use disposable/local staging with isolated data and SMTP before release. Persist
 | File concurrency | `ProjectFile.version`, `expectedVersion`, atomic conditional update/delete, `409` conflicts | File revision numbers already exist. Do not replace them with a global app version. |
 | Coordination | `ProjectAccessService` uses process-local locks | Deploy exactly one API instance initially. Rolling overlap can violate cross-resource invariants. |
 | Login state | `InMemoryOneTimeTokenService` and in-memory rate-limit maps; servlet sessions are local | Restarts invalidate links and sessions and reset abuse counters. Multiple replicas cannot share this state. |
-| Execution | `PeelExecutionService` directly parses and executes scripts in the API JVM | No explicit execution budget is applied at this boundary. Audit core and add enforceable bounds. |
+| Execution | `PeelExecutionService` terminates child JVMs at the script deadline | Script requests share a bounded number of workers. Language analysis and PDF layout still need their own budgets. |
 | Print jobs | State is saved in MongoDB and startup marks interrupted jobs failed | Resolved inputs still live in memory. Historical snapshots and automatic resumption remain separate work. |
 | Background work | A dedicated executor runs one print job at a time | When busy, return `503` and let the user start the same job again. Execution time and resource limits remain separate work. |
 | Persistence | Development Compose has MongoDB/MinIO, `latest` images, development credentials, no explicit data volumes | Create a separate production Compose definition; do not deploy this file as-is. |
@@ -88,7 +88,7 @@ The current behavior resolves content **when execution starts**. Preserve that b
 ### Required reliability changes
 
 1. **Bound computation everywhere:** script runs, language analysis, previews, template evaluation and print jobs. Apply script/body size, AST depth, evaluation steps, recursion, trace/output bytes, PDF pages, CSV rows/columns and execution-time limits. Values need workload measurements and a product decision.
-2. **Make runaway execution stoppable:** cooperative interpreter limits plus a killable process boundary where needed. A cancelled future, HTTP timeout or a CPU quota does not by itself terminate an infinite computation. Do not run arbitrary scripts against the API process's secrets or unrestricted network/filesystem.
+2. **Stop runaway script execution:** the backend kills the script JVM at the deadline and releases its slot after the process exits. Keep analysis and PDF layout budgets separate. Review script worker filesystem and network access before public signup.
 3. **Recover interrupted print jobs:** the single backend now marks interrupted jobs failed at startup and runs one batch at a time. A user can create a new job to rerun a failed batch. Partial outputs remain private and are removed with the project. Consider earlier cleanup and same-job retry if needed. Durable queues and worker leases can follow if automatic recovery or multiple workers become necessary.
 4. **Stream downloads where practical** instead of reading entire objects into API heap. CSV and PDF uploads now pass the actual content length to object storage. Keep verification of upload and download behavior in the storage compatibility tests.
 5. **Control growth:** introduce agreed per-account/project storage and workload limits, retention/cleanup for CSV/PDF outputs and failed attempts, pagination for unbounded lists, and bounded deletion work. Retention of user documents is a product decision, not an implicit cleanup rule.

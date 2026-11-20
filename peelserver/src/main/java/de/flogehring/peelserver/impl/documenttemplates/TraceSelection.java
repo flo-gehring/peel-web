@@ -1,8 +1,5 @@
 package de.flogehring.peelserver.impl.documenttemplates;
 
-import de.flogehring.peel.convenience.output.TraceMapOutput;
-import de.flogehring.peel.core.trace.TraceProgram;
-
 import java.util.*;
 
 final class TraceSelection {
@@ -12,13 +9,12 @@ final class TraceSelection {
     private final Map<String, List<Occurrence>> byScript = new LinkedHashMap<>();
     private final Map<String, List<String>> definitions;
 
-    TraceSelection(Map<String, TraceProgram> traces, Map<String, List<String>> definitions) {
+    TraceSelection(Map<String, Map<String, Object>> traces, Map<String, List<String>> definitions) {
         this.definitions = definitions;
-        traces.forEach((id, trace) -> {
+        traces.forEach((id, mapped) -> {
             List<Occurrence> occurrences = new ArrayList<>();
             var root = new LinkedHashMap<String, Object>();
             root.put("type", "block");
-            var mapped = TraceMapOutput.fromProgram(trace);
             root.put("content", mapped.get("expressions"));
             root.put("value", mapped.get("result"));
             root.put("variablesAtExit", mapped.get("variablesAtExit"));

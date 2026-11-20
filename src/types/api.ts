@@ -1618,8 +1618,8 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /** Format: binary */
                     "text/csv": string;
-                    "application/json": string;
                 };
             };
         };
@@ -2381,8 +2381,8 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /** Format: binary */
                     "application/pdf": string;
-                    "application/json": string;
                 };
             };
         };

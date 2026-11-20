@@ -1,15 +1,23 @@
 package de.flogehring.peelserver.api.error;
 
 import de.flogehring.peel.run.exceptions.PeelException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.Map;
+import java.util.UUID;
 
+@Slf4j
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleUploadTooLarge() {
+        return ResponseEntity.status(413).body(ApiErrorResponse.of("upload_too_large", "CSV uploads can be at most 1 MB."));
+    }
+
     @ExceptionHandler(de.flogehring.peelserver.impl.run.BindingInputException.class)
     public ResponseEntity<ApiErrorResponse> handleBindings(de.flogehring.peelserver.impl.run.BindingInputException ex) {
         return ResponseEntity.badRequest().body(ApiErrorResponse.of(ex.code(), ex.getMessage(), ex.details()));
@@ -65,7 +73,10 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpected(Exception ex) {
+        String incident = UUID.randomUUID().toString();
+        log.error("Request failed, incident={}, exception={}", incident, ex.getClass().getSimpleName());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .header("X-Error-Id", incident)
                 .body(ApiErrorResponse.of("internal_error", "Unexpected server error"));
     }
 }

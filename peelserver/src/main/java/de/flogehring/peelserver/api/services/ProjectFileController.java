@@ -2,7 +2,7 @@ package de.flogehring.peelserver.api.services;
 
 import de.flogehring.peel.analysis.DiagnosticSeverity;
 import de.flogehring.peel.core.lang.BlockCatalog;
-import de.flogehring.peel.parse.PeelGrammar;
+import de.flogehring.peelserver.impl.run.PeelExecutionService;
 import de.flogehring.peelserver.api.data.files.FileData.CreateFile;
 import de.flogehring.peelserver.api.data.files.FileData.FileSummary;
 import de.flogehring.peelserver.api.data.files.FileData.UpdateFile;
@@ -57,7 +57,7 @@ public class ProjectFileController {
                     .diagnostics().stream().filter(diagnostic -> diagnostic.severity() == DiagnosticSeverity.ERROR).toList();
             if (!diagnostics.isEmpty()) throw new IllegalArgumentException(diagnostics.getFirst().message());
         }
-        var program = PeelGrammar.parse(script.source());
+        var program = PeelExecutionService.parseScript(script.source());
         return BlockCatalog.analyze(program).blocks().stream()
                 .map(block -> new de.flogehring.peelserver.api.data.scripts.BlockDefinition(
                         block.name(), block.parentName(), block.reachableBlocks())).toList();

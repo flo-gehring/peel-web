@@ -2,7 +2,6 @@ package de.flogehring.peelserver.impl.documenttemplates;
 
 import de.flogehring.peelserver.api.data.template.DocumentNode;
 import de.flogehring.peelserver.impl.renderconfig.ExpressionRenderConfiguration;
-import de.flogehring.peelserver.impl.run.BindingsMapper;
 import de.flogehring.peelserver.impl.run.PeelExecutionService;
 import de.flogehring.peelserver.impl.scripts.PeelScript;
 import org.junit.jupiter.api.Test;
@@ -22,7 +21,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 class TableDocumentTest {
-    final PeelExecutionService execution = spy(new PeelExecutionService(new BindingsMapper()));
+    final PeelExecutionService execution = spy(new PeelExecutionService(
+            java.time.Duration.ofSeconds(5), 2, 100_000, 64, 500_000, 65_536));
     final DocumentTemplateRenderService renderer = new DocumentTemplateRenderService(execution);
 
     @Test

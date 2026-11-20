@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(controllers = PeelScriptService.class, properties = {
         "peel.auth.public-base-url=http://localhost:5173", "peel.auth.mail-from=noreply@peel.test"
 })
-@Import({SecurityConfig.class, AnalysisService.class, RunService.class, PeelExecutionService.class, BindingsMapper.class})
+@Import({SecurityConfig.class, AnalysisService.class, RunService.class, PeelExecutionService.class})
 class ScriptLanguageApiTest {
     @Autowired MockMvc mvc;
     @MockitoBean ProjectAccessService access;
@@ -65,6 +65,20 @@ class ScriptLanguageApiTest {
                 .andExpect(jsonPath("$.diagnostics[1].code").value("RETURN_OUTSIDE_FUNCTION"))
                 .andExpect(jsonPath("$.diagnostics[1].severity").value("ERROR"));
     }
+
+    @Test void rejectsExcessiveBindingMetadataWithoutBlockingTheNextAnalysis() throws Exception {
+        var body = """
+                {"projectId":{"id":"project"},"script":"","expectedBindings":[{"name":"amount","description":"%s"}]}
+                """;
+        mvc.perform(post("/api/scripts/analyze").with(user(principal)).with(csrf()).contentType("application/json")
+                .content(body.formatted("x".repeat(65_536))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.message").value(
+                        "Expected binding names and descriptions can contain at most 65,536 characters in total"));
+        mvc.perform(post("/api/scripts/analyze").with(user(principal)).with(csrf()).contentType("application/json")
+                .content(body.formatted("Input"))).andExpect(status().isOk());
+    }
+
     @Test void checksRequiredBindingsAndExecutesTheProvidedDraft() throws Exception {
         var body = """
                 {"projectId":{"id":"project"},"script":"amount * 2;","expectedBindings":[{"name":"amount","description":""}],"bindings":%s}

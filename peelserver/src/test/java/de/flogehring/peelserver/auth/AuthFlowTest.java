@@ -8,6 +8,7 @@ import de.flogehring.peelserver.impl.users.SpringUserDetailService;
 import de.flogehring.peelserver.impl.users.UserPersistence;
 import de.flogehring.peelserver.impl.users.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,9 +20,15 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.authentication.ott.GenerateOneTimeTokenRequest;
 import org.springframework.security.authentication.ott.OneTimeTokenService;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Duration;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.io.IOException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,10 +40,27 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = {AuthService.class, AccountService.class}, properties = {
-        "peel.auth.public-base-url=http://localhost:5173", "peel.auth.mail-from=noreply@peel.test"
+        "peel.auth.public-base-url=https://beta.example.test", "peel.auth.mail-from=noreply@peel.test",
+        "spring.mail.host=localhost", "spring.mail.username=test", "spring.mail.password=test"
 })
+@ActiveProfiles("prod")
 @Import({SecurityConfig.class, AuthLinkService.class, SpringUserDetailService.class})
 class AuthFlowTest {
+    private static Path allowlistFile;
+    private static final String ALLOWED = "test@example.test\ncsrf@example.test\nfailure@example.test\ndatabase@example.test\n";
+
+    @DynamicPropertySource
+    static void configureAllowlist(DynamicPropertyRegistry registry) throws IOException {
+        allowlistFile = Files.createTempFile("peel-auth-test", ".txt");
+        Files.writeString(allowlistFile, ALLOWED);
+        registry.add("peel.auth.allowlist-file", () -> allowlistFile.toString());
+    }
+
+    @AfterAll
+    static void removeAllowlist() throws IOException {
+        Files.deleteIfExists(allowlistFile);
+    }
+
     @Autowired
     MockMvc mvc;
     @Autowired
@@ -47,12 +71,41 @@ class AuthFlowTest {
     MailSender mail;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws IOException {
+        Files.writeString(allowlistFile, ALLOWED);
         when(users.findByUsername(anyString())).thenReturn(null);
         when(users.insert(any(UserPersistence.class))).thenAnswer(invocation -> {
             UserPersistence user = invocation.getArgument(0);
             return new UserPersistence("user-1", user.getUserPersistenceData());
         });
+    }
+
+    @Test
+    void readsEditsImmediatelyAndRevokesLinksAndSessionsForRemovedAddresses() throws Exception {
+        String email = "invitee@example.test";
+        mvc.perform(post("/api/auth/link").with(csrf()).contentType("application/json")
+                        .content("{\"email\":\"unlisted@example.test\"}"))
+                .andExpect(status().isNoContent());
+        verifyNoInteractions(mail);
+
+        Files.writeString(allowlistFile, "# Beta users\n  Invitee@Example.test  \n");
+        mvc.perform(post("/api/auth/link").with(csrf()).contentType("application/json")
+                        .content("{\"email\":\"invitee@example.test\"}"))
+                .andExpect(status().isNoContent());
+        var message = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mail).send(message.capture());
+        String token = message.getValue().getText().split("token=")[1].split("[&\\s]")[0];
+        var login = mvc.perform(post("/api/auth/login").with(csrf()).param("token", token))
+                .andExpect(status().isNoContent()).andReturn();
+        var session = (MockHttpSession) login.getRequest().getSession(false);
+        String outstanding = tokens.generate(new GenerateOneTimeTokenRequest(email)).getTokenValue();
+        Files.writeString(allowlistFile, "# Access revoked\n");
+        mvc.perform(post("/api/auth/login").with(csrf()).param("token", outstanding))
+                .andExpect(status().isUnauthorized());
+        verify(users, times(1)).insert(any(UserPersistence.class));
+        mvc.perform(get("/api/whoami").session(session))
+                .andExpect(jsonPath("$.authenticated").value(false));
+        assertThat(session.isInvalid()).isTrue();
     }
 
     @Test
@@ -64,7 +117,7 @@ class AuthFlowTest {
         ArgumentCaptor<SimpleMailMessage> message = ArgumentCaptor.forClass(SimpleMailMessage.class);
         verify(mail).send(message.capture());
         String body = message.getValue().getText();
-        assertThat(body).contains("http://localhost:5173/login/confirm?token=", "redirect=");
+        assertThat(body).contains("https://beta.example.test/login/confirm?token=", "redirect=");
         String token = body.split("token=")[1].split("[&\\s]")[0];
         assertThat(body).contains("sign-in code into the sign-in dialog:\n\n" + token + "\n\n");
         var login = mvc.perform(post("/api/auth/login").with(csrf()).param("token", token))

@@ -1,0 +1,55 @@
+name: Release checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: diff -u src/types/api.ts frontend/src/types/api.ts
+      - working-directory: frontend
+        run: |
+          npm ci
+          npm test
+          npm run build
+
+  backend:
+    # A clean checkout needs a published Core artifact before this job can run.
+    if: vars.PEEL_CORE_VERSION != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    env:
+      PEEL_CORE_VERSION: ${{ vars.PEEL_CORE_VERSION }}
+      PEEL_CORE_REPOSITORY_URL: ${{ vars.PEEL_CORE_REPOSITORY_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+      - working-directory: peelserver
+        env:
+          ORG_GRADLE_PROJECT_peelCoreUsername: ${{ vars.PEEL_CORE_READ_USERNAME || github.actor }}
+          ORG_GRADLE_PROJECT_peelCorePassword: ${{ secrets.PEEL_CORE_READ_TOKEN || github.token }}
+        run: |
+          args=("-PpeelVersion=$PEEL_CORE_VERSION")
+          if [[ -n "$PEEL_CORE_REPOSITORY_URL" ]]; then
+            args+=("-PpeelRepositoryUrl=$PEEL_CORE_REPOSITORY_URL")
+          fi
+          bash ./gradlew --no-daemon "${args[@]}" test bootJar

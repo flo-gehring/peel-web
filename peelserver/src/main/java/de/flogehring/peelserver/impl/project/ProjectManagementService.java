@@ -20,6 +20,7 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.MailException;
 import org.springframework.mail.MailSender;
+import de.flogehring.peelserver.impl.auth.OutboundMailBudget;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -46,6 +47,7 @@ public class ProjectManagementService {
     private final PrintJobRepository jobs;
     private final StorageService storage;
     private final MailSender mail;
+    private final OutboundMailBudget mailBudget;
     private final AuthProperties auth;
     private final ProjectProperties properties;
     private final SecureRandom random = new SecureRandom();
@@ -335,6 +337,7 @@ public class ProjectManagementService {
     }
 
     private void send(String email, String subject, String body) {
+        mailBudget.reserve();
         var message = new SimpleMailMessage();
         message.setFrom(auth.mailFrom());
         message.setTo(email);

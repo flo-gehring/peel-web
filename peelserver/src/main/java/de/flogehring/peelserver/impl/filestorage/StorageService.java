@@ -63,12 +63,7 @@ public class StorageService {
     }
 
     public void processFile(String bucketName, String objectId, Consumer<InputStream> fileProcessor) {
-        ensureBucketExists(bucketName);
-        try (InputStream stream = minioClient.getObject(
-                io.minio.GetObjectArgs.builder()
-                        .bucket(bucketName)
-                        .object(objectId)
-                        .build())) {
+        try (InputStream stream = openFile(bucketName, objectId)) {
             fileProcessor.accept(stream);
         } catch (RuntimeException e) {
             throw e;
@@ -77,16 +72,12 @@ public class StorageService {
         }
     }
 
-    public byte[] downloadFile(String bucketName, String objectId) {
-        ensureBucketExists(bucketName);
-        try (InputStream stream = minioClient.getObject(
-                io.minio.GetObjectArgs.builder()
-                        .bucket(bucketName)
-                        .object(objectId)
-                        .build())) {
-            return stream.readAllBytes();
+    public InputStream openFile(String bucketName, String objectId) {
+        try {
+            return minioClient.getObject(io.minio.GetObjectArgs.builder()
+                    .bucket(bucketName).object(objectId).build());
         } catch (Exception e) {
-            throw new RuntimeException("Error occurred: " + e.getMessage());
+            throw new IllegalStateException("Could not open stored file", e);
         }
     }
 }

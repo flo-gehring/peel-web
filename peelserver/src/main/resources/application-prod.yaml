@@ -1,0 +1,31 @@
+spring:
+  mail:
+    host: ${SPRING_MAIL_HOST}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME}
+    password: ${SPRING_MAIL_PASSWORD}
+    properties:
+      "[mail.smtp.auth]": true
+      "[mail.smtp.starttls.enable]": true
+      "[mail.smtp.starttls.required]": true
+      "[mail.smtp.ssl.checkserveridentity]": true
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+server:
+  forward-headers-strategy: native
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: true
+  tomcat:
+    remoteip:
+      internal-proxies: "${PEEL_TRUSTED_PROXY_REGEX:(?!)}"
+peel:
+  auth:
+    allowlist-file: ${PEEL_AUTH_ALLOWLIST_FILE}
+    mail-requests-per-hour: ${PEEL_AUTH_MAIL_REQUESTS_PER_HOUR:100}

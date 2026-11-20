@@ -22,6 +22,9 @@ public class PrintJobPersistence {
     private final String documentName;
     private final java.time.Instant createdAt;
     private PrintJobPersistenceData printJobPersistenceData;
+    private ExecutionVersions executionVersions;
+
+    public record ExecutionVersions(String application, String peelCore) {}
 
     private PrintJobPersistence(
             String id,
@@ -77,6 +80,10 @@ public class PrintJobPersistence {
                 status,
                 this.printJobPersistenceData.fileIds()
         );
+    }
+
+    public void recordExecutionVersions(String application, String peelCore) {
+        executionVersions = new ExecutionVersions(application, peelCore);
     }
 
     public void setDocumentIds(List<String> documentIds) {

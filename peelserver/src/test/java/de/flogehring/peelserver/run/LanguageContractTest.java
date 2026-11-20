@@ -52,6 +52,8 @@ class LanguageContractTest {
                 .andExpect(jsonPath("$.components.schemas.DocumentContent.properties.document").exists())
                 .andExpect(jsonPath("$.components.schemas.DocumentContent.properties.templateHtml").doesNotExist())
                 .andExpect(jsonPath("$.paths['/api/projects/{projectId}/files/{fileId}/blocks'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/print-jobs/{id}/data'].get.responses['200'].content['text/csv'].schema.format").value("binary"))
+                .andExpect(jsonPath("$.paths['/api/print-jobs/{id}/file/{fileId}'].get.responses['200'].content['application/pdf'].schema.format").value("binary"))
                 .andReturn().getResponse().getContentAsString();
         Files.writeString(Path.of("build/openapi.json"), response);
     }
