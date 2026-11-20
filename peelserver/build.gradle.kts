@@ -5,7 +5,8 @@ plugins {
 }
 
 group = "de.flogehring"
-version = "0.0.1-SNAPSHOT"
+version = providers.gradleProperty("releaseVersion").getOrElse("0.0.1-SNAPSHOT")
+val peelVersion = providers.gradleProperty("peelVersion").orNull
 
 java {
 	toolchain {
@@ -14,19 +15,44 @@ java {
 }
 
 repositories {
+	providers.gradleProperty("peelRepositoryUrl").orNull?.let { repositoryUrl ->
+		exclusiveContent {
+			forRepository {
+				maven {
+					name = "peelCore"
+					url = uri(repositoryUrl)
+					if (url.scheme == "https" && url.host.equals("maven.pkg.github.com", ignoreCase = true)) {
+						credentials(org.gradle.api.credentials.PasswordCredentials::class)
+						authentication {
+							create<org.gradle.authentication.http.BasicAuthentication>("basic")
+						}
+					}
+				}
+			}
+			filter { includeModule("de.flo-gehring", "peel") }
+		}
+	}
 	mavenCentral()
 }
 
+springBoot {
+	buildInfo {
+		excludes.add("time")
+		properties {
+			additional.set(mapOf("peel-core-version" to (peelVersion ?: "local-composite")))
+		}
+	}
+}
 
 dependencies {
-	implementation("de.flo-gehring:peel")
+	implementation(if (peelVersion == null) "de.flo-gehring:peel" else "de.flo-gehring:peel:$peelVersion")
 	implementation("io.pebbletemplates:pebble:3.2.4")
 	implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
 	implementation("org.springframework.boot:spring-boot-starter-mongodb")
 	implementation("org.springframework.boot:spring-boot-starter-mail")
 	implementation("org.jspecify:jspecify:1.0.1")
 	implementation( "org.springframework.boot:spring-boot-starter-security")
-	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5")
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("io.minio:minio:8.6.0")
@@ -41,7 +67,6 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-mongodb-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testImplementation("org.springframework.security:spring-security-test")
-	testImplementation("org.testcontainers:testcontainers-minio:2.0.1")
 	testImplementation("org.testcontainers:testcontainers-mongodb:2.0.1")
 	testCompileOnly("org.projectlombok:lombok")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -50,4 +75,5 @@ dependencies {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	systemProperty("peel.worker.classpath", sourceSets.main.get().runtimeClasspath.asPath)
 }

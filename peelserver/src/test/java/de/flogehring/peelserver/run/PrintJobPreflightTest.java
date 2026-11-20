@@ -10,7 +10,12 @@ import de.flogehring.peelserver.impl.scripts.PeelScript;
 import de.flogehring.peelserver.impl.filestorage.StorageService;
 import de.flogehring.peelserver.impl.run.*;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.support.StaticListableBeanFactory;
+import org.springframework.boot.info.BuildProperties;
+import org.springframework.core.task.TaskRejectedException;
+import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 import java.io.ByteArrayInputStream;
 import java.util.*;
 import java.util.function.Consumer;
@@ -48,17 +53,29 @@ class PrintJobPreflightTest {
             consumer.accept(new ByteArrayInputStream(csv.get().getBytes(UTF_8)));
             return null;
         }).when(storage).processFile(eq("print-jobs"), eq("job"), any());
-        var service = new PrintJobService(jobs, storage, runner, files, references, mock(ProjectFileService.class), access);
+        var versions = new Properties();
+        versions.setProperty("version", "0.1.0");
+        versions.setProperty("peel-core-version", "1.2.0");
+        var beans = new StaticListableBeanFactory(Map.of("buildProperties", new BuildProperties(versions)));
+        var service = new PrintJobService(jobs, storage, runner, files, references, mock(ProjectFileService.class), access,
+                beans.getBeanProvider(BuildProperties.class));
         assertThatThrownBy(() -> service.runPrintJob("job", user)).isInstanceOf(BindingInputException.class);
         assertThat(job.getPrintJobPersistenceData().status()).isEqualTo(PrintJobStatus.CREATED);
         verify(jobs, never()).save(any());
         verifyNoInteractions(runner);
         csv.set("amount\n12\n");
+        doThrow(new TaskRejectedException("busy")).doNothing().when(runner).run(job, document);
+        assertThatThrownBy(() -> service.runPrintJob("job", user))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        error -> assertThat(error.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+        assertThat(job.getPrintJobPersistenceData().status()).isEqualTo(PrintJobStatus.CREATED);
+
         assertThat(service.runPrintJob("job", user)).isEqualTo(PrintJobStatus.CALCULATING);
-        verify(runner).run(job, document);
+        assertThat(job.getExecutionVersions()).isEqualTo(new PrintJobPersistence.ExecutionVersions("0.1.0", "1.2.0"));
+        verify(runner, times(2)).run(job, document);
         assertThatThrownBy(() -> service.uploadFile("job",
                 new MockMultipartFile("file", "replacement.csv", "text/csv", new byte[0]), user))
                 .isInstanceOf(IllegalArgumentException.class);
-        verify(storage, never()).uploadFile(any(), any(), any(), any());
+        verify(storage, never()).uploadFile(any(), any(), any(), anyLong(), any());
     }
 }

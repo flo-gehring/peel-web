@@ -3,6 +3,8 @@ package de.flogehring.peelserver.auth;
 import de.flogehring.peelserver.api.data.auth.AuthLinkRequest;
 import de.flogehring.peelserver.impl.auth.AuthLinkService;
 import de.flogehring.peelserver.impl.auth.AuthProperties;
+import de.flogehring.peelserver.impl.auth.LoginAllowlist;
+import de.flogehring.peelserver.impl.auth.OutboundMailBudget;
 import org.junit.jupiter.api.Test;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.security.authentication.ott.InMemoryOneTimeTokenService;
@@ -29,7 +31,8 @@ class AuthSmtpTest {
             sender.getJavaMailProperties().setProperty("mail.smtp.writetimeout", "5000");
             var links = new AuthLinkService(new InMemoryOneTimeTokenService(), sender,
                     new AuthProperties(URI.create("http://localhost:5173"), "noreply@peel.test",
-                            Duration.ofMinutes(15), Duration.ofSeconds(60), 20));
+                            Duration.ofMinutes(15), Duration.ofSeconds(60), 20),
+                    new LoginAllowlist(""), new OutboundMailBudget(100));
             links.send(new AuthLinkRequest("developer@example.test", "/projects/one"), "127.0.0.1");
             try (var client = HttpClient.newHttpClient()) {
                 var request = HttpRequest.newBuilder(URI.create("http://" + mailpit.getHost() + ":"

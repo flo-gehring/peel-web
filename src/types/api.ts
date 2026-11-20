@@ -800,8 +800,10 @@ export interface components {
             diagnostics?: components["schemas"]["Diagnostic"][];
         };
         Diagnostic: {
-            code?: string;
-            severity?: string;
+            /** @enum {string} */
+            code?: "SYNTAX_ERROR" | "UNKNOWN_NAME" | "UNDECLARED_ASSIGNMENT" | "DUPLICATE_DECLARATION" | "UNINITIALIZED_VARIABLE" | "RETURN_OUTSIDE_FUNCTION" | "DUPLICATE_BLOCK_NAME";
+            /** @enum {string} */
+            severity?: "WARNING" | "ERROR";
             message?: string;
             /** Format: int32 */
             start?: number;
@@ -822,7 +824,8 @@ export interface components {
         Occurrence: {
             /** Format: int32 */
             symbolId?: number;
-            role?: string;
+            /** @enum {string} */
+            role?: "DECLARATION" | "REFERENCE" | "ASSIGNMENT" | "CALL";
             /** Format: int32 */
             start?: number;
             /** Format: int32 */
@@ -832,8 +835,10 @@ export interface components {
             /** Format: int32 */
             id?: number;
             name?: string;
-            kind?: string;
-            origin?: string;
+            /** @enum {string} */
+            kind?: "VARIABLE" | "PARAMETER" | "FUNCTION";
+            /** @enum {string} */
+            origin?: "LOCAL" | "EXTERNAL" | "RUNTIME";
             description?: string;
             /** Format: int32 */
             arity?: number;
@@ -1613,8 +1618,8 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /** Format: binary */
                     "text/csv": string;
-                    "application/json": string;
                 };
             };
         };
@@ -2376,8 +2381,8 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /** Format: binary */
                     "application/pdf": string;
-                    "application/json": string;
                 };
             };
         };

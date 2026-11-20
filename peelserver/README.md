@@ -66,6 +66,108 @@ workspace state after confirmation if there are unsaved changes. Resource-level 
 see [the authorization concept](docs/AUTHORIZATION.md) for rules and implementation details. Members and owners have
 full access to project contents; document references must stay within one project. Print jobs store their own project ID.
 
+## Invited beta
+
+Run the backend with `SPRING_PROFILES_ACTIVE=prod` and set
+`PEEL_AUTH_ALLOWLIST_FILE` to the file path as seen by the backend. For example, keep
+`/etc/peel/auth/allowed-emails.txt` on the VPS and mount its directory read-only
+into the container at `/run/peel-auth`. Then use
+`PEEL_AUTH_ALLOWLIST_FILE=/run/peel-auth/allowed-emails.txt`. Mount the directory
+so an editor’s atomic replacement of the file is visible inside the container.
+The backend needs read access and the VPS operator needs write access.
+
+Use one email address per line in UTF-8. Blank lines and lines starting with
+`#` are ignored. SSH into the VPS, edit a copy, and rename it over the original
+so requests always read a complete file:
+
+```sh
+cd /etc/peel/auth
+sudo cp -p allowed-emails.txt allowed-emails.txt.new
+sudoedit allowed-emails.txt.new
+sudo mv allowed-emails.txt.new allowed-emails.txt
+```
+
+Changes take effect without a restart. Removing an address blocks outstanding links and signs that account
+out on its next API request. An empty file denies all sign-ins. A missing,
+unreadable or invalid list blocks sign-in and session access. The production
+profile checks the file at startup and requires an HTTPS origin and secure cookies.
+
+Set `SPRING_MAIL_HOST`, `SPRING_MAIL_USERNAME`, and `SPRING_MAIL_PASSWORD`
+for the SMTP relay. Production defaults to port 587 with required STARTTLS.
+Login links and project mail share an hourly budget of 100 send attempts.
+Set `PEEL_AUTH_MAIL_REQUESTS_PER_HOUR` to suit the relay and beta size.
+Set `PEEL_TRUSTED_PROXY_REGEX` to a regular expression matching only Caddy's
+private connection IP (for example, `^172[.]30[.]0[.]2$` with a fixed Compose
+address). Keep the backend port private. The default trusts no forwarded client
+IPs, so behind an unconfigured proxy the per-IP login limit is shared.
+`GET /health/ready` reports whether the backend can reach MongoDB through a
+status code. Use the full login and print workflow to check SMTP and storage.
+
+Build against the published Peel Core with
+`./gradlew bootJar -PpeelVersion=<core-version> -PreleaseVersion=<app-version>`.
+Add `-PpeelRepositoryUrl=<maven-repository>` if the artifact is hosted outside
+Maven Central. Local development can keep using the adjacent checkout by omitting
+`peelVersion`. The build records both versions on print job execution.
+
+To verify the versioned build locally, run
+`./gradlew publishPeelPublicationToStagingRepository -PreleaseVersion=0.1.0-beta.1`
+in Peel Core. Then build Peel Web with `-PpeelVersion=0.1.0-beta.1` and
+`-PpeelRepositoryUrl=file:///.../peel/build/maven-repository/`. Use an immutable
+artifact from the release Maven repository in CI.
+
+To release Core to GitHub Packages, push a version tag in the Core repository.
+The publish workflow runs the Core tests and publishes a Maven package with that
+version. Peel Web Actions is pinned to `de.flo-gehring:peel:0.1.0-beta` via
+`PEEL_CORE_VERSION=0.1.0-beta` and
+`PEEL_CORE_REPOSITORY_URL=https://maven.pkg.github.com/flo-gehring/peel`.
+Peel Web CI tries its repository `GITHUB_TOKEN` with `packages: read`.
+If GitHub denies cross-repository access, set `PEEL_CORE_READ_USERNAME` to an
+account with read access to Peel Core and set the Actions secret
+`PEEL_CORE_READ_TOKEN` to that account's classic token with `read:packages`.
+Pull requests from forks receive no repository secrets, so the token fallback
+is only available to trusted workflow runs. To resolve the package locally,
+set the Gradle properties `peelCoreUsername` and `peelCorePassword` through
+environment variables prefixed with `ORG_GRADLE_PROJECT_`.
+
+The production backend records its expected MongoDB schema revision in the
+`schema_revision` collection and checks it at startup. Roll back only to an app
+release that supports the stored revision. Back up the database and object store
+before a schema change.
+
+## Script, analysis and rendering limits
+
+Script runs and scripts used by document previews and print jobs run in a separate
+JVM. The server terminates the worker if it exceeds `PEEL_EXECUTION_TIMEOUT`
+(default `5s`, including JVM startup and trace serialization). The limit applies
+per script execution. The evaluator has 80% of that time (4 seconds by default).
+A timeout produces `script_timeout`. Exceeding the evaluator's other limits, the
+128 MiB worker heap or the serialized trace limit returns `script_resource_limit`.
+Both errors fail the current print job when they occur during a batch.
+
+| Environment variable | Default |
+| --- | ---: |
+| `PEEL_EXECUTION_MAX_STEPS` | 100,000 |
+| `PEEL_EXECUTION_MAX_DEPTH` | 64 |
+| `PEEL_EXECUTION_MAX_TRACE_UNITS` | 500,000 |
+| `PEEL_EXECUTION_MAX_VALUE_SIZE` | 65,536 |
+
+Trace units count recorded work and value snapshots. Value size measures text
+characters, decimal digits or collection entries.
+
+`PEEL_EXECUTION_MAX_WORKERS` defaults to two shared slots per backend. When both
+are occupied, interactive runs and previews receive HTTP 503. A print job that
+cannot acquire a slot fails. Each run starts a fresh JVM, so large print batches
+take longer. The worker runs under the backend's OS identity.
+
+Editor analysis and document rendering have separate pools of two slots and
+return HTTP 503 when busy. Analysis limits source and expected-binding metadata.
+Rendering limits each document to eight linked scripts, 20,000 render operations
+and 1,048,576 characters of generated body HTML, plus 100 PDF pages and 10 MiB of
+PDF output. Expression templates have their own fragment output and recursion
+limits. References to external Pebble templates are disabled. The PDF renderer
+loads its bundled stylesheet and skips image resources. Analysis and PDF layout
+still run in the server JVM and have no process deadline.
+
 ## Project files
 
 Scripts, render configurations and document templates share one typed file model,

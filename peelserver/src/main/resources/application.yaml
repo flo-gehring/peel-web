@@ -1,6 +1,10 @@
 spring:
   application:
     name: peelserver
+  servlet:
+    multipart:
+      max-file-size: 1MB
+      max-request-size: 2MB
   mail:
     properties:
       "[mail.smtp.connectiontimeout]": 5000
@@ -15,6 +19,13 @@ server:
         same-site: lax
         secure: ${SESSION_COOKIE_SECURE:true}
 peel:
+  execution:
+    timeout: ${PEEL_EXECUTION_TIMEOUT:5s}
+    max-workers: ${PEEL_EXECUTION_MAX_WORKERS:2}
+    max-steps: ${PEEL_EXECUTION_MAX_STEPS:100000}
+    max-depth: ${PEEL_EXECUTION_MAX_DEPTH:64}
+    max-trace-units: ${PEEL_EXECUTION_MAX_TRACE_UNITS:500000}
+    max-value-size: ${PEEL_EXECUTION_MAX_VALUE_SIZE:65536}
   auth:
     public-base-url: ${PEEL_PUBLIC_BASE_URL}
     mail-from: ${PEEL_MAIL_FROM}

@@ -1,3 +1,5 @@
 rootProject.name = "peelserver"
 
-includeBuild("../../peel")
+if (!providers.gradleProperty("peelVersion").isPresent) {
+    includeBuild("../../peel")
+}

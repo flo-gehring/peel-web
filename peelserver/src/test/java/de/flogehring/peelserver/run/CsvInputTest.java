@@ -40,4 +40,13 @@ class CsvInputTest {
         assertThatThrownBy(() -> validate("Amount,customer\n1,x\n")).isInstanceOfSatisfying(
                 BindingInputException.class, error -> assertThat(error.code()).isEqualTo("missing_csv_columns"));
     }
+
+    @Test void boundsTheBatchBeforeScheduling() {
+        String header = "amount,customer\n";
+        assertThatCode(() -> validate(header + "1,x\n".repeat(500))).doesNotThrowAnyException();
+        assertThatThrownBy(() -> validate(header + "1,x\n".repeat(501)))
+                .isInstanceOf(BindingInputException.class).hasMessageContaining("at most 500 rows");
+        assertThatThrownBy(() -> validate(header + "1,x,extra\n"))
+                .isInstanceOf(BindingInputException.class).hasMessageContaining("must match the header width");
+    }
 }

@@ -131,10 +131,10 @@ class ProjectAuthorizationTest {
         mvc.perform(post("/api/print-jobs/" + jobId + "/run").with(user(member)).with(csrf())).andExpect(status().isNotFound());
         mvc.perform(get("/api/print-jobs/" + jobId + "/file/guessed.pdf").with(user(member))).andExpect(status().isNotFound());
         verifyNoInteractions(storage);
-        when(storage.downloadFile("print-jobs", "result.pdf")).thenReturn("pdf".getBytes());
+        when(storage.openFile("print-jobs", "result.pdf")).thenReturn(new java.io.ByteArrayInputStream("pdf".getBytes()));
         mvc.perform(get("/api/print-jobs/" + jobId + "/file/result.pdf").with(user(member)))
                 .andExpect(status().isOk()).andExpect(content().bytes("pdf".getBytes()));
-        when(storage.downloadFile("print-jobs", jobId)).thenReturn("csv".getBytes());
+        when(storage.openFile("print-jobs", jobId)).thenReturn(new java.io.ByteArrayInputStream("csv".getBytes()));
         mvc.perform(get("/api/print-jobs/" + jobId + "/data").with(user(owner)))
                 .andExpect(status().isOk()).andExpect(content().bytes("csv".getBytes()));
     }

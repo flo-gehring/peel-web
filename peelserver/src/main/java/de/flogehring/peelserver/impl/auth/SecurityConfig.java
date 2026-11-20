@@ -1,14 +1,19 @@
 package de.flogehring.peelserver.impl.auth;
 
 import de.flogehring.peelserver.api.error.ApiErrorResponse;
+import de.flogehring.peelserver.impl.users.SpringUserDetails;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.security.authentication.ott.InMemoryOneTimeTokenService;
+import org.springframework.security.authentication.ott.GenerateOneTimeTokenRequest;
+import org.springframework.security.authentication.ott.OneTimeToken;
 import org.springframework.security.authentication.ott.OneTimeTokenAuthenticationToken;
 import org.springframework.security.authentication.ott.OneTimeTokenService;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -28,12 +33,50 @@ import java.io.IOException;
 @EnableConfigurationProperties(AuthProperties.class)
 public class SecurityConfig {
     @Bean
-    OneTimeTokenService oneTimeTokenService() {
-        return new InMemoryOneTimeTokenService();
+    OutboundMailBudget outboundMailBudget(@Value("${peel.auth.mail-requests-per-hour:100}") int hourlyLimit) {
+        return new OutboundMailBudget(hourlyLimit);
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, OneTimeTokenService tokens, ObjectMapper mapper) throws Exception {
+    LoginAllowlist loginAllowlist(@Value("${peel.auth.allowlist-file:}") String file,
+                                  AuthProperties properties, Environment environment) {
+        if (environment.matchesProfiles("prod")) {
+            if (file.isBlank()) throw new IllegalStateException("PEEL_AUTH_ALLOWLIST_FILE is required in production");
+            if (environment.matchesProfiles("dev")
+                    || !"https".equals(properties.publicBaseUrl().getScheme())
+                    || !environment.getProperty("server.servlet.session.cookie.secure", Boolean.class, false)
+                    || !environment.getProperty("server.servlet.session.cookie.http-only", Boolean.class, false)) {
+                throw new IllegalStateException("Production authentication requires HTTPS, secure HTTP-only cookies and no dev profile");
+            }
+            for (String key : new String[]{"spring.mail.host", "spring.mail.username", "spring.mail.password"}) {
+                if (environment.getRequiredProperty(key).isBlank()) {
+                    throw new IllegalStateException("Missing production relay setting: " + key);
+                }
+            }
+        }
+        return new LoginAllowlist(file);
+    }
+
+    @Bean
+    OneTimeTokenService oneTimeTokenService(LoginAllowlist allowlist) {
+        var tokens = new InMemoryOneTimeTokenService();
+        return new OneTimeTokenService() {
+            @Override
+            public OneTimeToken generate(GenerateOneTimeTokenRequest request) {
+                return tokens.generate(request);
+            }
+
+            @Override
+            public OneTimeToken consume(OneTimeTokenAuthenticationToken authenticationToken) {
+                var token = tokens.consume(authenticationToken);
+                return token != null && allowlist.permits(token.getUsername()) ? token : null;
+            }
+        };
+    }
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http, OneTimeTokenService tokens, LoginAllowlist allowlist,
+                                           ObjectMapper mapper) throws Exception {
         // Reject account switches before the authentication filter can clear an existing session on failure.
         http.addFilterBefore(new OncePerRequestFilter() {
             @Override
@@ -43,6 +86,14 @@ public class SecurityConfig {
                     jakarta.servlet.FilterChain chain
             ) throws jakarta.servlet.ServletException, IOException {
                 var current = SecurityContextHolder.getContext().getAuthentication();
+                if (request.getRequestURI().startsWith(request.getContextPath() + "/api/")
+                        && current != null && current.getPrincipal() instanceof SpringUserDetails user
+                        && !allowlist.permits(user.getUsername())) {
+                    var session = request.getSession(false);
+                    if (session != null) session.invalidate();
+                    SecurityContextHolder.clearContext();
+                    current = null;
+                }
                 if (request.getMethod().equals("POST") && request.getRequestURI().equals(request.getContextPath() + "/api/auth/login")
                         && current != null && current.isAuthenticated() && !(current instanceof AnonymousAuthenticationToken)) {
                     writeError(mapper, response, 409, "already_authenticated", "Sign out before signing in to another account.");

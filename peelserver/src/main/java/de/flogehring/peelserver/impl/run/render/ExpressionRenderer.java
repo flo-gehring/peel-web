@@ -4,7 +4,11 @@ import de.flogehring.peel.core.trace.TraceExpressionKind;
 import de.flogehring.peelserver.impl.renderconfig.ExpressionRenderConfiguration;
 import de.flogehring.peelserver.impl.renderconfig.ExpressionRenderTemplate;
 import io.pebbletemplates.pebble.PebbleEngine;
+import io.pebbletemplates.pebble.error.LoaderException;
+import io.pebbletemplates.pebble.loader.StringLoader;
+import io.pebbletemplates.pebble.node.ForNode;
 
+import java.io.Reader;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -13,6 +17,23 @@ import java.util.Map;
 import java.util.Objects;
 
 public final class ExpressionRenderer {
+    private static final int MAX_FRAGMENT_CHARS = 256 * 1024;
+
+    static final class RenderWork {
+        private int callsLeft = 4096;
+        private int depth;
+
+        void enter() {
+            if (callsLeft-- <= 0 || depth >= 64) {
+                throw new IllegalArgumentException("Expression template requires too many nested render calls");
+            }
+            depth++;
+        }
+
+        void leave() {
+            depth--;
+        }
+    }
 
     ExpressionRenderConfiguration configuration;
     private final ExpressionRenderTemplate templates;
@@ -54,6 +75,19 @@ public final class ExpressionRenderer {
     }
 
     public String renderExpressionNode(Object input) {
+        return renderExpressionNode(input, new RenderWork());
+    }
+
+    String renderExpressionNode(Object input, RenderWork work) {
+        work.enter();
+        try {
+            return renderExpression(input, work);
+        } finally {
+            work.leave();
+        }
+    }
+
+    private String renderExpression(Object input, RenderWork work) {
         if (!supportsExpression(input)) {
             throw new IllegalArgumentException("Unsupported argument");
         }
@@ -71,12 +105,27 @@ public final class ExpressionRenderer {
             return valueText;
         }
         expression.put("valueText", valueText);
-        return renderTemplate(template, expression);
+        return renderTemplate(template, expression, work);
     }
 
-    private String renderTemplate(String template, Map<String, Object> context) {
+    private String renderTemplate(String template, Map<String, Object> context, RenderWork work) {
         PebbleEngine engine = new PebbleEngine.Builder()
-                .extension(new TraceRenderingPebbleExtension(configuration))
+                .cacheActive(false)
+                .loader(new StringLoader() {
+                    @Override
+                    public Reader getReader(String name) {
+                        throw new LoaderException(null, "External templates are disabled");
+                    }
+
+                    @Override
+                    public boolean resourceExists(String name) {
+                        return false;
+                    }
+                })
+                .methodAccessValidator((target, method) -> method.getDeclaringClass() == ForNode.LoopVariables.class
+                        && method.getParameterCount() == 0)
+                .maxRenderedSize(MAX_FRAGMENT_CHARS)
+                .extension(new TraceRenderingPebbleExtension(configuration, work))
                 .build();
         try {
             StringWriter stringBuilder = new StringWriter();

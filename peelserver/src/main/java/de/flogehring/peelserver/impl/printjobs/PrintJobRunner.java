@@ -6,7 +6,6 @@ import de.flogehring.peelserver.impl.documenttemplates.DocumentTemplateRenderSer
 import de.flogehring.peelserver.impl.filestorage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -19,10 +18,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 
-
-@Async
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -34,6 +30,7 @@ public class PrintJobRunner {
     private final StorageService storageService;
     private final DocumentTemplateRenderService documentTemplateRenderService;
 
+    @Async("printJobExecutor")
     public void run(PrintJobPersistence printJob, Document document) {
         PrintJobStatus status = printJob.getPrintJobPersistenceData().status();
         if (status != PrintJobStatus.CALCULATING) {
@@ -43,8 +40,9 @@ public class PrintJobRunner {
         try {
             runJob(printJob, document);
         } catch (RuntimeException exception) {
+            printJob.setDocumentIds(List.of());
             printJob.updateStatus(PrintJobStatus.FAILED);
-            log.error("Print job {} failed", printJob.getId(), exception);
+            log.error("Print job {} failed ({})", printJob.getId(), exception.getClass().getSimpleName());
         } finally {
             // Publish a terminal status only after storage processing and stream closing have finished.
             printJobRepository.save(printJob);
@@ -85,6 +83,7 @@ public class PrintJobRunner {
                                     PrintJobService.BUCKET_NAME,
                                     objectId,
                                     new ByteArrayInputStream(outputStream.toByteArray()),
+                                    outputStream.size(),
                                     "application/pdf"
                             );
                             return (Void) null;
@@ -94,7 +93,7 @@ public class PrintJobRunner {
             printJobPersistence.setDocumentIds(documentIds);
             printJobPersistence.updateStatus(PrintJobStatus.COMPLETED);
         } catch (Exception e) {
-            log.error("Error processing CSV for print job {}: {}", printJobPersistence.getId(), e.getMessage());
+            log.error("Could not process CSV for print job {} ({})", printJobPersistence.getId(), e.getClass().getSimpleName());
             printJobPersistence.updateStatus(PrintJobStatus.FAILED);
         }
     }

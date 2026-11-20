@@ -34,18 +34,28 @@ class ProjectDeletionStorageTest {
     StorageService storage;
 
     @Test
-    void hardDeletionRemovesCsvPdfAndOrphanResultsButPreservesOtherProjectsFiles() {
+    void hardDeletionRemovesCsvPdfAndOrphanResultsButPreservesOtherProjectsFiles() throws java.io.IOException {
         var owner = new SpringUserDetails(new UserId("owner"), new UserPersistenceData("owner@example.test", null));
         var project = projects.save(ProjectPersistence.newProject(owner.getUserId(), "Delete me"));
         var job = jobs.save(PrintJobPersistence.init(new PrintJobId(UUID.randomUUID().toString()), new DocumentId("template"), new ProjectId(project.getId()), "Job", "Template"));
         String unrelated = UUID.randomUUID().toString();
-        for (String key : new String[]{job.getId(), job.getId() + "_1.pdf", job.getId() + "_orphan.pdf", unrelated})
-            storage.uploadFile("print-jobs", key, new ByteArrayInputStream("data".getBytes()), "application/octet-stream");
+        var data = "data".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        for (String key : new String[]{job.getId(), job.getId() + "_1.pdf", job.getId() + "_orphan.pdf", unrelated}) {
+            var stream = new ByteArrayInputStream(data) {
+                @Override
+                public int available() {
+                    return 0;
+                }
+            };
+            storage.uploadFile("print-jobs", key, stream, data.length, "application/octet-stream");
+        }
         management.archive(project.getId(), owner, true);
         management.delete(project.getId(), "Delete me", owner);
         for (String key : new String[]{job.getId(), job.getId() + "_1.pdf", job.getId() + "_orphan.pdf"})
-            assertThatThrownBy(() -> storage.downloadFile("print-jobs", key)).isInstanceOf(RuntimeException.class);
-        assertThat(storage.downloadFile("print-jobs", unrelated)).isEqualTo("data".getBytes());
+            assertThatThrownBy(() -> storage.openFile("print-jobs", key)).isInstanceOf(RuntimeException.class);
+        try (var stream = storage.openFile("print-jobs", unrelated)) {
+            assertThat(stream.readAllBytes()).isEqualTo(data);
+        }
         assertThat(projects.existsById(project.getId())).isFalse();
     }
 }

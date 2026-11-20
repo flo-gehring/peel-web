@@ -2,6 +2,10 @@ package de.flogehring.peelserver.api.services;
 
 import de.flogehring.peelserver.api.data.print.jobs.PrintJobStatus;
 import de.flogehring.peelserver.impl.users.SpringUserDetails;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -23,8 +27,10 @@ public interface PrintJobController {
     PrintJobStatus runPrintJob(@PathVariable("id") String printJobId, @AuthenticationPrincipal SpringUserDetails user);
 
     @GetMapping(path = "/{id:.+}/data", produces = "text/csv")
-    byte[] downloadFile(@PathVariable("id") String printJobId, @AuthenticationPrincipal SpringUserDetails user);
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = "text/csv", schema = @Schema(type = "string", format = "binary")))
+    InputStreamResource downloadFile(@PathVariable("id") String printJobId, @AuthenticationPrincipal SpringUserDetails user);
 
     @GetMapping(path = "/{id:.+}/file/{fileId:.+}", produces = MediaType.APPLICATION_PDF_VALUE)
-    byte[] downloadFile(@PathVariable("id") String printJobId, @PathVariable("fileId") String fileId, @AuthenticationPrincipal SpringUserDetails user);
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_PDF_VALUE, schema = @Schema(type = "string", format = "binary")))
+    InputStreamResource downloadFile(@PathVariable("id") String printJobId, @PathVariable("fileId") String fileId, @AuthenticationPrincipal SpringUserDetails user);
 }

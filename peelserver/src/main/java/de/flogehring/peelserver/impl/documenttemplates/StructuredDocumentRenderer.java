@@ -11,9 +11,13 @@ import java.util.Map;
 import java.util.Set;
 
 final class StructuredDocumentRenderer {
+    private static final int MAX_HTML_CHARS = 1024 * 1024;
+    private static final int MAX_RENDER_OPERATIONS = 20_000;
+
     private final TraceSelection selection;
     private final ExpressionRenderer expressions;
     private final List<String> warnings = new ArrayList<>();
+    private int operationsLeft = MAX_RENDER_OPERATIONS;
 
     StructuredDocumentRenderer(TraceSelection selection, ExpressionRenderer expressions) {
         this.selection = selection;
@@ -25,10 +29,11 @@ final class StructuredDocumentRenderer {
     }
 
     String render(DocumentNode node) {
-        return render(node, null, "document");
+        return checkHtmlSize(render(node, null, "document"));
     }
 
     private String render(DocumentNode node, TraceSelection.Occurrence current, String path) {
+        chargeOperation();
         try {
             String type = node.type();
             if (type.equals("peelTable")) return table(node, current, path);
@@ -37,9 +42,10 @@ final class StructuredDocumentRenderer {
                 if (occurrences.isEmpty())
                     warnings.add(path + ": block '" + node.attribute("block") + "' was not executed");
                 StringBuilder html = new StringBuilder();
-                for (var occurrence : occurrences)
-                    html.append("<div class=\"peel-repeat\">")
-                            .append(children(node, occurrence, path)).append("</div>");
+                for (var occurrence : occurrences) {
+                    chargeOperation();
+                    appendHtml(html, "<div class=\"peel-repeat\">" + children(node, occurrence, path) + "</div>");
+                }
                 return html.toString();
             }
             if (type.equals("peelCalculation") || type.equals("peelValue")) {
@@ -57,6 +63,7 @@ final class StructuredDocumentRenderer {
             if (type.equals("text")) {
                 String text = escape(node.text());
                 for (var mark : node.marks()) {
+                    chargeOperation();
                     String tag = switch (mark.type()) {
                         case "bold" -> "strong";
                         case "italic" -> "em";
@@ -68,11 +75,11 @@ final class StructuredDocumentRenderer {
                     if (mark.type().equals("link") && mark.attrs() != null) {
                         String href = String.valueOf(mark.attrs().getOrDefault("href", ""));
                         if (href.matches("(?i)^(https?://|mailto:|#).*")) {
-                            text = "<a href=\"" + escape(href) + "\">" + text + "</a>";
+                            text = checkHtmlSize("<a href=\"" + escape(href) + "\">" + text + "</a>");
                             continue;
                         }
                     }
-                    text = "<" + tag + ">" + text + "</" + tag + ">";
+                    text = checkHtmlSize("<" + tag + ">" + text + "</" + tag + ">");
                 }
                 return text;
             }
@@ -108,16 +115,19 @@ final class StructuredDocumentRenderer {
             return "";
         }
         var html = new StringBuilder("<table class=\"peel-table\"><thead><tr>");
-        for (var column : node.content())
-            html.append("<th scope=\"col\" style=\"text-align:")
-                    .append(alignment(column)).append("\">").append(escape(column.attribute("title"))).append("</th>");
+        for (var column : node.content()) {
+            chargeOperation();
+            appendHtml(html, "<th scope=\"col\" style=\"text-align:" + alignment(column) + "\">"
+                    + escape(column.attribute("title")) + "</th>");
+        }
         html.append("</tr></thead><tbody>");
         for (int row = 0; row < occurrences.size(); row++) {
             html.append("<tr>");
             for (int col = 0; col < node.content().size(); col++) {
+                chargeOperation();
                 var column = node.content().get(col);
-                html.append("<td style=\"text-align:").append(alignment(column)).append("\">")
-                        .append(children(column, occurrences.get(row), path + "/row/" + row + "/column/" + col)).append("</td>");
+                appendHtml(html, "<td style=\"text-align:" + alignment(column) + "\">"
+                        + children(column, occurrences.get(row), path + "/row/" + row + "/column/" + col) + "</td>");
             }
             html.append("</tr>");
         }
@@ -131,7 +141,7 @@ final class StructuredDocumentRenderer {
     private String children(DocumentNode node, TraceSelection.Occurrence current, String path) {
         var html = new StringBuilder();
         for (int i = 0; i < node.content().size(); i++)
-            html.append(render(node.content().get(i), current, path + "/" + i));
+            appendHtml(html, render(node.content().get(i), current, path + "/" + i));
         return html.toString();
     }
 
@@ -175,35 +185,43 @@ final class StructuredDocumentRenderer {
     }
 
     private String calculation(Map<String, Object> expression, String mode, Integer decimals) {
+        chargeOperation();
         if (mode.equals("result")) return "<p>" + escape(valueText(expression.get("value"), decimals)) + "</p>";
         String type = String.valueOf(expression.get("type"));
-        if (type.equals("block")) return list(expression.get("content")).stream().map(StructuredDocumentRenderer::map)
-                .map(child -> calculation(child, mode, decimals)).reduce("", String::concat);
+        if (type.equals("block")) {
+            var html = new StringBuilder();
+            for (Object child : list(expression.get("content"))) {
+                appendHtml(html, calculation(map(child), mode, decimals));
+            }
+            return html.toString();
+        }
         if (type.equals("if_statement")) {
             StringBuilder html = new StringBuilder();
             for (Object condition : list(expression.get("conditions"))) {
                 Map<String, Object> item = map(condition);
-                html.append("<p class=\"peel-condition\">if ").append(expressionText(item, mode, decimals)).append(" → ")
-                        .append(escape(valueText(item.get("value"), null))).append("</p>");
+                chargeOperation();
+                appendHtml(html, "<p class=\"peel-condition\">if " + expressionText(item, mode, decimals) + " → "
+                        + escape(valueText(item.get("value"), null)) + "</p>");
             }
             if (expression.get("executedBlock") != null)
-                html.append(calculation(map(expression.get("executedBlock")), mode, decimals));
+                appendHtml(html, calculation(map(expression.get("executedBlock")), mode, decimals));
             return html.toString();
         }
         if (type.equals("for_each_loop") || type.equals("while_loop")) {
             StringBuilder html = new StringBuilder();
             for (Object item : list(expression.get("iterations"))) {
+                chargeOperation();
                 Map<String, Object> iteration = map(item);
                 if (iteration.get("binding") != null) {
                     var binding = map(iteration.get("binding"));
-                    html.append("<p class=\"peel-iteration\">").append(escape(String.valueOf(binding.get("name"))))
-                            .append(" = ").append(escape(valueText(binding.get("value"), decimals))).append("</p>");
+                    appendHtml(html, "<p class=\"peel-iteration\">" + escape(String.valueOf(binding.get("name")))
+                            + " = " + escape(valueText(binding.get("value"), decimals)) + "</p>");
                 } else if (iteration.get("condition") != null) {
                     var condition = map(iteration.get("condition"));
-                    html.append("<p class=\"peel-condition\">while ").append(expressionText(condition, mode, decimals)).append(" → ")
-                            .append(escape(valueText(condition.get("value"), null))).append("</p>");
+                    appendHtml(html, "<p class=\"peel-condition\">while " + expressionText(condition, mode, decimals) + " → "
+                            + escape(valueText(condition.get("value"), null)) + "</p>");
                 }
-                if (iteration.get("body") != null) html.append(calculation(map(iteration.get("body")), mode, decimals));
+                if (iteration.get("body") != null) appendHtml(html, calculation(map(iteration.get("body")), mode, decimals));
             }
             return html.toString();
         }
@@ -234,32 +252,33 @@ final class StructuredDocumentRenderer {
     }
 
     private String functionDetails(Map<String, Object> expression, String mode, Integer decimals) {
+        chargeOperation();
         StringBuilder html = new StringBuilder();
         switch (String.valueOf(expression.get("type"))) {
             case "assignment", "return_expression" ->
-                    html.append(functionDetails(map(expression.get("expression")), mode, decimals));
+                    appendHtml(html, functionDetails(map(expression.get("expression")), mode, decimals));
             case "binary_operator" -> {
-                html.append(functionDetails(map(expression.get("lhs")), mode, decimals));
-                html.append(functionDetails(map(expression.get("rhs")), mode, decimals));
+                appendHtml(html, functionDetails(map(expression.get("lhs")), mode, decimals));
+                appendHtml(html, functionDetails(map(expression.get("rhs")), mode, decimals));
             }
             case "unary_prefix_operator" ->
-                    html.append(functionDetails(map(expression.get("argument")), mode, decimals));
+                    appendHtml(html, functionDetails(map(expression.get("argument")), mode, decimals));
             case "selector" -> {
-                html.append(functionDetails(map(expression.get("target")), mode, decimals));
-                html.append(functionDetails(map(expression.get("selector")), mode, decimals));
+                appendHtml(html, functionDetails(map(expression.get("target")), mode, decimals));
+                appendHtml(html, functionDetails(map(expression.get("selector")), mode, decimals));
             }
             case "list_literal" ->
-                    list(expression.get("elements")).forEach(item -> html.append(functionDetails(map(item), mode, decimals)));
+                    list(expression.get("elements")).forEach(item -> appendHtml(html, functionDetails(map(item), mode, decimals)));
             case "map_literal" -> list(expression.get("entries")).forEach(item -> {
-                html.append(functionDetails(map(map(item).get("key")), mode, decimals));
-                html.append(functionDetails(map(map(item).get("value")), mode, decimals));
+                appendHtml(html, functionDetails(map(map(item).get("key")), mode, decimals));
+                appendHtml(html, functionDetails(map(map(item).get("value")), mode, decimals));
             });
             case "function_call" -> {
-                html.append(functionDetails(map(map(expression.get("calleeSource")).get("expression")), mode, decimals));
-                list(expression.get("arguments")).forEach(item -> html.append(functionDetails(map(item), mode, decimals)));
+                appendHtml(html, functionDetails(map(map(expression.get("calleeSource")).get("expression")), mode, decimals));
+                list(expression.get("arguments")).forEach(item -> appendHtml(html, functionDetails(map(item), mode, decimals)));
                 Object body = map(expression.get("subEvaluation")).get("bodyEvaluation");
-                if (body != null) html.append("<div class=\"peel-function\">")
-                        .append(calculation(map(body), mode, decimals)).append("</div>");
+                if (body != null) appendHtml(html, "<div class=\"peel-function\">"
+                        + calculation(map(body), mode, decimals) + "</div>");
             }
             default -> {
             }
@@ -304,7 +323,31 @@ final class StructuredDocumentRenderer {
     }
 
     static String escape(String text) {
-        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
+        checkHtmlSize(text);
+        return checkHtmlSize(text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\"", "&quot;").replace("'", "&#39;"));
+    }
+
+    private void chargeOperation() {
+        if (operationsLeft-- <= 0) {
+            throw new IllegalArgumentException("Document requires too many rendering operations");
+        }
+    }
+
+    private static void appendHtml(StringBuilder html, String fragment) {
+        requireHtmlSize(html.length() + (long) fragment.length());
+        html.append(fragment);
+    }
+
+    private static String checkHtmlSize(String html) {
+        requireHtmlSize(html.length());
+        return html;
+    }
+
+    private static void requireHtmlSize(long length) {
+        if (length > MAX_HTML_CHARS) {
+            throw new IllegalArgumentException("Rendered HTML can contain at most 1,048,576 characters");
+        }
     }
 
     @SuppressWarnings("unchecked")

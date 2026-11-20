@@ -24,12 +24,17 @@ public class AuthLinkService {
     private final OneTimeTokenService tokens;
     private final MailSender mailSender;
     private final AuthProperties properties;
+    private final LoginAllowlist allowlist;
+    private final OutboundMailBudget mailBudget;
     private final Map<String, Instant> emailRequests = new HashMap<>();
     private final Map<String, IpRequests> ipRequests = new HashMap<>();
 
     public void send(AuthLinkRequest request, String clientIp) {
         String email = normalizeEmail(request.email());
         checkRateLimit(email, clientIp);
+        // Keep the same response for unlisted addresses without sending mail or issuing a token.
+        if (!allowlist.permits(email)) return;
+        mailBudget.reserve();
         var token = tokens.generate(new GenerateOneTimeTokenRequest(email, properties.tokenValidity()));
         String link = UriComponentsBuilder.fromUri(properties.publicBaseUrl()).replacePath("/login/confirm")
                 .queryParam("token", token.getTokenValue()).queryParam("redirect", safeRedirect(request.redirect()))

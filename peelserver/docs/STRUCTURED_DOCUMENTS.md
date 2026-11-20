@@ -22,11 +22,11 @@ Eigenständige benannte und unbenannte Blöcke sind Statements. Vorhandene
 einzelne Statements als Schleifen-/Funktions-/Bedingungsrumpf bleiben möglich.
 Namen sind nur an Blöcken mit geschweiften Klammern erlaubt.
 
-Die Kernbibliothek bietet `PeelGrammar.parseWithBlocks(source)` für das Programm
-und einen aus dem fertigen AST abgeleiteten Blockkatalog, ohne es auszuführen.
-`BlockCatalog.analyze(program)` ist auch für bereits vorhandene oder direkt
-erzeugte ASTs verwendbar und prüft doppelte Blocknamen. Der Parser-Visitor baut
-ausschließlich den AST. `TraceExpression.Block`
+Die Kernbibliothek erstellt mit `PeelGrammar.parse(source)` ausschließlich das
+Programm. Bei Bedarf ruft der Konsument anschließend `BlockCatalog.analyze(program)`
+auf, um Blocknamen und mögliche Erreichbarkeit aus dem fertigen AST zu bestimmen,
+ohne ihn auszuführen. Diese optionale Analyse prüft auch doppelte Blocknamen und
+ist für direkt erzeugte ASTs verwendbar. `TraceExpression.Block`
 und die Map-/JSON-Ausgabe enthalten einen nullable `name`.
 
 ## Dokument und Referenzen
